@@ -1,0 +1,69 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    Nowo\MarketingKitBundle\:
+        resource: '../../*'
+        exclude:
+            - '../../DependencyInjection/'
+            - '../../Entity/'
+            - '../../Controller/'
+            - '../../NowoMarketingKitBundle.php'
+            - '../../Resources/'
+
+    Nowo\MarketingKitBundle\Controller\:
+        resource: '../../Controller/'
+        tags: ['controller.service_arguments']
+
+    Nowo\MarketingKitBundle\Config\MarketingConfigResolver:
+        arguments:
+            $profiles: '%nowo_marketing_kit.profiles%'
+            $defaultProfile: '%nowo_marketing_kit.default_profile%'
+            $useDatabaseConfig: '%nowo_marketing_kit.use_database_config%'
+
+    Nowo\MarketingKitBundle\Service\MarketingToolAdminService:
+        arguments:
+            $profiles: '%nowo_marketing_kit.profiles%'
+            $defaultProfile: '%nowo_marketing_kit.default_profile%'
+
+    Nowo\MarketingKitBundle\Controller\MarketingToolAdminController:
+        arguments:
+            $useDatabaseConfig: '%nowo_marketing_kit.use_database_config%'
+
+    Nowo\MarketingKitBundle\Consent\CookieConsentGate:
+        arguments:
+            $respectCookieConsent: '%nowo_marketing_kit.respect_cookie_consent%'
+
+    Nowo\MarketingKitBundle\Consent\ConsentGateInterface: '@Nowo\MarketingKitBundle\Consent\CookieConsentGate'
+
+    Nowo\MarketingKitBundle\Provider\ToolRendererRegistry:
+        arguments:
+            $renderers: !tagged_iterator nowo_marketing_kit.tool_renderer
+
+    Nowo\MarketingKitBundle\Provider\GtmRenderer:
+        tags: ['nowo_marketing_kit.tool_renderer']
+
+    Nowo\MarketingKitBundle\Provider\Ga4Renderer:
+        tags: ['nowo_marketing_kit.tool_renderer']
+
+    Nowo\MarketingKitBundle\Provider\MetaPixelRenderer:
+        tags: ['nowo_marketing_kit.tool_renderer']
+
+    Nowo\MarketingKitBundle\Provider\LinkedInRenderer:
+        tags: ['nowo_marketing_kit.tool_renderer']
+
+    Nowo\MarketingKitBundle\Provider\TikTokRenderer:
+        tags: ['nowo_marketing_kit.tool_renderer']
+
+    Nowo\MarketingKitBundle\Provider\HotjarRenderer:
+        tags: ['nowo_marketing_kit.tool_renderer']
+
+    Nowo\MarketingKitBundle\Provider\ClarityRenderer:
+        tags: ['nowo_marketing_kit.tool_renderer']
+
+    Nowo\MarketingKitBundle\Provider\CustomScriptRenderer:
+        tags: ['nowo_marketing_kit.tool_renderer']
+
+    Nowo\MarketingKitBundle\Twig\MarketingKitExtension:
+        tags: ['twig.extension']

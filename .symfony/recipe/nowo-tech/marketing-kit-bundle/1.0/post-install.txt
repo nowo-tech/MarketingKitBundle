@@ -1,0 +1,14 @@
+* Installing nowo-tech/marketing-kit-bundle
+
+  * Add to your base layout:
+
+        {{ nowo_marketing_head() }}
+        {{ nowo_marketing_body_start() }}
+        {{ nowo_marketing_body_end() }}
+
+  * Set provider env vars (GTM_ID, META_PIXEL_ID, …) and enable tools in
+    config/packages/nowo_marketing_kit.yaml
+
+  * Optional: composer require nowo-tech/cookie-consent-bundle for GDPR category cookies
+
+  * Optional DB admin: set use_database_config: true and open /admin/marketing

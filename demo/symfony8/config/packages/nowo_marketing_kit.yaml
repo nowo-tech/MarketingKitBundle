@@ -1,0 +1,30 @@
+# config/packages/nowo_marketing_kit.yaml
+nowo_marketing_kit:
+    use_database_config: true
+    respect_cookie_consent: false
+    default_profile: default
+    profiles:
+        default:
+            enabled: true
+            tools:
+                gtm:
+                    type: gtm
+                    enabled: true
+                    category: analytics
+                    position: head
+                    options:
+                        container_id: 'GTM-DEMO'
+                gtm_noscript:
+                    type: gtm
+                    enabled: true
+                    category: analytics
+                    position: body_start
+                    options:
+                        container_id: 'GTM-DEMO'
+                clarity:
+                    type: clarity
+                    enabled: true
+                    category: analytics
+                    position: head
+                    options:
+                        project_id: 'demo-clarity'

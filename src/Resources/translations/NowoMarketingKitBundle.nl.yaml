@@ -1,0 +1,24 @@
+# Marketingtools
+admin.title: Marketingdiensten
+admin.lead: Configureer GTM, GA4, pixels en andere providers voor dit profiel.
+admin.new: Dienst toevoegen
+admin.edit: Dienst bewerken
+admin.delete: Verwijderen
+admin.save: Opslaan
+admin.cancel: Annuleren
+admin.back: Terug naar overzicht
+admin.profile: Profiel
+admin.seed: Catalogus zaaien
+admin.import_yaml: Importeren uit YAML
+admin.empty: Nog geen diensten. Gebruik «Catalogus zaaien» of «Dienst toevoegen».
+admin.confirm_delete: Deze marketingdienst verwijderen?
+admin.db_config_hint: 'Zet use_database_config: true zodat DB-tools YAML tijdens runtime vervangen.'
+admin.provider_options: Provideropties
+admin.on: Aan
+admin.off: Uit
+admin.col.service: Dienst
+admin.col.type: Type
+admin.col.category: Categorie
+admin.col.position: Positie
+admin.col.enabled: Actief
+admin.col.options: Opties

@@ -1,0 +1,6 @@
+# Twig Inspector — panel in Web Profiler; overlay via toolbar </> icon (cookie).
+nowo_twig_inspector:
+    enabled_extensions:
+        - '.html.twig'
+    enable_metrics: true
+    cookie_name: 'twig_inspector_is_active'

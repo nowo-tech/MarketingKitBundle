@@ -1,0 +1,117 @@
+{
+    "name": "nowo-tech/marketing-kit-bundle",
+    "description": "Symfony bundle to install and configure marketing tools (GTM, GA4, Meta Pixel, LinkedIn, TikTok, Hotjar, Clarity, custom) via YAML and/or Doctrine, with CookieConsent-compatible gating.",
+    "type": "symfony-bundle",
+    "license": "MIT",
+    "keywords": [
+        "symfony",
+        "symfony-bundle",
+        "marketing",
+        "gtm",
+        "ga4",
+        "meta-pixel",
+        "analytics",
+        "cookie-consent",
+        "hotjar",
+        "clarity"
+    ],
+    "homepage": "https://github.com/nowo-tech/MarketingKitBundle",
+    "support": {
+        "issues": "https://github.com/nowo-tech/MarketingKitBundle/issues",
+        "source": "https://github.com/nowo-tech/MarketingKitBundle",
+        "docs": "https://github.com/nowo-tech/MarketingKitBundle/tree/main/docs",
+        "changelog": "https://github.com/nowo-tech/MarketingKitBundle/blob/main/docs/CHANGELOG.md"
+    },
+    "authors": [
+        {
+            "name": "Héctor Franco Aceituno",
+            "email": "hectorfranco@nowo.tech",
+            "homepage": "https://github.com/HecFranco",
+            "role": "Developer"
+        },
+        {
+            "name": "Nowo.tech",
+            "homepage": "https://nowo.tech"
+        }
+    ],
+    "require": {
+        "php": ">=8.2 <8.6",
+        "doctrine/doctrine-bundle": "^2.10 || ^3.0",
+        "doctrine/orm": "^2.15 || ^3.0",
+        "symfony/config": "^7.4 || ^8.0",
+        "symfony/dependency-injection": "^7.4 || ^8.0",
+        "symfony/form": "^7.4 || ^8.0",
+        "symfony/framework-bundle": "^7.4 || ^8.0",
+        "symfony/http-foundation": "^7.4 || ^8.0",
+        "symfony/http-kernel": "^7.4 || ^8.0",
+        "symfony/routing": "^7.4 || ^8.0",
+        "symfony/security-csrf": "^7.4|^8.0",
+        "symfony/translation": "^7.4|^8.0",
+        "symfony/twig-bundle": "^7.4 || ^8.0",
+        "symfony/yaml": "^7.4 || ^8.0"
+    },
+    "suggest": {
+        "nowo-tech/cookie-consent-bundle": "Gate marketing/analytics scripts with GDPR category cookies (Cookie_Category_*).",
+        "symfony/flex": "For automatic recipe installation (config and bundles.php)"
+    },
+    "require-dev": {
+        "friendsofphp/php-cs-fixer": "^3.0",
+        "nowo-tech/phpstan-frankenphp": "^1.0",
+        "phpstan/extension-installer": "^1.4",
+        "phpstan/phpstan": "^2.0",
+        "phpstan/phpstan-phpunit": "^2.0",
+        "phpstan/phpstan-symfony": "^2.0",
+        "phpunit/phpunit": "^11.0",
+        "rector/rector": "^2.0",
+        "symfony/browser-kit": "^7.4 || ^8.0",
+        "symfony/phpunit-bridge": "^7.4 || ^8.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Nowo\\MarketingKitBundle\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Nowo\\MarketingKitBundle\\Tests\\": "tests/"
+        }
+    },
+    "archive": {
+        "exclude": ["/demo", "/.cursor"]
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "phpstan/extension-installer": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "scripts": {
+        "test": "@php vendor/bin/phpunit --colors=always",
+        "test-coverage": "@php vendor/bin/phpunit --colors=always --coverage-html coverage --coverage-clover coverage.xml --coverage-text",
+        "cs-check": "@php vendor/bin/php-cs-fixer fix --dry-run --diff --config=.php-cs-fixer.dist.php",
+        "cs-fix": "@php vendor/bin/php-cs-fixer fix --config=.php-cs-fixer.dist.php",
+        "rector": "@php vendor/bin/rector process",
+        "rector-dry": "@php vendor/bin/rector process --dry-run --no-progress-bar",
+        "phpstan": "@php vendor/bin/phpstan analyse --memory-limit=512M",
+        "update": "composer update --no-interaction",
+        "validate": "composer validate --strict",
+        "qa": [
+            "@cs-check",
+            "@test"
+        ]
+    },
+    "scripts-descriptions": {
+        "test": "Run PHPUnit tests",
+        "test-coverage": "Run PHPUnit tests with code coverage",
+        "cs-check": "Check code style with PHP-CS-Fixer",
+        "cs-fix": "Fix code style with PHP-CS-Fixer",
+        "rector": "Apply Rector refactoring",
+        "rector-dry": "Run Rector in dry-run mode",
+        "phpstan": "Run PHPStan static analysis",
+        "update": "Update composer.lock (composer update)",
+        "validate": "Validate composer.json (composer validate --strict)",
+        "qa": "Run all quality assurance checks"
+    }
+}

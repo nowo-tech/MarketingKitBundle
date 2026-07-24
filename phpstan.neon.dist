@@ -1,0 +1,14 @@
+# PHPStan configuration for Marketing Kit Bundle
+# Compatible with PHP 8.2+ and Symfony 7.x / 8.x
+
+parameters:
+    level: 8
+    paths:
+        - src
+        - tests
+    excludePaths:
+        - demo/*
+
+includes:
+  - vendor/nowo-tech/phpstan-frankenphp/ruleset-classic.neon
+  - vendor/nowo-tech/phpstan-frankenphp/ruleset-worker.neon

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="{{ app.request.locale|default('en') }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Marketing Kit{% endblock %}</title>
+    <style>
+        :root {
+            --mk-bg: #f4f6f8;
+            --mk-card: #fff;
+            --mk-text: #1f2937;
+            --mk-muted: #6b7280;
+            --mk-border: #d1d5db;
+            --mk-primary: #0f766e;
+            --mk-danger: #b91c1c;
+            --mk-warn-bg: #fffbeb;
+            --mk-warn-border: #f59e0b;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: "Segoe UI", system-ui, sans-serif;
+            background: var(--mk-bg);
+            color: var(--mk-text);
+            line-height: 1.45;
+        }
+        .mk-wrap { max-width: 1100px; margin: 0 auto; padding: 1.5rem; }
+        .mk-header { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; margin-bottom: 1rem; }
+        .mk-header h1 { margin: 0 0 .25rem; font-size: 1.5rem; }
+        .mk-lead { margin: 0; color: var(--mk-muted); }
+        .mk-muted { color: var(--mk-muted); font-size: .875rem; }
+        .mk-toolbar { display: flex; flex-wrap: wrap; gap: .75rem; align-items: end; margin-bottom: 1rem; }
+        .mk-inline { display: flex; gap: .5rem; align-items: end; }
+        .mk-btn, button.mk-btn {
+            display: inline-block;
+            border: 1px solid var(--mk-border);
+            background: var(--mk-card);
+            color: var(--mk-text);
+            padding: .45rem .8rem;
+            border-radius: .4rem;
+            text-decoration: none;
+            cursor: pointer;
+            font: inherit;
+        }
+        .mk-btn-primary { background: var(--mk-primary); border-color: var(--mk-primary); color: #fff; }
+        .mk-table { width: 100%; border-collapse: collapse; background: var(--mk-card); border: 1px solid var(--mk-border); border-radius: .5rem; overflow: hidden; }
+        .mk-table th, .mk-table td { border-bottom: 1px solid var(--mk-border); padding: .65rem .75rem; text-align: left; vertical-align: top; }
+        .mk-table th { background: #eef2f7; font-size: .85rem; }
+        .mk-actions { display: flex; gap: .75rem; align-items: center; white-space: nowrap; }
+        .mk-actions form { margin: 0; }
+        .mk-link-danger { background: none; border: 0; color: var(--mk-danger); cursor: pointer; padding: 0; font: inherit; }
+        .mk-badge { border: 0; border-radius: 999px; padding: .2rem .65rem; font-size: .8rem; cursor: pointer; }
+        .mk-badge-on { background: #d1fae5; color: #065f46; }
+        .mk-badge-off { background: #e5e7eb; color: #374151; }
+        .mk-alert { padding: .75rem 1rem; border-radius: .4rem; margin-bottom: 1rem; }
+        .mk-alert-warn { background: var(--mk-warn-bg); border: 1px solid var(--mk-warn-border); }
+        .mk-alert-success { background: #ecfdf5; border: 1px solid #34d399; }
+        .mk-alert-error { background: #fef2f2; border: 1px solid #f87171; }
+        .mk-form { background: var(--mk-card); border: 1px solid var(--mk-border); border-radius: .5rem; padding: 1rem 1.25rem; max-width: 40rem; }
+        .mk-form label { display: block; margin-top: .75rem; font-weight: 600; }
+        .mk-form input[type="text"], .mk-form input[type="number"], .mk-form select, .mk-form textarea {
+            width: 100%; margin-top: .25rem; padding: .45rem .55rem; border: 1px solid var(--mk-border); border-radius: .35rem; font: inherit;
+        }
+        .mk-form .form-help, .mk-form .help-text { color: var(--mk-muted); font-size: .85rem; }
+        .mk-fieldset { border: 1px solid var(--mk-border); border-radius: .4rem; margin-top: 1rem; padding: .75rem 1rem 1rem; }
+        .mk-fieldset legend { padding: 0 .35rem; font-weight: 700; }
+        .mk-form-actions { display: flex; gap: .75rem; margin-top: 1.25rem; }
+        .mk-options div { font-size: .85rem; }
+        code { font-size: .9em; }
+    </style>
+</head>
+<body>
+    <div class="mk-wrap">
+        {% for label, messages in app.flashes %}
+            {% for message in messages %}
+                <div class="mk-alert mk-alert-{{ label == 'success' ? 'success' : (label == 'error' ? 'error' : 'warn') }}" role="alert">{{ message }}</div>
+            {% endfor %}
+        {% endfor %}
+        {% block body %}{% endblock %}
+    </div>
+</body>
+</html>

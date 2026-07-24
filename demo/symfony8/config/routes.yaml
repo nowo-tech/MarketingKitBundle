@@ -1,0 +1,6 @@
+nowo_marketing_kit:
+    resource: '@NowoMarketingKitBundle/Resources/config/routing.yaml'
+
+demo:
+    resource: ../src/Controller/
+    type: attribute

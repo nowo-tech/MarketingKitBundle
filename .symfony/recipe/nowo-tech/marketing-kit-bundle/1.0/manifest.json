@@ -1,0 +1,18 @@
+{
+    "bundles": {
+        "Nowo\\MarketingKitBundle\\NowoMarketingKitBundle": ["all"]
+    },
+    "copy-from-recipe": {
+        "config/": "%CONFIG_DIR%/"
+    },
+    "env": {
+        "GTM_ID": "",
+        "META_PIXEL_ID": "",
+        "GA4_MEASUREMENT_ID": "",
+        "LINKEDIN_PARTNER_ID": "",
+        "TIKTOK_PIXEL_ID": "",
+        "HOTJAR_SITE_ID": "",
+        "CLARITY_PROJECT_ID": ""
+    },
+    "aliases": ["nowo-marketing-kit", "marketing-kit"]
+}

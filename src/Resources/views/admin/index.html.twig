@@ -1,0 +1,95 @@
+{% extends '@NowoMarketingKitBundle/admin/layout.html.twig' %}
+
+{% block title %}{{ 'admin.title'|trans({}, 'NowoMarketingKitBundle') }}{% endblock %}
+
+{% block body %}
+    <div class="mk-header">
+        <div>
+            <h1>{{ 'admin.title'|trans({}, 'NowoMarketingKitBundle') }}</h1>
+            <p class="mk-lead">{{ 'admin.lead'|trans({}, 'NowoMarketingKitBundle') }}</p>
+        </div>
+        <a class="mk-btn mk-btn-primary" href="{{ path('nowo_marketing_kit_admin_new', {profile: profile}) }}">{{ 'admin.new'|trans({}, 'NowoMarketingKitBundle') }}</a>
+    </div>
+
+    {% if not use_database_config %}
+        <div class="mk-alert mk-alert-warn">
+            {{ 'admin.db_config_hint'|trans({}, 'NowoMarketingKitBundle') }}
+        </div>
+    {% endif %}
+
+    <div class="mk-toolbar">
+        <form method="get" class="mk-inline">
+            <label for="profile">{{ 'admin.profile'|trans({}, 'NowoMarketingKitBundle') }}</label>
+            <select name="profile" id="profile" onchange="this.form.submit()">
+                {% for name in profiles %}
+                    <option value="{{ name }}" {% if name == profile %}selected{% endif %}>{{ name }}</option>
+                {% endfor %}
+            </select>
+        </form>
+
+        <form method="post" action="{{ path('nowo_marketing_kit_admin_seed') }}" class="mk-inline">
+            <input type="hidden" name="profile" value="{{ profile }}">
+            <input type="hidden" name="_token" value="{{ csrf_token('seed_marketing_tools_' ~ profile) }}">
+            <button type="submit" class="mk-btn">{{ 'admin.seed'|trans({}, 'NowoMarketingKitBundle') }}</button>
+        </form>
+
+        <form method="post" action="{{ path('nowo_marketing_kit_admin_import_yaml') }}" class="mk-inline">
+            <input type="hidden" name="profile" value="{{ profile }}">
+            <input type="hidden" name="_token" value="{{ csrf_token('import_marketing_yaml_' ~ profile) }}">
+            <button type="submit" class="mk-btn">{{ 'admin.import_yaml'|trans({}, 'NowoMarketingKitBundle') }}</button>
+        </form>
+    </div>
+
+    <table class="mk-table">
+        <thead>
+            <tr>
+                <th>{{ 'admin.col.service'|trans({}, 'NowoMarketingKitBundle') }}</th>
+                <th>{{ 'admin.col.type'|trans({}, 'NowoMarketingKitBundle') }}</th>
+                <th>{{ 'admin.col.category'|trans({}, 'NowoMarketingKitBundle') }}</th>
+                <th>{{ 'admin.col.position'|trans({}, 'NowoMarketingKitBundle') }}</th>
+                <th>{{ 'admin.col.enabled'|trans({}, 'NowoMarketingKitBundle') }}</th>
+                <th>{{ 'admin.col.options'|trans({}, 'NowoMarketingKitBundle') }}</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for tool in tools %}
+            <tr>
+                <td>
+                    <strong>{{ catalog.labelForCode(tool.code) }}</strong>
+                    <div class="mk-muted"><code>{{ tool.code }}</code></div>
+                </td>
+                <td><code>{{ tool.type }}</code></td>
+                <td>{{ tool.category }}</td>
+                <td>{{ tool.position }}</td>
+                <td>
+                    <form method="post" action="{{ path('nowo_marketing_kit_admin_toggle', {id: tool.id}) }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token('toggle_marketing_tool_' ~ tool.id) }}">
+                        <button type="submit" class="mk-badge {{ tool.enabled ? 'mk-badge-on' : 'mk-badge-off' }}">
+                            {{ tool.enabled ? 'admin.on'|trans({}, 'NowoMarketingKitBundle') : 'admin.off'|trans({}, 'NowoMarketingKitBundle') }}
+                        </button>
+                    </form>
+                </td>
+                <td class="mk-options">
+                    {% for key, value in tool.options %}
+                        <div><span class="mk-muted">{{ key }}:</span> {% if value is empty %}—{% else %}{{ value|length > 40 ? value|slice(0, 40) ~ '…' : value }}{% endif %}</div>
+                    {% else %}
+                        —
+                    {% endfor %}
+                </td>
+                <td class="mk-actions">
+                    <a href="{{ path('nowo_marketing_kit_admin_edit', {id: tool.id}) }}">{{ 'admin.edit'|trans({}, 'NowoMarketingKitBundle') }}</a>
+                    <form method="post" action="{{ path('nowo_marketing_kit_admin_delete', {id: tool.id}) }}" onsubmit="return confirm('{{ 'admin.confirm_delete'|trans({}, 'NowoMarketingKitBundle') }}');">
+                        <input type="hidden" name="_token" value="{{ csrf_token('delete_marketing_tool_' ~ tool.id) }}">
+                        <button type="submit" class="mk-link-danger">{{ 'admin.delete'|trans({}, 'NowoMarketingKitBundle') }}</button>
+                    </form>
+                </td>
+            </tr>
+        {% else %}
+            <tr>
+                <td colspan="7">{{ 'admin.empty'|trans({}, 'NowoMarketingKitBundle') }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

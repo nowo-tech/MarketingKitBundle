@@ -1,0 +1,24 @@
+# Marketing tools
+admin.title: Marketing services
+admin.lead: Configure GTM, GA4, pixels and other marketing providers for this profile.
+admin.new: Add service
+admin.edit: Edit service
+admin.delete: Delete
+admin.save: Save
+admin.cancel: Cancel
+admin.back: Back to list
+admin.profile: Profile
+admin.seed: Seed catalog
+admin.import_yaml: Import from YAML
+admin.empty: No services yet. Use “Seed catalog” to create the built-in providers, or “Add service”.
+admin.confirm_delete: Delete this marketing service?
+admin.db_config_hint: 'Set use_database_config: true so these database tools replace YAML tools at runtime.'
+admin.provider_options: Provider options
+admin.on: On
+admin.off: Off
+admin.col.service: Service
+admin.col.type: Type
+admin.col.category: Category
+admin.col.position: Position
+admin.col.enabled: Enabled
+admin.col.options: Options

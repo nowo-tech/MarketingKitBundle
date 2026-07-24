@@ -1,0 +1,43 @@
+{% extends '@NowoMarketingKitBundle/admin/layout.html.twig' %}
+
+{% block title %}{{ (is_new ? 'admin.new' : 'admin.edit')|trans({}, 'NowoMarketingKitBundle') }}{% endblock %}
+
+{% block body %}
+    <div class="mk-header">
+        <div>
+            <h1>{{ (is_new ? 'admin.new' : 'admin.edit')|trans({}, 'NowoMarketingKitBundle') }}</h1>
+            <p class="mk-lead">{{ catalog.labelForCode(tool.code) }} · <code>{{ tool.type }}</code></p>
+        </div>
+        <a class="mk-btn" href="{{ path('nowo_marketing_kit_admin_index', {profile: tool.profile}) }}">{{ 'admin.back'|trans({}, 'NowoMarketingKitBundle') }}</a>
+    </div>
+
+    {% if not use_database_config %}
+        <div class="mk-alert mk-alert-warn">
+            {{ 'admin.db_config_hint'|trans({}, 'NowoMarketingKitBundle') }}
+        </div>
+    {% endif %}
+
+    {{ form_start(form, {attr: {class: 'mk-form'}}) }}
+        {{ form_row(form.profile) }}
+        {{ form_row(form.code) }}
+        {{ form_row(form.type) }}
+        {{ form_row(form.enabled) }}
+        {{ form_row(form.category) }}
+        {{ form_row(form.position) }}
+        {{ form_row(form.sortOrder) }}
+
+        <fieldset class="mk-fieldset">
+            <legend>{{ 'admin.provider_options'|trans({}, 'NowoMarketingKitBundle') }}</legend>
+            {% for child in form %}
+                {% if child.vars.name starts with 'option_' %}
+                    {{ form_row(child) }}
+                {% endif %}
+            {% endfor %}
+        </fieldset>
+
+        <div class="mk-form-actions">
+            <button type="submit" class="mk-btn mk-btn-primary">{{ 'admin.save'|trans({}, 'NowoMarketingKitBundle') }}</button>
+            <a class="mk-btn" href="{{ path('nowo_marketing_kit_admin_index', {profile: tool.profile}) }}">{{ 'admin.cancel'|trans({}, 'NowoMarketingKitBundle') }}</a>
+        </div>
+    {{ form_end(form) }}
+{% endblock %}

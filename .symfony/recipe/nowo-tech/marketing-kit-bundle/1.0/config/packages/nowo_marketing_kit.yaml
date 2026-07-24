@@ -1,0 +1,70 @@
+# config/packages/nowo_marketing_kit.yaml
+nowo_marketing_kit:
+    # When true, Doctrine tools for the profile replace YAML tools (admin CRUD at /admin/marketing)
+    use_database_config: false
+    respect_cookie_consent: true
+    doctrine:
+        table_prefix: ''
+    default_profile: default
+    profiles:
+        default:
+            enabled: true
+            tools:
+                gtm:
+                    type: gtm
+                    enabled: false
+                    category: analytics
+                    position: head
+                    sort_order: 0
+                    options:
+                        container_id: '%env(default::GTM_ID)%'
+                gtm_noscript:
+                    type: gtm
+                    enabled: false
+                    category: analytics
+                    position: body_start
+                    sort_order: 0
+                    options:
+                        container_id: '%env(default::GTM_ID)%'
+                ga4:
+                    type: ga4
+                    enabled: false
+                    category: analytics
+                    position: head
+                    options:
+                        measurement_id: '%env(default::GA4_MEASUREMENT_ID)%'
+                meta_pixel:
+                    type: meta_pixel
+                    enabled: false
+                    category: marketing
+                    position: head
+                    options:
+                        pixel_id: '%env(default::META_PIXEL_ID)%'
+                linkedin:
+                    type: linkedin
+                    enabled: false
+                    category: marketing
+                    position: head
+                    options:
+                        partner_id: '%env(default::LINKEDIN_PARTNER_ID)%'
+                tiktok:
+                    type: tiktok
+                    enabled: false
+                    category: marketing
+                    position: head
+                    options:
+                        pixel_id: '%env(default::TIKTOK_PIXEL_ID)%'
+                hotjar:
+                    type: hotjar
+                    enabled: false
+                    category: analytics
+                    position: head
+                    options:
+                        site_id: '%env(default::HOTJAR_SITE_ID)%'
+                clarity:
+                    type: clarity
+                    enabled: false
+                    category: analytics
+                    position: head
+                    options:
+                        project_id: '%env(default::CLARITY_PROJECT_ID)%'

@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Marketing Kit Demo{% endblock %}</title>
+    {{ nowo_marketing_head() }}
+    <style>
+        body { font-family: system-ui, sans-serif; max-width: 48rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; color: #0f172a; }
+        h1 { font-size: 1.75rem; }
+        code { font-size: 0.9em; }
+        footer { margin-top: 2rem; color: #64748b; font-size: 0.875rem; }
+        .panel { border: 1px solid #cbd5e1; border-radius: 0.5rem; padding: 1rem; margin: 0.75rem 0; background: #f8fafc; }
+    </style>
+</head>
+<body>
+    {{ nowo_marketing_body_start() }}
+    <main>
+        {% block body %}{% endblock %}
+    </main>
+    <footer>Marketing Kit Bundle · Symfony 8 FrankenPHP demo</footer>
+    {{ nowo_marketing_body_end() }}
+</body>
+</html>

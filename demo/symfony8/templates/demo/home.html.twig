@@ -1,0 +1,12 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Marketing Kit Demo{% endblock %}
+
+{% block body %}
+    <h1>Marketing Kit Demo</h1>
+    <p>Database config is enabled. Configure marketing services in the admin CRUD.</p>
+    <div class="panel">
+        <p><a href="{{ path('nowo_marketing_kit_admin_index') }}"><strong>/admin/marketing</strong></a> — list, seed catalog, import YAML, edit provider IDs, toggle on/off.</p>
+        <p>After seeding, enable the services you need and set IDs (GTM, Clarity, …). View page source to inspect rendered tags.</p>
+    </div>
+{% endblock %}
