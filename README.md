@@ -23,6 +23,13 @@ This bundle is **FrankenPHP worker mode friendly**.
 
 **FrankenPHP:** Demos use a **single PHP service** (FrankenPHP, no nginx). Runtime mode is controlled by **`FRANKENPHP_MODE`** in `.env` (`worker` default, or `classic`). The entrypoint selects `Caddyfile` (workers) or `Caddyfile.dev` (no workers) accordingly; see [docs/DEMO-FRANKENPHP.md](docs/DEMO-FRANKENPHP.md). Demo URL: `http://localhost:8060` (see `demo/README.md` and `.env.example`).
 
+## Version information
+
+| Version | PHP | Symfony | Status |
+|---------|-----|---------|--------|
+| 1.1.x | >= 8.2, < 8.6 | 7.4 – 8.x | Stable |
+| 1.0.x | >= 8.2, < 8.6 | 7.4 – 8.x | Maintained |
+
 ## Installation
 
 ```bash
@@ -46,6 +53,12 @@ Optional GDPR gate (recommended):
 ```bash
 composer require nowo-tech/cookie-consent-bundle
 ```
+
+## Requirements
+
+- PHP >= 8.2, < 8.6
+- Symfony >= 7.4 || >= 8.0
+- Doctrine ORM (for entities / optional DB config)
 
 ## Quick configuration
 
@@ -96,11 +109,12 @@ nowo_marketing_kit:
     resource: '@NowoMarketingKitBundle/Resources/config/routing.yaml'
 ```
 
-## Requirements
+## Demos
 
-- PHP >= 8.2, < 8.6
-- Symfony >= 7.4 || >= 8.0
-- Doctrine ORM (for entities / optional DB config)
+```bash
+make -C demo up-symfony8
+# Demo started at: http://localhost:8060
+```
 
 ## Documentation
 
@@ -122,20 +136,6 @@ nowo_marketing_kit:
 - [GitHub Actions CI requirements](docs/GITHUB_CI.md)
 - [Demo with FrankenPHP](docs/DEMO-FRANKENPHP.md) (includes worker mode)
 - [Server cookbook (Nginx, php-fpm, FrankenPHP)](docs/SERVERS.md)
-
-## Version information
-
-| Version | PHP | Symfony | Status |
-|---------|-----|---------|--------|
-| 1.1.x | >= 8.2, < 8.6 | 7.4 – 8.x | Stable |
-| 1.0.x | >= 8.2, < 8.6 | 7.4 – 8.x | Maintained |
-
-## Demos
-
-```bash
-make -C demo up-symfony8
-# Demo started at: http://localhost:8060
-```
 
 ## Tests and coverage
 
