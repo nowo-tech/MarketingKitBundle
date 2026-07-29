@@ -920,6 +920,15 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  * @psalm-type NowoMarketingKitConfig = array{
  *     use_database_config?: bool|Param, // Default: false
  *     respect_cookie_consent?: bool|Param, // Default: true
+ *     security?: array{
+ *         access_roles?: list<scalar|Param|null>,
+ *         access_checker?: scalar|Param|null, // Default: null
+ *         allow_unauthenticated?: bool|Param, // Default: false
+ *     },
+ *     web_ui?: array{
+ *         layout_template?: scalar|Param|null, // Default: "@NowoMarketingKitBundle/admin/layout.html.twig"
+ *         css_framework?: "bootstrap5"|"bootstrap4"|"tailwind"|"none"|Param, // Default: "none"
+ *     },
  *     doctrine?: array{
  *         table_prefix?: scalar|Param|null, // Default: ""
  *         connection?: scalar|Param|null, // Default: "default"

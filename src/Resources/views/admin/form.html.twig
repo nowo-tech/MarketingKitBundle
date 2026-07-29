@@ -1,4 +1,4 @@
-{% extends '@NowoMarketingKitBundle/admin/layout.html.twig' %}
+{% extends nowo_marketing_kit_layout|default('@NowoMarketingKitBundle/admin/layout.html.twig') %}
 
 {% block title %}{{ (is_new ? 'admin.new' : 'admin.edit')|trans({}, 'NowoMarketingKitBundle') }}{% endblock %}
 

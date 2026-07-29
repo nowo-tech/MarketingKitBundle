@@ -74,9 +74,15 @@ jobs:
             --no-interaction --no-update
           composer update --no-interaction --prefer-dist
 
-      - run: composer test
+      - name: Run tests
+        env:
+          SYMFONY_DEPRECATIONS_HELPER: max[direct]=0
+        run: composer test
 
-      - if: matrix.php == '8.2' && matrix.symfony == '7.4'
+      - name: Run tests with coverage (PHP 8.2 + Symfony 7.4 only)
+        if: matrix.php == '8.2' && matrix.symfony == '7.4'
+        env:
+          SYMFONY_DEPRECATIONS_HELPER: max[direct]=0
         run: composer test-coverage
 
   cs-check:
@@ -104,6 +110,8 @@ jobs:
           tools: composer:v2
       - run: composer update --no-interaction --prefer-dist
       - name: Run tests with coverage
+        env:
+          SYMFONY_DEPRECATIONS_HELPER: max[direct]=0
         run: |
           composer test-coverage
           METRICS_LINE=$(grep '<metrics files=' coverage.xml)

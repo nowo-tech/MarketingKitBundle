@@ -21,11 +21,15 @@ final class MarketingKitExtensionTest extends TestCase
             new MarketingConfigResolver(['default' => ['enabled' => true, 'tools' => []]], 'default', false),
             new ToolRendererRegistry([]),
             new CookieConsentGate(new RequestStack(), false),
-        ));
+        ), 'base.html.twig', 'bootstrap5');
 
         $names = array_map(static fn (TwigFunction $f): string => $f->getName(), $extension->getFunctions());
 
         self::assertSame(['nowo_marketing_head', 'nowo_marketing_body_start', 'nowo_marketing_body_end'], $names);
+        self::assertSame([
+            'nowo_marketing_kit_layout'        => 'base.html.twig',
+            'nowo_marketing_kit_css_framework' => 'bootstrap5',
+        ], $extension->getGlobals());
         self::assertSame('', $extension->head());
         self::assertSame('', $extension->bodyStart());
         self::assertSame('', $extension->bodyEnd());

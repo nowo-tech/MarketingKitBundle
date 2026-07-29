@@ -8,12 +8,14 @@ use Doctrine\ORM\EntityManagerInterface;
 use Nowo\MarketingKitBundle\Entity\MarketingTool;
 use Nowo\MarketingKitBundle\Form\MarketingToolType;
 use Nowo\MarketingKitBundle\Repository\MarketingToolRepository;
+use Nowo\MarketingKitBundle\Security\MarketingKitAccessCheckerInterface;
 use Nowo\MarketingKitBundle\Service\MarketingToolAdminService;
 use Nowo\MarketingKitBundle\Service\MarketingToolCatalog;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 
 use function in_array;
 use function sprintf;
@@ -29,6 +31,7 @@ class MarketingToolAdminController extends AbstractController
         private readonly EntityManagerInterface $entityManager,
         private readonly MarketingToolAdminService $adminService,
         private readonly MarketingToolCatalog $catalog,
+        private readonly MarketingKitAccessCheckerInterface $accessChecker,
         private readonly bool $useDatabaseConfig,
     ) {
     }
@@ -36,6 +39,8 @@ class MarketingToolAdminController extends AbstractController
     #[Route(path: '', name: 'index', methods: ['GET'])]
     public function index(Request $request): Response
     {
+        $this->denyUnlessGranted();
+
         $profile  = (string) $request->query->get('profile', $this->adminService->defaultProfile());
         $profiles = $this->adminService->profileChoices();
         if (!in_array($profile, $profiles, true)) {
@@ -54,6 +59,8 @@ class MarketingToolAdminController extends AbstractController
     #[Route(path: '/seed', name: 'seed', methods: ['POST'])]
     public function seed(Request $request): Response
     {
+        $this->denyUnlessGranted();
+
         $profile = (string) $request->request->get('profile', $this->adminService->defaultProfile());
         if (!$this->isCsrfTokenValid('seed_marketing_tools_' . $profile, (string) $request->request->get('_token'))) {
             $this->addFlash('error', 'Invalid CSRF token.');
@@ -75,6 +82,8 @@ class MarketingToolAdminController extends AbstractController
     #[Route(path: '/import-yaml', name: 'import_yaml', methods: ['POST'])]
     public function importYaml(Request $request): Response
     {
+        $this->denyUnlessGranted();
+
         $profile = (string) $request->request->get('profile', $this->adminService->defaultProfile());
         if (!$this->isCsrfTokenValid('import_marketing_yaml_' . $profile, (string) $request->request->get('_token'))) {
             $this->addFlash('error', 'Invalid CSRF token.');
@@ -96,6 +105,8 @@ class MarketingToolAdminController extends AbstractController
     #[Route(path: '/new', name: 'new', methods: ['GET', 'POST'])]
     public function new(Request $request): Response
     {
+        $this->denyUnlessGranted();
+
         $profile = (string) $request->query->get('profile', $this->adminService->defaultProfile());
         $tool    = (new MarketingTool())
             ->setProfile($profile)
@@ -113,12 +124,16 @@ class MarketingToolAdminController extends AbstractController
     #[Route(path: '/{id}/edit', name: 'edit', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]
     public function edit(Request $request, MarketingTool $tool): Response
     {
+        $this->denyUnlessGranted();
+
         return $this->handleForm($request, $tool, false);
     }
 
     #[Route(path: '/{id}/toggle', name: 'toggle', requirements: ['id' => '\d+'], methods: ['POST'])]
     public function toggle(Request $request, MarketingTool $tool): Response
     {
+        $this->denyUnlessGranted();
+
         if ($this->isCsrfTokenValid('toggle_marketing_tool_' . $tool->getId(), (string) $request->request->get('_token'))) {
             $tool->setEnabled(!$tool->isEnabled());
             $this->entityManager->flush();
@@ -131,6 +146,8 @@ class MarketingToolAdminController extends AbstractController
     #[Route(path: '/{id}/delete', name: 'delete', requirements: ['id' => '\d+'], methods: ['POST'])]
     public function delete(Request $request, MarketingTool $tool): Response
     {
+        $this->denyUnlessGranted();
+
         $profile = $tool->getProfile();
         if ($this->isCsrfTokenValid('delete_marketing_tool_' . $tool->getId(), (string) $request->request->get('_token'))) {
             $this->entityManager->remove($tool);
@@ -163,5 +180,12 @@ class MarketingToolAdminController extends AbstractController
             'catalog'             => $this->catalog,
             'use_database_config' => $this->useDatabaseConfig,
         ]);
+    }
+
+    private function denyUnlessGranted(): void
+    {
+        if (!$this->accessChecker->canAccess()) {
+            throw new AccessDeniedException('Access denied to MarketingKit admin.');
+        }
     }
 }

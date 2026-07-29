@@ -66,4 +66,7 @@ services:
         tags: ['nowo_marketing_kit.tool_renderer']
 
     Nowo\MarketingKitBundle\Twig\MarketingKitExtension:
+        arguments:
+            $layoutTemplate: '%nowo_marketing_kit.web_ui.layout_template%'
+            $cssFramework: '%nowo_marketing_kit.web_ui.css_framework%'
         tags: ['twig.extension']

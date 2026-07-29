@@ -9,6 +9,7 @@ use Nowo\MarketingKitBundle\Controller\MarketingToolAdminController;
 use Nowo\MarketingKitBundle\Entity\MarketingTool;
 use Nowo\MarketingKitBundle\Form\MarketingToolType;
 use Nowo\MarketingKitBundle\Repository\MarketingToolRepository;
+use Nowo\MarketingKitBundle\Security\MarketingKitAccessCheckerInterface;
 use Nowo\MarketingKitBundle\Service\MarketingToolAdminService;
 use Nowo\MarketingKitBundle\Service\MarketingToolCatalog;
 use PHPUnit\Framework\TestCase;
@@ -24,6 +25,7 @@ use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Session\Session;
 use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
+use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 use Twig\Environment;
 
 final class MarketingToolAdminControllerTest extends TestCase
@@ -253,6 +255,20 @@ final class MarketingToolAdminControllerTest extends TestCase
         self::assertSame('FORM', $controller->edit(Request::create('/admin/marketing/1/edit'), $tool)->getContent());
     }
 
+    public function testIndexThrowsAccessDeniedWhenCheckerRejectsAccess(): void
+    {
+        $controller = $this->controller(
+            $this->createMock(MarketingToolRepository::class),
+            $this->createMock(EntityManagerInterface::class),
+            $this->adminService($this->createMock(MarketingToolRepository::class)),
+            $this->createMock(Environment::class),
+            accessAllowed: false,
+        );
+
+        $this->expectException(AccessDeniedException::class);
+        $controller->index(Request::create('/admin/marketing'));
+    }
+
     private function adminService(
         MarketingToolRepository $repo,
         ?EntityManagerInterface $em = null,
@@ -274,19 +290,33 @@ final class MarketingToolAdminControllerTest extends TestCase
         bool $csrfValid = true,
         ?FormFactoryInterface $formFactory = null,
         ?Request $request = null,
+        bool $accessAllowed = true,
     ): MarketingToolAdminController {
-        $controller = new class($repo, $em, $admin, new MarketingToolCatalog(), true, $csrfValid, $twig, $formFactory) extends MarketingToolAdminController {
+        $accessChecker = new class($accessAllowed) implements MarketingKitAccessCheckerInterface {
+            public function __construct(
+                private readonly bool $accessAllowed,
+            ) {
+            }
+
+            public function canAccess(): bool
+            {
+                return $this->accessAllowed;
+            }
+        };
+
+        $controller = new class($repo, $em, $admin, new MarketingToolCatalog(), $accessChecker, true, $csrfValid, $twig, $formFactory) extends MarketingToolAdminController {
             public function __construct(
                 MarketingToolRepository $repository,
                 EntityManagerInterface $entityManager,
                 MarketingToolAdminService $adminService,
                 MarketingToolCatalog $catalog,
+                MarketingKitAccessCheckerInterface $accessChecker,
                 bool $useDatabaseConfig,
                 private readonly bool $csrfValidFlag,
                 private readonly Environment $twigEngine,
                 private readonly ?FormFactoryInterface $forms,
             ) {
-                parent::__construct($repository, $entityManager, $adminService, $catalog, $useDatabaseConfig);
+                parent::__construct($repository, $entityManager, $adminService, $catalog, $accessChecker, $useDatabaseConfig);
             }
 
             /**

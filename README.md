@@ -18,6 +18,8 @@ This bundle is **FrankenPHP worker mode friendly**.
 - ✅ **Twig helpers** — `nowo_marketing_head()`, `nowo_marketing_body_start()`, `nowo_marketing_body_end()`
 - ✅ **CookieConsent-compatible** — reads `Cookie_Category_{analytics|marketing}` (soft dependency)
 - ✅ **Admin CRUD** — `/admin/marketing` to configure services (seed catalog, import YAML, toggle, typed option fields)
+- ✅ **Admin security** — `security.access_roles` / custom `access_checker` (demo-only `allow_unauthenticated`)
+- ✅ **Embeddable admin UI** — `web_ui.layout_template` + `css_framework` for host layouts
 
 **FrankenPHP:** Demos use a **single PHP service** (FrankenPHP, no nginx). Runtime mode is controlled by **`FRANKENPHP_MODE`** in `.env` (`worker` default, or `classic`). The entrypoint selects `Caddyfile` (workers) or `Caddyfile.dev` (no workers) accordingly; see [docs/DEMO-FRANKENPHP.md](docs/DEMO-FRANKENPHP.md). Demo URL: `http://localhost:8060` (see `demo/README.md` and `.env.example`).
 
@@ -52,6 +54,12 @@ composer require nowo-tech/cookie-consent-bundle
 nowo_marketing_kit:
     use_database_config: false
     respect_cookie_consent: true
+    security:
+        access_roles: ['ROLE_ADMIN']
+        allow_unauthenticated: false
+    web_ui:
+        layout_template: '@NowoMarketingKitBundle/admin/layout.html.twig'
+        css_framework: none
     default_profile: default
     profiles:
         default:
@@ -119,7 +127,8 @@ nowo_marketing_kit:
 
 | Version | PHP | Symfony | Status |
 |---------|-----|---------|--------|
-| 1.0.0 | >= 8.2, < 8.6 | 7.4 – 8.x | Stable |
+| 1.1.x | >= 8.2, < 8.6 | 7.4 – 8.x | Stable |
+| 1.0.x | >= 8.2, < 8.6 | 7.4 – 8.x | Maintained |
 
 ## Demos
 

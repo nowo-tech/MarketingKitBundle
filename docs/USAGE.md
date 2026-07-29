@@ -1,5 +1,14 @@
 # Usage
 
+## Table of contents
+
+- [Layout helpers](#layout-helpers)
+- [PHP API](#php-api)
+- [GTM example](#gtm-example)
+- [Database admin (CRUD)](#database-admin-crud)
+- [Twig overrides](#twig-overrides)
+- [Translation overrides](#translation-overrides)
+
 ## Layout helpers
 
 ```twig
@@ -49,7 +58,17 @@ php bin/console doctrine:schema:update --force
 # or a migration that creates marketing_tool
 ```
 
-Secure `/admin/marketing*` with your firewall (the bundle does not ship security rules).
+Secure `/admin/marketing*` with your firewall and `access_control` rules. The bundle denies access through `nowo_marketing_kit.security`, but host-level security is still required for the `/admin/marketing` path prefix.
+
+To embed the admin pages inside your application shell, override the layout template:
+
+```yaml
+nowo_marketing_kit:
+    web_ui:
+        layout_template: 'base.html.twig'
+```
+
+The bundle exposes the resolved layout as Twig global `nowo_marketing_kit_layout`, so bundle admin pages automatically extend your configured host layout. Keep `allow_unauthenticated: true` for demos only.
 
 ## Twig overrides
 

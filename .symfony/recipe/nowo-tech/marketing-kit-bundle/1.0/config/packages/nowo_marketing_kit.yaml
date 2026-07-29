@@ -3,6 +3,14 @@ nowo_marketing_kit:
     # When true, Doctrine tools for the profile replace YAML tools (admin CRUD at /admin/marketing)
     use_database_config: false
     respect_cookie_consent: true
+    security:
+        access_roles: ['ROLE_ADMIN']
+        # access_checker: App\Security\MarketingKitAccessChecker
+        allow_unauthenticated: false
+    web_ui:
+        # Set this to your project admin/base layout. Default bundle layout is suitable for demos.
+        layout_template: '@NowoMarketingKitBundle/admin/layout.html.twig'
+        css_framework: none
     doctrine:
         table_prefix: ''
     default_profile: default

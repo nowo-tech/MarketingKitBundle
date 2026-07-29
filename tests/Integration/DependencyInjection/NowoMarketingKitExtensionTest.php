@@ -6,10 +6,14 @@ namespace Nowo\MarketingKitBundle\Tests\Integration\DependencyInjection;
 
 use Nowo\MarketingKitBundle\DependencyInjection\NowoMarketingKitExtension;
 use Nowo\MarketingKitBundle\DependencyInjection\TablePrefixListener;
+use Nowo\MarketingKitBundle\Security\ConfigurableMarketingKitAccessChecker;
+use Nowo\MarketingKitBundle\Security\MarketingKitAccessCheckerInterface;
 use Nowo\MarketingKitBundle\Service\MarketingScriptRenderer;
 use Nowo\MarketingKitBundle\Twig\MarketingKitExtension;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\Definition;
+use Symfony\Component\DependencyInjection\Reference;
 
 final class NowoMarketingKitExtensionTest extends TestCase
 {
@@ -34,9 +38,14 @@ final class NowoMarketingKitExtensionTest extends TestCase
         self::assertTrue($container->getParameter('nowo_marketing_kit.use_database_config'));
         self::assertFalse($container->getParameter('nowo_marketing_kit.respect_cookie_consent'));
         self::assertSame('app_', $container->getParameter('nowo_marketing_kit.doctrine.table_prefix'));
+        self::assertSame(['ROLE_ADMIN'], $container->getParameter('nowo_marketing_kit.security.access_roles'));
+        self::assertFalse($container->getParameter('nowo_marketing_kit.security.allow_unauthenticated'));
+        self::assertSame('@NowoMarketingKitBundle/admin/layout.html.twig', $container->getParameter('nowo_marketing_kit.web_ui.layout_template'));
+        self::assertSame('none', $container->getParameter('nowo_marketing_kit.web_ui.css_framework'));
         self::assertTrue($container->hasDefinition(TablePrefixListener::class));
         self::assertTrue($container->hasDefinition(MarketingScriptRenderer::class));
         self::assertTrue($container->hasDefinition(MarketingKitExtension::class));
+        self::assertTrue($container->hasAlias(MarketingKitAccessCheckerInterface::class));
     }
 
     public function testLoadWithoutTablePrefixSkipsListener(): void
@@ -47,5 +56,61 @@ final class NowoMarketingKitExtensionTest extends TestCase
 
         self::assertFalse($container->hasDefinition(TablePrefixListener::class));
         self::assertSame('', $container->getParameter('nowo_marketing_kit.doctrine.table_prefix'));
+    }
+
+    public function testLoadUsesCustomAccessCheckerAliasWhenConfigured(): void
+    {
+        $container = new ContainerBuilder();
+        $container->setDefinition('app.marketing_access_checker', new Definition());
+
+        $extension = new NowoMarketingKitExtension();
+        $extension->load([[
+            'security' => [
+                'access_checker' => 'app.marketing_access_checker',
+            ],
+        ]], $container);
+
+        self::assertSame(
+            'app.marketing_access_checker',
+            (string) $container->getAlias(MarketingKitAccessCheckerInterface::class),
+        );
+    }
+
+    public function testLoadUsesAllowAllCheckerWhenUnauthenticatedAccessIsEnabled(): void
+    {
+        $container = new ContainerBuilder();
+        $extension = new NowoMarketingKitExtension();
+        $extension->load([[
+            'security' => [
+                'allow_unauthenticated' => true,
+            ],
+        ]], $container);
+
+        self::assertTrue($container->hasDefinition('nowo_marketing_kit.access_checker.allow_all'));
+        self::assertSame(
+            'nowo_marketing_kit.access_checker.allow_all',
+            (string) $container->getAlias(MarketingKitAccessCheckerInterface::class),
+        );
+    }
+
+    public function testLoadWiresAuthorizationCheckerIntoDefaultAccessCheckerWhenPresent(): void
+    {
+        $container = new ContainerBuilder();
+        $container->setDefinition('security.authorization_checker', new Definition());
+
+        $extension = new NowoMarketingKitExtension();
+        $extension->load([[
+            'security' => [
+                'access_roles' => ['ROLE_MANAGER'],
+            ],
+        ]], $container);
+
+        $definition = $container->getDefinition('nowo_marketing_kit.access_checker.default');
+        self::assertSame(
+            ConfigurableMarketingKitAccessChecker::class,
+            $definition->getClass(),
+        );
+        self::assertSame(['ROLE_MANAGER'], $definition->getArgument('$accessRoles'));
+        self::assertEquals(new Reference('security.authorization_checker'), $definition->getArgument('$authorizationChecker'));
     }
 }

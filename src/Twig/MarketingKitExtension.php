@@ -15,6 +15,8 @@ final class MarketingKitExtension extends AbstractExtension
 {
     public function __construct(
         private readonly MarketingScriptRenderer $renderer,
+        private readonly string $layoutTemplate = '@NowoMarketingKitBundle/admin/layout.html.twig',
+        private readonly string $cssFramework = 'none',
     ) {
     }
 
@@ -24,6 +26,17 @@ final class MarketingKitExtension extends AbstractExtension
             new TwigFunction('nowo_marketing_head', $this->head(...), ['is_safe' => ['html']]),
             new TwigFunction('nowo_marketing_body_start', $this->bodyStart(...), ['is_safe' => ['html']]),
             new TwigFunction('nowo_marketing_body_end', $this->bodyEnd(...), ['is_safe' => ['html']]),
+        ];
+    }
+
+    /**
+     * @return array{nowo_marketing_kit_layout: string, nowo_marketing_kit_css_framework: string}
+     */
+    public function getGlobals(): array
+    {
+        return [
+            'nowo_marketing_kit_layout'        => $this->layoutTemplate,
+            'nowo_marketing_kit_css_framework' => $this->cssFramework,
         ];
     }
 

@@ -2,6 +2,9 @@
 nowo_marketing_kit:
     use_database_config: true
     respect_cookie_consent: false
+    security:
+        # DEMO ONLY: never enable unauthenticated admin access in production.
+        allow_unauthenticated: true
     default_profile: default
     profiles:
         default:

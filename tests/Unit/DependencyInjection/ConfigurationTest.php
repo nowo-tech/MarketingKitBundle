@@ -17,6 +17,11 @@ final class ConfigurationTest extends TestCase
 
         self::assertFalse($config['use_database_config']);
         self::assertTrue($config['respect_cookie_consent']);
+        self::assertSame(['ROLE_ADMIN'], $config['security']['access_roles']);
+        self::assertNull($config['security']['access_checker']);
+        self::assertFalse($config['security']['allow_unauthenticated']);
+        self::assertSame('@NowoMarketingKitBundle/admin/layout.html.twig', $config['web_ui']['layout_template']);
+        self::assertSame('none', $config['web_ui']['css_framework']);
         self::assertSame('default', $config['default_profile']);
         self::assertArrayHasKey('default', $config['profiles']);
     }
@@ -51,5 +56,16 @@ final class ConfigurationTest extends TestCase
 
         self::assertSame('gtm', $config['profiles']['default']['tools']['gtm']['type']);
         self::assertSame('analytics', $config['profiles']['default']['tools']['gtm']['category']);
+    }
+
+    public function testInvalidCssFrameworkFails(): void
+    {
+        $this->expectException(InvalidConfigurationException::class);
+
+        (new Processor())->processConfiguration(new Configuration(), [[
+            'web_ui' => [
+                'css_framework' => 'bulma',
+            ],
+        ]]);
     }
 }
