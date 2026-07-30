@@ -1,5 +1,12 @@
 # Upgrading
 
+## From 1.1.0 to 1.1.1
+
+Patch release. No configuration changes required.
+
+- If you override `@NowoMarketingKitBundle/admin/layout.html.twig`, you can optionally expose `stylesheets` / `javascripts` blocks the same way as the bundled default.
+- README section order only; no integrator impact.
+
 ## From 1.0.0 to 1.1.0
 
 ### Behavior changes

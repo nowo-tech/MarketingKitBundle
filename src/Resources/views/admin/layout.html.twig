@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}Marketing Kit{% endblock %}</title>
+    {# Demo root layout: no parent() (full HTML). Pages do not reopen stylesheets/javascripts. #}
+    {% block stylesheets %}
     <style>
         :root {
             --mk-bg: #f4f6f8;
@@ -68,6 +70,7 @@
         .mk-options div { font-size: .85rem; }
         code { font-size: .9em; }
     </style>
+    {% endblock %}
 </head>
 <body>
     <div class="mk-wrap">
@@ -78,5 +81,6 @@
         {% endfor %}
         {% block body %}{% endblock %}
     </div>
+    {% block javascripts %}{% endblock %}
 </body>
 </html>
