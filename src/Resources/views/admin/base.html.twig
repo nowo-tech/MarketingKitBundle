@@ -1,0 +1,13 @@
+{# Admin pages extend this shell; configure web_ui.layout_template for host chrome (REQ-UI-001).
+   When the host sets layout_template, stack assets via parent(). Demo root remains admin/layout.html.twig. #}
+{% extends nowo_marketing_kit_layout|default('@NowoMarketingKitBundle/admin/layout.html.twig') %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    {% block nowo_ui_styles %}{% endblock %}
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    {% block nowo_ui_scripts %}{% endblock %}
+{% endblock %}

@@ -1,23 +1,23 @@
-{% extends nowo_marketing_kit_layout|default('@NowoMarketingKitBundle/admin/layout.html.twig') %}
+{% extends '@NowoMarketingKitBundle/admin/base.html.twig' %}
 
 {% block title %}{{ 'admin.title'|trans({}, 'NowoMarketingKitBundle') }}{% endblock %}
 
 {% block body %}
-    <div class="mk-header">
+    <div class="mk-header nowo-ui-header">
         <div>
             <h1>{{ 'admin.title'|trans({}, 'NowoMarketingKitBundle') }}</h1>
             <p class="mk-lead">{{ 'admin.lead'|trans({}, 'NowoMarketingKitBundle') }}</p>
         </div>
-        <a class="mk-btn mk-btn-primary" href="{{ path('nowo_marketing_kit_admin_new', {profile: profile}) }}">{{ 'admin.new'|trans({}, 'NowoMarketingKitBundle') }}</a>
+        <a class="mk-btn mk-btn-primary nowo-ui-action-create" href="{{ path('nowo_marketing_kit_admin_new', {profile: profile}) }}">{{ 'admin.new'|trans({}, 'NowoMarketingKitBundle') }}</a>
     </div>
 
     {% if not use_database_config %}
-        <div class="mk-alert mk-alert-warn">
+        <div class="mk-alert mk-alert-warn nowo-ui-flash">
             {{ 'admin.db_config_hint'|trans({}, 'NowoMarketingKitBundle') }}
         </div>
     {% endif %}
 
-    <div class="mk-toolbar">
+    <div class="mk-toolbar nowo-ui-toolbar">
         <form method="get" class="mk-inline">
             <label for="profile">{{ 'admin.profile'|trans({}, 'NowoMarketingKitBundle') }}</label>
             <select name="profile" id="profile" onchange="this.form.submit()">
@@ -40,7 +40,7 @@
         </form>
     </div>
 
-    <table class="mk-table">
+    <table class="mk-table nowo-ui-table">
         <thead>
             <tr>
                 <th>{{ 'admin.col.service'|trans({}, 'NowoMarketingKitBundle') }}</th>
@@ -77,11 +77,11 @@
                         —
                     {% endfor %}
                 </td>
-                <td class="mk-actions">
-                    <a href="{{ path('nowo_marketing_kit_admin_edit', {id: tool.id}) }}">{{ 'admin.edit'|trans({}, 'NowoMarketingKitBundle') }}</a>
+                <td class="mk-actions nowo-ui-actions">
+                    <a class="nowo-ui-action-edit" href="{{ path('nowo_marketing_kit_admin_edit', {id: tool.id}) }}">{{ 'admin.edit'|trans({}, 'NowoMarketingKitBundle') }}</a>
                     <form method="post" action="{{ path('nowo_marketing_kit_admin_delete', {id: tool.id}) }}" onsubmit="return confirm('{{ 'admin.confirm_delete'|trans({}, 'NowoMarketingKitBundle') }}');">
                         <input type="hidden" name="_token" value="{{ csrf_token('delete_marketing_tool_' ~ tool.id) }}">
-                        <button type="submit" class="mk-link-danger">{{ 'admin.delete'|trans({}, 'NowoMarketingKitBundle') }}</button>
+                        <button type="submit" class="mk-link-danger nowo-ui-action-delete">{{ 'admin.delete'|trans({}, 'NowoMarketingKitBundle') }}</button>
                     </form>
                 </td>
             </tr>

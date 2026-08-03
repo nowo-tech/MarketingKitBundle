@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="{{ app.request.locale|default('en') }}">
+<html lang="{{ app.request.locale|default('en') }}" class="nowo-ui-root nowo-ui-css-{{ nowo_marketing_kit_css_framework|default('none') }}" data-css-framework="{{ nowo_marketing_kit_css_framework|default('none') }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}Marketing Kit{% endblock %}</title>
-    {# Demo root layout: no parent() (full HTML). Pages do not reopen stylesheets/javascripts. #}
+    {# Demo root layout: no parent() (full HTML). Pages extend admin/base.html.twig which stacks stylesheets/javascripts. #}
     {% block stylesheets %}
     <style>
         :root {
@@ -26,12 +26,12 @@
             color: var(--mk-text);
             line-height: 1.45;
         }
-        .mk-wrap { max-width: 1100px; margin: 0 auto; padding: 1.5rem; }
-        .mk-header { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; margin-bottom: 1rem; }
-        .mk-header h1 { margin: 0 0 .25rem; font-size: 1.5rem; }
+        .mk-wrap, .nowo-ui-wrap { max-width: 1100px; margin: 0 auto; padding: 1.5rem; }
+        .mk-header, .nowo-ui-header { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; margin-bottom: 1rem; }
+        .mk-header h1, .nowo-ui-header h1 { margin: 0 0 .25rem; font-size: 1.5rem; }
         .mk-lead { margin: 0; color: var(--mk-muted); }
         .mk-muted { color: var(--mk-muted); font-size: .875rem; }
-        .mk-toolbar { display: flex; flex-wrap: wrap; gap: .75rem; align-items: end; margin-bottom: 1rem; }
+        .mk-toolbar, .nowo-ui-toolbar { display: flex; flex-wrap: wrap; gap: .75rem; align-items: end; margin-bottom: 1rem; }
         .mk-inline { display: flex; gap: .5rem; align-items: end; }
         .mk-btn, button.mk-btn {
             display: inline-block;
@@ -72,11 +72,11 @@
     </style>
     {% endblock %}
 </head>
-<body>
-    <div class="mk-wrap">
+<body class="nowo-ui-body">
+    <div class="mk-wrap nowo-ui-wrap">
         {% for label, messages in app.flashes %}
             {% for message in messages %}
-                <div class="mk-alert mk-alert-{{ label == 'success' ? 'success' : (label == 'error' ? 'error' : 'warn') }}" role="alert">{{ message }}</div>
+                <div class="mk-alert mk-alert-{{ label == 'success' ? 'success' : (label == 'error' ? 'error' : 'warn') }} nowo-ui-flash" role="alert">{{ message }}</div>
             {% endfor %}
         {% endfor %}
         {% block body %}{% endblock %}

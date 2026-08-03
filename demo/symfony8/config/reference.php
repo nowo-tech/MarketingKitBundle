@@ -926,8 +926,8 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         allow_unauthenticated?: bool|Param, // Default: false
  *     },
  *     web_ui?: array{
- *         layout_template?: scalar|Param|null, // Default: "@NowoMarketingKitBundle/admin/layout.html.twig"
- *         css_framework?: "bootstrap5"|"bootstrap4"|"tailwind"|"none"|Param, // Default: "none"
+ *         layout_template?: scalar|Param|null, // Twig layout extended by admin/base.html.twig via global nowo_marketing_kit_layout (REQ-UI-001). Host apps set this to the project layout. // Default: "@NowoMarketingKitBundle/admin/layout.html.twig"
+ *         css_framework?: "bootstrap"|"bootstrap4"|"bootstrap5"|"tabler"|"tailwind"|"foundation"|"custom"|"none"|Param, // Host-chosen CSS stack (REQ-UI-001). Twig global nowo_marketing_kit_css_framework. Values: bootstrap (alias of bootstrap5), bootstrap4, bootstrap5, tabler, tailwind, foundation, custom, none. Default none matches semantic mk-* / nowo-ui-* demo markup. // Default: "none"
  *     },
  *     doctrine?: array{
  *         table_prefix?: scalar|Param|null, // Default: ""

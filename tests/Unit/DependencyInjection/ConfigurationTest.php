@@ -68,4 +68,25 @@ final class ConfigurationTest extends TestCase
             ],
         ]]);
     }
+
+    public function testCssFrameworkAcceptsCanonicalValues(): void
+    {
+        foreach (Configuration::CSS_FRAMEWORKS as $framework) {
+            $expected = $framework === 'bootstrap' ? 'bootstrap5' : $framework;
+            $config   = (new Processor())->processConfiguration(new Configuration(), [[
+                'web_ui' => ['css_framework' => $framework],
+            ]]);
+
+            self::assertSame($expected, $config['web_ui']['css_framework']);
+        }
+    }
+
+    public function testCssFrameworkBootstrapAlias(): void
+    {
+        $config = (new Processor())->processConfiguration(new Configuration(), [[
+            'web_ui' => ['css_framework' => 'bootstrap'],
+        ]]);
+
+        self::assertSame('bootstrap5', $config['web_ui']['css_framework']);
+    }
 }

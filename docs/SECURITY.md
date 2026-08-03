@@ -20,7 +20,7 @@
 
 Use `nowo_marketing_kit.security.access_roles` for simple role-based access or `nowo_marketing_kit.security.access_checker` for project-specific rules.
 
-`allow_unauthenticated: true` is **demo/dev only**. Production hosts should keep it `false` and explicitly protect `/admin/marketing`.
+`allow_unauthenticated: true` is **demo/dev only**. Production hosts should keep it `false` and explicitly protect `/admin/marketing`. When `allow_unauthenticated` is `false`, `symfony/security-bundle` is required (compile-time `LogicException` otherwise).
 
 ## Secrets
 

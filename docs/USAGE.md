@@ -60,15 +60,16 @@ php bin/console doctrine:schema:update --force
 
 Secure `/admin/marketing*` with your firewall and `access_control` rules. The bundle denies access through `nowo_marketing_kit.security`, but host-level security is still required for the `/admin/marketing` path prefix.
 
-To embed the admin pages inside your application shell, override the layout template:
+To embed the admin pages inside your application shell, override the layout template. Pages extend `admin/base.html.twig`, which stacks assets with `{{ parent() }}` onto `web_ui.layout_template`:
 
 ```yaml
 nowo_marketing_kit:
     web_ui:
         layout_template: 'base.html.twig'
+        css_framework: bootstrap5
 ```
 
-The bundle exposes the resolved layout as Twig global `nowo_marketing_kit_layout`, so bundle admin pages automatically extend your configured host layout. Keep `allow_unauthenticated: true` for demos only.
+The bundle exposes Twig globals `nowo_marketing_kit_layout` and `nowo_marketing_kit_css_framework`. Keep `allow_unauthenticated: true` for demos only.
 
 ## Twig overrides
 
@@ -76,6 +77,7 @@ Copy templates to `templates/bundles/NowoMarketingKitBundle/` (REQ-TWIG-001). Na
 
 | Bundle path | Override |
 |-------------|----------|
+| `admin/base.html.twig` | `templates/bundles/NowoMarketingKitBundle/admin/base.html.twig` |
 | `admin/layout.html.twig` | `templates/bundles/NowoMarketingKitBundle/admin/layout.html.twig` |
 | `admin/index.html.twig` | `templates/bundles/NowoMarketingKitBundle/admin/index.html.twig` |
 | `admin/form.html.twig` | `templates/bundles/NowoMarketingKitBundle/admin/form.html.twig` |

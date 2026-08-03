@@ -1,9 +1,9 @@
-{% extends nowo_marketing_kit_layout|default('@NowoMarketingKitBundle/admin/layout.html.twig') %}
+{% extends '@NowoMarketingKitBundle/admin/base.html.twig' %}
 
 {% block title %}{{ (is_new ? 'admin.new' : 'admin.edit')|trans({}, 'NowoMarketingKitBundle') }}{% endblock %}
 
 {% block body %}
-    <div class="mk-header">
+    <div class="mk-header nowo-ui-header">
         <div>
             <h1>{{ (is_new ? 'admin.new' : 'admin.edit')|trans({}, 'NowoMarketingKitBundle') }}</h1>
             <p class="mk-lead">{{ catalog.labelForCode(tool.code) }} · <code>{{ tool.type }}</code></p>
@@ -12,12 +12,12 @@
     </div>
 
     {% if not use_database_config %}
-        <div class="mk-alert mk-alert-warn">
+        <div class="mk-alert mk-alert-warn nowo-ui-flash">
             {{ 'admin.db_config_hint'|trans({}, 'NowoMarketingKitBundle') }}
         </div>
     {% endif %}
 
-    {{ form_start(form, {attr: {class: 'mk-form'}}) }}
+    {{ form_start(form, {attr: {class: 'mk-form nowo-ui-form'}}) }}
         {{ form_row(form.profile) }}
         {{ form_row(form.code) }}
         {{ form_row(form.type) }}
@@ -35,9 +35,9 @@
             {% endfor %}
         </fieldset>
 
-        <div class="mk-form-actions">
-            <button type="submit" class="mk-btn mk-btn-primary">{{ 'admin.save'|trans({}, 'NowoMarketingKitBundle') }}</button>
-            <a class="mk-btn" href="{{ path('nowo_marketing_kit_admin_index', {profile: tool.profile}) }}">{{ 'admin.cancel'|trans({}, 'NowoMarketingKitBundle') }}</a>
+        <div class="mk-form-actions nowo-ui-form-actions">
+            <button type="submit" class="mk-btn mk-btn-primary nowo-ui-action-save">{{ 'admin.save'|trans({}, 'NowoMarketingKitBundle') }}</button>
+            <a class="mk-btn nowo-ui-action-cancel" href="{{ path('nowo_marketing_kit_admin_index', {profile: tool.profile}) }}">{{ 'admin.cancel'|trans({}, 'NowoMarketingKitBundle') }}</a>
         </div>
     {{ form_end(form) }}
 {% endblock %}

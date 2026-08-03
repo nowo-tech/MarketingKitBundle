@@ -1,5 +1,30 @@
 # Upgrading
 
+## From 1.1.x to 1.2.0
+
+### Behavior changes
+
+- Admin pages now extend `@NowoMarketingKitBundle/admin/base.html.twig`, which stacks assets with `{{ parent() }}` onto `web_ui.layout_template`. If you overrode `admin/index.html.twig` or `admin/form.html.twig` and extended the layout global directly, prefer extending `admin/base.html.twig` (or keep your override and stack `parent()` yourself).
+- `web_ui.css_framework` accepts the full REQ-UI-001 enum (`bootstrap`, `bootstrap4`, `bootstrap5`, `tabler`, `tailwind`, `foundation`, `custom`, `none`). `bootstrap` normalizes to `bootstrap5`. Previous values remain valid.
+- When `security.allow_unauthenticated` is `false` (default), **`symfony/security-bundle` is required** or container compilation fails with a clear `LogicException`. Demos should keep `allow_unauthenticated: true`.
+
+### Integrator checklist
+
+1. Confirm production config keeps `security.allow_unauthenticated: false` and SecurityBundle is installed.
+2. Optionally set `web_ui.layout_template` to your project layout; pages will stack via `admin/base.html.twig`.
+3. Optionally set `web_ui.css_framework` to match your host stack.
+4. If you fork admin Twig pages, point `extends` at `admin/base.html.twig` (or reimplement `parent()` stacking).
+5. Smoke-test `/admin/marketing` (403 without role; 200 as admin).
+
+### Requirements (1.2.x)
+
+| Constraint | Value |
+|------------|--------|
+| PHP | `>=8.2 <8.6` |
+| Symfony | `^7.4 \|\| ^8.0` |
+| Doctrine ORM / DoctrineBundle | Required for entities and optional DB config |
+| Symfony Security | **Required** for admin CRUD unless `allow_unauthenticated: true` (demo only) |
+
 ## From 1.1.0 to 1.1.1
 
 Patch release. No configuration changes required.
@@ -20,7 +45,7 @@ Patch release. No configuration changes required.
 1. Review `nowo_marketing_kit.security` in your package config (recipe defaults are safe for production).
 2. Ensure users who manage marketing tools have `ROLE_ADMIN` (or update `access_roles` / provide `access_checker`).
 3. Optional: set `web_ui.layout_template` to your app admin/base layout so CRUD pages extend your shell.
-4. Optional: set `web_ui.css_framework` (`bootstrap5`, `bootstrap4`, `tailwind`, or `none`).
+4. Optional: set `web_ui.css_framework` (`bootstrap` / `bootstrap5`, `bootstrap4`, `tabler`, `tailwind`, `foundation`, `custom`, or `none`).
 5. Re-run your app smoke tests against `/admin/marketing` (expect 403 without a granted role).
 
 ### Requirements (1.1.x)

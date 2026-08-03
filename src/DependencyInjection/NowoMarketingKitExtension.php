@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nowo\MarketingKitBundle\DependencyInjection;
 
+use LogicException;
 use Nowo\MarketingKitBundle\DependencyInjection\Configuration as BundleConfiguration;
 use Nowo\MarketingKitBundle\Security\AllowAllMarketingKitAccessChecker;
 use Nowo\MarketingKitBundle\Security\ConfigurableMarketingKitAccessChecker;
@@ -41,6 +42,13 @@ final class NowoMarketingKitExtension extends Extension
         $container->setParameter('nowo_marketing_kit.security.allow_unauthenticated', $config['security']['allow_unauthenticated']);
         $container->setParameter('nowo_marketing_kit.web_ui.layout_template', $config['web_ui']['layout_template']);
         $container->setParameter('nowo_marketing_kit.web_ui.css_framework', $config['web_ui']['css_framework']);
+
+        if (
+            !$config['security']['allow_unauthenticated']
+            && !$this->isSecurityBundleAvailable($container)
+        ) {
+            throw new LogicException('NowoMarketingKitBundle admin UI requires symfony/security-bundle when security.allow_unauthenticated is false.');
+        }
 
         $this->registerAccessChecker($container, $config['security']);
 
@@ -90,5 +98,25 @@ final class NowoMarketingKitExtension extends Extension
         }
         $container->setDefinition($accessCheckerId, $definition);
         $container->setAlias(MarketingKitAccessCheckerInterface::class, $accessCheckerId);
+    }
+
+    /**
+     * Prefer kernel.bundles: ContainerBuilder::hasExtension() can be false while SecurityBundle
+     * is already registered (e.g. during early Flex cache:clear boots).
+     */
+    private function isSecurityBundleAvailable(ContainerBuilder $container): bool
+    {
+        if ($container->hasExtension('security')) {
+            return true;
+        }
+
+        if (!$container->hasParameter('kernel.bundles')) {
+            return false;
+        }
+
+        /** @var array<string, class-string> $bundles */
+        $bundles = $container->getParameter('kernel.bundles');
+
+        return isset($bundles['SecurityBundle']);
     }
 }

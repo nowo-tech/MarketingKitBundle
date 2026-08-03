@@ -51,12 +51,13 @@ Install and configure marketing tools (GTM, GA4, Meta Pixel, LinkedIn, TikTok, H
 | FR-MK-006 | Admin CRUD for `MarketingTool` (seed, import YAML, toggle) |
 | FR-MK-007 | Flex recipe + FrankenPHP demo |
 | FR-MK-008 | Twig namespace `NowoMarketingKitBundle` with app override precedence |
+| FR-MK-009 | Admin access control: `security.access_roles`, custom `access_checker`, demo-only `allow_unauthenticated` (REQ-UI-002) |
 
 ---
 
 ## Success Criteria
 
-- **SC-001**: **43/43** production files under `src/` mapped in [`code-inventory.md`](code-inventory.md).
+- **SC-001**: **47/47** production files under `src/` mapped in [`code-inventory.md`](code-inventory.md).
 - **SC-002**: PHPUnit covers config merge, consent gate, renderers, admin services, and DI extension.
 - **SC-003**: Config keys match [`docs/CONFIGURATION.md`](../../docs/CONFIGURATION.md).
 

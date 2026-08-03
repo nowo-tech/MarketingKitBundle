@@ -17,6 +17,18 @@ final class Configuration implements ConfigurationInterface
 {
     public const ALIAS = 'nowo_marketing_kit';
 
+    /** @var list<string> Host CSS stacks accepted by web_ui.css_framework (REQ-UI-001). */
+    public const CSS_FRAMEWORKS = [
+        'bootstrap',
+        'bootstrap4',
+        'bootstrap5',
+        'tabler',
+        'tailwind',
+        'foundation',
+        'custom',
+        'none',
+    ];
+
     public function getConfigTreeBuilder(): TreeBuilder
     {
         $treeBuilder = new TreeBuilder(self::ALIAS);
@@ -44,13 +56,25 @@ final class Configuration implements ConfigurationInterface
                 ->end()
                 ->arrayNode('web_ui')
                     ->addDefaultsIfNotSet()
+                    ->beforeNormalization()
+                        ->ifArray()
+                        ->then(static function (array $v): array {
+                            if (isset($v['css_framework']) && $v['css_framework'] === 'bootstrap') {
+                                $v['css_framework'] = 'bootstrap5';
+                            }
+
+                            return $v;
+                        })
+                    ->end()
                     ->children()
                         ->scalarNode('layout_template')
                             ->defaultValue('@NowoMarketingKitBundle/admin/layout.html.twig')
+                            ->info('Twig layout extended by admin/base.html.twig via global nowo_marketing_kit_layout (REQ-UI-001). Host apps set this to the project layout.')
                         ->end()
                         ->enumNode('css_framework')
-                            ->values(['bootstrap5', 'bootstrap4', 'tailwind', 'none'])
+                            ->values(self::CSS_FRAMEWORKS)
                             ->defaultValue('none')
+                            ->info('Host-chosen CSS stack (REQ-UI-001). Twig global nowo_marketing_kit_css_framework. Values: bootstrap (alias of bootstrap5), bootstrap4, bootstrap5, tabler, tailwind, foundation, custom, none. Default none matches semantic mk-* / nowo-ui-* demo markup.')
                         ->end()
                     ->end()
                 ->end()

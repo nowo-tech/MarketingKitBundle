@@ -20,6 +20,7 @@ final class NowoMarketingKitExtensionTest extends TestCase
     public function testLoadPublishesParametersAndServices(): void
     {
         $container = new ContainerBuilder();
+        $container->setParameter('kernel.bundles', ['SecurityBundle' => 'Symfony\\Bundle\\SecurityBundle\\SecurityBundle']);
         $extension = new NowoMarketingKitExtension();
         $extension->load([[
             'use_database_config'    => true,
@@ -51,6 +52,7 @@ final class NowoMarketingKitExtensionTest extends TestCase
     public function testLoadWithoutTablePrefixSkipsListener(): void
     {
         $container = new ContainerBuilder();
+        $container->setParameter('kernel.bundles', ['SecurityBundle' => 'Symfony\\Bundle\\SecurityBundle\\SecurityBundle']);
         $extension = new NowoMarketingKitExtension();
         $extension->load([[]], $container);
 
@@ -61,6 +63,7 @@ final class NowoMarketingKitExtensionTest extends TestCase
     public function testLoadUsesCustomAccessCheckerAliasWhenConfigured(): void
     {
         $container = new ContainerBuilder();
+        $container->setParameter('kernel.bundles', ['SecurityBundle' => 'Symfony\\Bundle\\SecurityBundle\\SecurityBundle']);
         $container->setDefinition('app.marketing_access_checker', new Definition());
 
         $extension = new NowoMarketingKitExtension();
@@ -79,6 +82,7 @@ final class NowoMarketingKitExtensionTest extends TestCase
     public function testLoadUsesAllowAllCheckerWhenUnauthenticatedAccessIsEnabled(): void
     {
         $container = new ContainerBuilder();
+        $container->setParameter('kernel.bundles', ['SecurityBundle' => 'Symfony\\Bundle\\SecurityBundle\\SecurityBundle']);
         $extension = new NowoMarketingKitExtension();
         $extension->load([[
             'security' => [
@@ -96,6 +100,7 @@ final class NowoMarketingKitExtensionTest extends TestCase
     public function testLoadWiresAuthorizationCheckerIntoDefaultAccessCheckerWhenPresent(): void
     {
         $container = new ContainerBuilder();
+        $container->setParameter('kernel.bundles', ['SecurityBundle' => 'Symfony\\Bundle\\SecurityBundle\\SecurityBundle']);
         $container->setDefinition('security.authorization_checker', new Definition());
 
         $extension = new NowoMarketingKitExtension();

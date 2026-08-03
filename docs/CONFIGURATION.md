@@ -44,8 +44,8 @@ nowo_marketing_kit:
 | `security.access_roles` | list<string> | `['ROLE_ADMIN']` | Roles allowed to open the admin CRUD at `/admin/marketing` |
 | `security.access_checker` | string\|null | `null` | Optional service id implementing `MarketingKitAccessCheckerInterface` |
 | `security.allow_unauthenticated` | bool | `false` | Demo/dev only bypass for admin access; never enable in production |
-| `web_ui.layout_template` | string | `@NowoMarketingKitBundle/admin/layout.html.twig` | Twig layout extended by admin pages; set this to your app/admin layout in host apps |
-| `web_ui.css_framework` | enum | `none` | UI class strategy hint: `bootstrap5`, `bootstrap4`, `tailwind`, `none` |
+| `web_ui.layout_template` | string | `@NowoMarketingKitBundle/admin/layout.html.twig` | Twig layout extended by `admin/base.html.twig` via global `nowo_marketing_kit_layout`; set this to your app/admin layout in host apps |
+| `web_ui.css_framework` | enum | `none` | Host CSS stack (REQ-UI-001): `bootstrap` (→`bootstrap5`), `bootstrap4`, `bootstrap5`, `tabler`, `tailwind`, `foundation`, `custom`, `none`. Twig global `nowo_marketing_kit_css_framework` |
 | `doctrine.table_prefix` | string | `''` | Prefixed onto `marketing_tool` |
 | `default_profile` | string | `default` | Must exist under `profiles` |
 | `profiles` | map | `{default: …}` | Named profiles (REQ-CFG-001) |
@@ -118,13 +118,15 @@ Host applications should still add an `access_control` rule for `/admin/marketin
 
 ## Admin web UI (REQ-UI-001)
 
-Admin templates extend the configured `web_ui.layout_template` through the Twig global `nowo_marketing_kit_layout`.
+Admin pages (`index` / `form`) extend **`admin/base.html.twig`**, which stacks `stylesheets` / `javascripts` with `{{ parent() }}` and extends the configured `web_ui.layout_template` through the Twig global `nowo_marketing_kit_layout`. The default `admin/layout.html.twig` remains the **demo root** (full HTML document).
+
+Wrappers use semantic **`nowo-ui-*`** classes alongside legacy `mk-*` classes.
 
 ```yaml
 nowo_marketing_kit:
     web_ui:
         layout_template: 'base.html.twig'
-        css_framework: bootstrap5
+        css_framework: bootstrap5   # or: bootstrap | bootstrap4 | tabler | tailwind | foundation | custom | none
 ```
 
 Set `layout_template` to your project admin layout or to a one-file bridge template when your content block name differs. The bundle default layout is intended for demos and standalone usage.

@@ -1,19 +1,21 @@
 # Code inventory — MarketingKitBundle baseline
 
-**Total production sources under `src/`:** **43 / 43**
+**Last audited**: 2026-08-03
+
+**Total production sources under `src/`:** **47 / 47**
 
 ```bash
 find src -type f ! -path '*/assets/dist/*' ! -name '*.test.ts' | wc -l
-# → 43
+# → 47
 ```
 
-## PHP (31)
+## PHP (34)
 
 | Path | FR / notes |
 |------|------------|
 | `src/NowoMarketingKitBundle.php` | FR-MK-001, FR-MK-008 |
-| `src/DependencyInjection/Configuration.php` | FR-MK-001 |
-| `src/DependencyInjection/NowoMarketingKitExtension.php` | FR-MK-001 |
+| `src/DependencyInjection/Configuration.php` | FR-MK-001, FR-MK-009 |
+| `src/DependencyInjection/NowoMarketingKitExtension.php` | FR-MK-001, FR-MK-009 |
 | `src/DependencyInjection/TablePrefixListener.php` | FR-MK-004 |
 | `src/DependencyInjection/Compiler/TwigPathsPass.php` | FR-MK-008 |
 | `src/Config/MarketingConfigResolver.php` | FR-MK-001, FR-MK-004 |
@@ -41,20 +43,24 @@ find src -type f ! -path '*/assets/dist/*' ! -name '*.test.ts' | wc -l
 | `src/Service/MarketingToolAdminService.php` | FR-MK-006 |
 | `src/Twig/MarketingKitExtension.php` | FR-MK-003 |
 | `src/Form/MarketingToolType.php` | FR-MK-006 |
-| `src/Controller/MarketingToolAdminController.php` | FR-MK-006 |
+| `src/Controller/MarketingToolAdminController.php` | FR-MK-006, FR-MK-009 |
+| `src/Security/MarketingKitAccessCheckerInterface.php` | FR-MK-009 |
+| `src/Security/ConfigurableMarketingKitAccessChecker.php` | FR-MK-009 |
+| `src/Security/AllowAllMarketingKitAccessChecker.php` | FR-MK-009 |
 
 ## Config YAML (2)
 
 | Path | FR / notes |
 |------|------------|
-| `src/Resources/config/services.yaml` | FR-MK-001, FR-MK-007 |
+| `src/Resources/config/services.yaml` | FR-MK-001, FR-MK-007, FR-MK-009 |
 | `src/Resources/config/routing.yaml` | FR-MK-006 |
 
-## Twig views (3)
+## Twig views (4)
 
 | Path | FR / notes |
 |------|------------|
-| `src/Resources/views/admin/layout.html.twig` | FR-MK-006, FR-MK-008 |
+| `src/Resources/views/admin/base.html.twig` | FR-MK-006, FR-MK-008 (REQ-UI-001 shell + `parent()`) |
+| `src/Resources/views/admin/layout.html.twig` | FR-MK-006, FR-MK-008 (demo root) |
 | `src/Resources/views/admin/index.html.twig` | FR-MK-006, FR-MK-008 |
 | `src/Resources/views/admin/form.html.twig` | FR-MK-006, FR-MK-008 |
 
@@ -71,3 +77,13 @@ find src -type f ! -path '*/assets/dist/*' ! -name '*.test.ts' | wc -l
 | `src/Resources/translations/NowoMarketingKitBundle.nl.yaml` |
 
 Domain: **`NowoMarketingKitBundle`** (REQ-I18N-003).
+
+## Coverage summary
+
+| Category | Files | Mapped |
+| --- | ---: | ---: |
+| PHP | 34 | 34 |
+| Config YAML | 2 | 2 |
+| Twig views | 4 | 4 |
+| Translations | 7 | 7 |
+| **Total production sources** | **47** | **47** |
