@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nowo\MarketingKitBundle\Tests\Integration\DependencyInjection;
 
+use LogicException;
 use Nowo\MarketingKitBundle\DependencyInjection\NowoMarketingKitExtension;
 use Nowo\MarketingKitBundle\DependencyInjection\TablePrefixListener;
 use Nowo\MarketingKitBundle\Security\ConfigurableMarketingKitAccessChecker;
@@ -13,6 +14,7 @@ use Nowo\MarketingKitBundle\Twig\MarketingKitExtension;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
+use Symfony\Component\DependencyInjection\Extension\ExtensionInterface;
 use Symfony\Component\DependencyInjection\Reference;
 
 final class NowoMarketingKitExtensionTest extends TestCase
@@ -117,5 +119,42 @@ final class NowoMarketingKitExtensionTest extends TestCase
         );
         self::assertSame(['ROLE_MANAGER'], $definition->getArgument('$accessRoles'));
         self::assertEquals(new Reference('security.authorization_checker'), $definition->getArgument('$authorizationChecker'));
+    }
+
+    public function testLoadThrowsWhenSecurityBundleMissingAndUnauthenticatedAccessDisabled(): void
+    {
+        $container = new ContainerBuilder();
+        $extension = new NowoMarketingKitExtension();
+
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('symfony/security-bundle');
+
+        $extension->load([[
+            'security' => [
+                'allow_unauthenticated' => false,
+            ],
+        ]], $container);
+    }
+
+    public function testLoadDetectsSecurityBundleViaRegisteredExtension(): void
+    {
+        $container = new ContainerBuilder();
+        $securityExtension = $this->createMock(ExtensionInterface::class);
+        $securityExtension->method('getAlias')->willReturn('security');
+        $container->registerExtension($securityExtension);
+
+        $extension = new NowoMarketingKitExtension();
+        $extension->load([[
+            'security' => [
+                'allow_unauthenticated' => false,
+                'access_roles'          => ['ROLE_ADMIN'],
+            ],
+        ]], $container);
+
+        self::assertTrue($container->hasDefinition('nowo_marketing_kit.access_checker.default'));
+        self::assertSame(
+            'nowo_marketing_kit.access_checker.default',
+            (string) $container->getAlias(MarketingKitAccessCheckerInterface::class),
+        );
     }
 }
