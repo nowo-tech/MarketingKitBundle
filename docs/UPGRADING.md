@@ -1,5 +1,11 @@
 # Upgrading
 
+## From 1.2.0 to 1.2.1
+
+Patch release. No configuration changes required for host apps.
+
+- Demo-only: Twig Inspector is required from Packagist (`nowo-tech/twig-inspector-bundle: ^1.0`). The local sibling path repo and Docker volume mount are no longer used.
+
 ## From 1.1.x to 1.2.0
 
 ### Behavior changes

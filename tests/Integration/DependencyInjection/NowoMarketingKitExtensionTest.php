@@ -138,7 +138,7 @@ final class NowoMarketingKitExtensionTest extends TestCase
 
     public function testLoadDetectsSecurityBundleViaRegisteredExtension(): void
     {
-        $container = new ContainerBuilder();
+        $container         = new ContainerBuilder();
         $securityExtension = $this->createMock(ExtensionInterface::class);
         $securityExtension->method('getAlias')->willReturn('security');
         $container->registerExtension($securityExtension);

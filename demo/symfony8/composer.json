@@ -12,13 +12,6 @@
             "options": {
                 "symlink": true
             }
-        },
-        {
-            "type": "path",
-            "url": "/var/twig-inspector-bundle",
-            "options": {
-                "symlink": true
-            }
         }
     ],
     "require": {
@@ -37,7 +30,7 @@
         "symfony/yaml": "^8.0"
     },
     "require-dev": {
-        "nowo-tech/twig-inspector-bundle": "*",
+        "nowo-tech/twig-inspector-bundle": "^1.0",
         "symfony/debug-bundle": "^8.0",
         "symfony/var-dumper": "^8.0",
         "symfony/web-profiler-bundle": "^8.0"
