@@ -1,4 +1,6 @@
 {% extends '@NowoMarketingKitBundle/admin/base.html.twig' %}
+{% import '@NowoUiKitBundle/macros/ui.html.twig' as ui %}
+{% set _css_fw = nowo_marketing_kit_css_framework|default('none') %}
 
 {% block title %}{{ 'admin.title'|trans({}, 'NowoMarketingKitBundle') }}{% endblock %}
 
@@ -8,7 +10,7 @@
             <h1>{{ 'admin.title'|trans({}, 'NowoMarketingKitBundle') }}</h1>
             <p class="mk-lead">{{ 'admin.lead'|trans({}, 'NowoMarketingKitBundle') }}</p>
         </div>
-        <a class="mk-btn mk-btn-primary nowo-ui-action-create" href="{{ path('nowo_marketing_kit_admin_new', {profile: profile}) }}">{{ 'admin.new'|trans({}, 'NowoMarketingKitBundle') }}</a>
+        <a class="{{ ui.btn('primary', null, _css_fw) }} mk-btn mk-btn-primary nowo-ui-action-create" href="{{ path('nowo_marketing_kit_admin_new', {profile: profile}) }}">{{ 'admin.new'|trans({}, 'NowoMarketingKitBundle') }}</a>
     </div>
 
     {% if not use_database_config %}
@@ -30,13 +32,13 @@
         <form method="post" action="{{ path('nowo_marketing_kit_admin_seed') }}" class="mk-inline">
             <input type="hidden" name="profile" value="{{ profile }}">
             <input type="hidden" name="_token" value="{{ csrf_token('seed_marketing_tools_' ~ profile) }}">
-            <button type="submit" class="mk-btn">{{ 'admin.seed'|trans({}, 'NowoMarketingKitBundle') }}</button>
+            <button type="submit" class="{{ ui.btn('secondary', null, _css_fw) }} mk-btn">{{ 'admin.seed'|trans({}, 'NowoMarketingKitBundle') }}</button>
         </form>
 
         <form method="post" action="{{ path('nowo_marketing_kit_admin_import_yaml') }}" class="mk-inline">
             <input type="hidden" name="profile" value="{{ profile }}">
             <input type="hidden" name="_token" value="{{ csrf_token('import_marketing_yaml_' ~ profile) }}">
-            <button type="submit" class="mk-btn">{{ 'admin.import_yaml'|trans({}, 'NowoMarketingKitBundle') }}</button>
+            <button type="submit" class="{{ ui.btn('secondary', null, _css_fw) }} mk-btn">{{ 'admin.import_yaml'|trans({}, 'NowoMarketingKitBundle') }}</button>
         </form>
     </div>
 
@@ -78,11 +80,13 @@
                     {% endfor %}
                 </td>
                 <td class="mk-actions nowo-ui-actions">
-                    <a class="nowo-ui-action-edit" href="{{ path('nowo_marketing_kit_admin_edit', {id: tool.id}) }}">{{ 'admin.edit'|trans({}, 'NowoMarketingKitBundle') }}</a>
-                    <form method="post" action="{{ path('nowo_marketing_kit_admin_delete', {id: tool.id}) }}" onsubmit="return confirm('{{ 'admin.confirm_delete'|trans({}, 'NowoMarketingKitBundle') }}');">
-                        <input type="hidden" name="_token" value="{{ csrf_token('delete_marketing_tool_' ~ tool.id) }}">
-                        <button type="submit" class="mk-link-danger nowo-ui-action-delete">{{ 'admin.delete'|trans({}, 'NowoMarketingKitBundle') }}</button>
-                    </form>
+                    <div class="{{ ui.row_actions(_css_fw) }}">
+                        <a class="{{ ui.btn('secondary', 'sm', _css_fw) }} mk-btn nowo-ui-action-edit" href="{{ path('nowo_marketing_kit_admin_edit', {id: tool.id}) }}">{{ 'admin.edit'|trans({}, 'NowoMarketingKitBundle') }}</a>
+                        <form method="post" action="{{ path('nowo_marketing_kit_admin_delete', {id: tool.id}) }}" onsubmit="return confirm('{{ 'admin.confirm_delete'|trans({}, 'NowoMarketingKitBundle') }}');">
+                            <input type="hidden" name="_token" value="{{ csrf_token('delete_marketing_tool_' ~ tool.id) }}">
+                            <button type="submit" class="{{ ui.btn('danger', 'sm', _css_fw) }} mk-link-danger nowo-ui-action-delete">{{ 'admin.delete'|trans({}, 'NowoMarketingKitBundle') }}</button>
+                        </form>
+                    </div>
                 </td>
             </tr>
         {% else %}

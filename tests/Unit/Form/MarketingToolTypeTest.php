@@ -7,6 +7,7 @@ namespace Nowo\MarketingKitBundle\Tests\Unit\Form;
 use Nowo\MarketingKitBundle\Entity\MarketingTool;
 use Nowo\MarketingKitBundle\Form\MarketingToolType;
 use Nowo\MarketingKitBundle\Service\MarketingToolCatalog;
+use Nowo\MarketingKitBundle\Tests\Support\FormKitTestSupport;
 use Symfony\Component\Form\FormTypeInterface;
 use Symfony\Component\Form\Test\TypeTestCase;
 
@@ -82,6 +83,8 @@ final class MarketingToolTypeTest extends TypeTestCase
      */
     protected function getTypes(): array
     {
-        return [new MarketingToolType(new MarketingToolCatalog())];
+        return [
+            FormKitTestSupport::withMerger(new MarketingToolType(new MarketingToolCatalog())),
+        ];
     }
 }

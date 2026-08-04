@@ -4,14 +4,13 @@ declare(strict_types=1);
 
 namespace Nowo\MarketingKitBundle\Form;
 
+use Nowo\FormKitBundle\Attribute\FormKitConfig;
+use Nowo\FormKitBundle\Form\FormOptionsTrait;
 use Nowo\MarketingKitBundle\Entity\MarketingTool;
 use Nowo\MarketingKitBundle\Enum\ToolPosition;
 use Nowo\MarketingKitBundle\Enum\ToolType;
 use Nowo\MarketingKitBundle\Service\MarketingToolCatalog;
 use Symfony\Component\Form\AbstractType;
-use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
-use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
-use Symfony\Component\Form\Extension\Core\Type\IntegerType;
 use Symfony\Component\Form\Extension\Core\Type\TextareaType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
@@ -27,8 +26,11 @@ use function is_scalar;
  *
  * @extends AbstractType<MarketingTool>
  */
+#[FormKitConfig('marketing_kit')]
 final class MarketingToolType extends AbstractType
 {
+    use FormOptionsTrait;
+
     public function __construct(
         private readonly MarketingToolCatalog $catalog,
     ) {
@@ -49,39 +51,38 @@ final class MarketingToolType extends AbstractType
             $positionChoices[$case->value] = $case->value;
         }
 
-        $builder
-            ->add('profile', TextType::class, [
-                'label' => 'Profile',
-                'help'  => 'Usually one of: ' . implode(', ', $profileChoices),
-            ])
-            ->add('code', TextType::class, [
-                'label' => 'Code',
-                'help'  => 'Stable key within the profile (e.g. gtm, meta_pixel).',
-            ])
-            ->add('type', ChoiceType::class, [
-                'choices' => $typeChoices,
-                'label'   => 'Provider',
-            ])
-            ->add('enabled', CheckboxType::class, [
-                'required' => false,
-                'label'    => 'Enabled',
-            ])
-            ->add('category', ChoiceType::class, [
-                'label'   => 'Consent category',
-                'choices' => [
-                    'analytics'   => 'analytics',
-                    'marketing'   => 'marketing',
-                    'preferences' => 'preferences',
-                    'required'    => 'required',
-                ],
-            ])
-            ->add('position', ChoiceType::class, [
-                'choices' => $positionChoices,
-                'label'   => 'Position',
-            ])
-            ->add('sortOrder', IntegerType::class, [
-                'label' => 'Sort order',
-            ]);
+        $this->addText($builder, 'profile', [
+            'label' => 'Profile',
+            'help'  => 'Usually one of: ' . implode(', ', $profileChoices),
+        ]);
+        $this->addText($builder, 'code', [
+            'label' => 'Code',
+            'help'  => 'Stable key within the profile (e.g. gtm, meta_pixel).',
+        ]);
+        $this->addChoice($builder, 'type', [
+            'choices' => $typeChoices,
+            'label'   => 'Provider',
+        ]);
+        $this->addCheckbox($builder, 'enabled', [
+            'required' => false,
+            'label'    => 'Enabled',
+        ]);
+        $this->addChoice($builder, 'category', [
+            'label'   => 'Consent category',
+            'choices' => [
+                'analytics'   => 'analytics',
+                'marketing'   => 'marketing',
+                'preferences' => 'preferences',
+                'required'    => 'required',
+            ],
+        ]);
+        $this->addChoice($builder, 'position', [
+            'choices' => $positionChoices,
+            'label'   => 'Position',
+        ]);
+        $this->addInteger($builder, 'sortOrder', [
+            'label' => 'Sort order',
+        ]);
 
         $builder->addEventListener(FormEvents::PRE_SET_DATA, function (FormEvent $event): void {
             $tool        = $event->getData();

@@ -1,5 +1,38 @@
 # Upgrading
 
+## To 1.3.0
+
+From **1.2.1** — FormKit, UiKit, Twig Extra (REQ-TWIG-004), Twig-CS-Fixer.
+
+```bash
+composer update nowo-tech/marketing-kit-bundle
+php bin/console cache:clear
+```
+
+### UiKit composition (REQ-UI-001-kit)
+
+Admin UI now depends on **[UiKitBundle](https://github.com/nowo-tech/UiKitBundle)** (`nowo-tech/ui-kit-bundle` `^1.4`).
+
+1. Require the package (pulled transitively once you update this bundle) and run `assets:install`.
+2. Stylesheet package: `asset('css/nowo-ui.css', 'nowo_ui_kit')` via `admin/base.html.twig`.
+3. Optional: set `nowo_ui_kit.css_framework` / `icon_set` in the host. If unset, MarketingKit seeds those keys from `web_ui.css_framework` (default `none`) and defaults `icon_set` to `bootstrap-icons`.
+4. Template overrides: extend `@NowoMarketingKitBundle/admin/base.html.twig` and use UiKit macros (`ui.flash`, `ui.btn`) instead of hard-coded alert/button classes where applicable.
+
+### Twig Extra Bundle (REQ-TWIG-004)
+
+Hosts that render this bundle's Twig templates must install:
+
+```bash
+composer require twig/extra-bundle twig/string-extra
+```
+
+and enable `Twig\Extra\TwigExtraBundle\TwigExtraBundle`. Flex recipes usually register it automatically.
+
+### Twig-CS-Fixer (maintainers)
+
+Package maintainers: `composer twig:lint` / `composer twig:fix` use `.twig-cs-fixer.php` over `src/` (and `templates/` when present).
+
+
 ## From 1.2.0 to 1.2.1
 
 Patch release. No configuration changes required for host apps.
@@ -75,3 +108,6 @@ Initial public release. See the [1.0.0 changelog](CHANGELOG.md).
 4. Optional DB admin: set `use_database_config: true`, create the `marketing_tool` table (`doctrine:schema:update --force` or a migration), open `/admin/marketing`, then seed or import YAML.
 5. Optional CMP UI: `composer require nowo-tech/cookie-consent-bundle` (the gate reads `Cookie_Category_*` with or without that bundle).
 6. Protect `/admin/marketing*` with your firewall and configure `nowo_marketing_kit.security` (see 1.1.0 notes if you are on 1.1+).
+### FormKitBundle (admin forms)
+
+If you use admin/dashboard Symfony forms, ensure `nowo-tech/form-kit-bundle` ^2.0 is installed (pulled transitively) and `Nowo\FormKitBundle\NowoFormKitBundle` is registered. Form types use profile `marketing_kit` via `#[FormKitConfig]`; the bundle prepends that profile when the host has not defined it.

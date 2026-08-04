@@ -13,16 +13,139 @@ use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Extension\Extension;
+use Symfony\Component\DependencyInjection\Extension\PrependExtensionInterface;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
 use Symfony\Component\DependencyInjection\Reference;
 
+use function array_key_exists;
+use function is_array;
 use function is_string;
 
 /**
  * Loads MarketingKit services and publishes configuration parameters.
  */
-final class NowoMarketingKitExtension extends Extension
+final class NowoMarketingKitExtension extends Extension implements PrependExtensionInterface
 {
+    /**
+     * Seeds UiKit defaults from web_ui when the host has not set nowo_ui_kit (REQ-UI-001-kit).
+     */
+    public function prepend(ContainerBuilder $container): void
+    {
+        $this->prependFormKitDefaults($container);
+        $this->prependUiKitDefaults($container);
+    }
+
+    /**
+     * When UiKit is installed, seed nowo_ui_kit.css_framework / icon_set from web_ui
+     * so kit macros resolve the same stack. Does not override keys the host already set.
+     * web_ui.icon_set is optional — defaults to bootstrap-icons when seeding UiKit.
+     */
+
+    /**
+     * When FormKit is installed, register the marketing_kit profile. Forms select it via #[FormKitConfig].
+     */
+    private function prependFormKitDefaults(ContainerBuilder $container): void
+    {
+        if (!$container->hasExtension('nowo_form_kit')) {
+            return;
+        }
+
+        $hostHasCssFramework = false;
+        $hostHasProfile      = false;
+        foreach ($container->getExtensionConfig('nowo_form_kit') as $cfg) {
+            /** @var array<string, mixed> $cfg */
+            if (array_key_exists('css_framework', $cfg)) {
+                $hostHasCssFramework = true;
+            }
+            $profiles = $cfg['profiles'] ?? null;
+            if (is_array($profiles) && array_key_exists('marketing_kit', $profiles)) {
+                $hostHasProfile = true;
+            }
+        }
+
+        $seed = [];
+
+        if (!$hostHasCssFramework) {
+            $seed['css_framework'] = 'bootstrap';
+        }
+
+        if (!$hostHasProfile) {
+            $seed['profiles'] = [
+                'marketing_kit' => [
+                    'alias'              => 'marketing_kit',
+                    'translation_domain' => 'NowoMarketingKitBundle',
+                    'defaults'           => [
+                        'attr'     => ['class' => 'nowo-ui-input form-control'],
+                        'row_attr' => ['class' => 'mb-2'],
+                    ],
+                    'field_types' => [
+                        'checkbox' => [
+                            'attr'     => ['class' => 'form-check-input'],
+                            'row_attr' => ['class' => 'form-check mb-2'],
+                        ],
+                        'choice' => [
+                            'attr' => ['class' => 'form-select'],
+                        ],
+                        'entity' => [
+                            'attr' => ['class' => 'form-select'],
+                        ],
+                        'file' => [
+                            'attr' => ['class' => 'nowo-ui-input form-control'],
+                        ],
+                        'textarea' => [
+                            'attr' => ['class' => 'nowo-ui-input form-control'],
+                        ],
+                    ],
+                ],
+            ];
+        }
+
+        if ($seed !== []) {
+            $container->prependExtensionConfig('nowo_form_kit', $seed);
+        }
+    }
+
+    private function prependUiKitDefaults(ContainerBuilder $container): void
+    {
+        if (!$container->hasExtension('nowo_ui_kit')) {
+            return;
+        }
+
+        $hostHasCssFramework = false;
+        $hostHasIconSet      = false;
+        foreach ($container->getExtensionConfig('nowo_ui_kit') as $cfg) {
+            if (!is_array($cfg)) {
+                continue;
+            }
+            if (array_key_exists('css_framework', $cfg)) {
+                $hostHasCssFramework = true;
+            }
+            if (array_key_exists('icon_set', $cfg)) {
+                $hostHasIconSet = true;
+            }
+        }
+
+        if ($hostHasCssFramework && $hostHasIconSet) {
+            return;
+        }
+
+        $config   = $this->processConfiguration(new BundleConfiguration(), $container->getExtensionConfig(BundleConfiguration::ALIAS));
+        $webUi    = is_array($config['web_ui'] ?? null) ? $config['web_ui'] : [];
+        $defaults = [];
+
+        if (!$hostHasCssFramework) {
+            $fw                        = (string) ($webUi['css_framework'] ?? 'none');
+            $defaults['css_framework'] = $fw === 'bootstrap' ? 'bootstrap5' : $fw;
+        }
+        if (!$hostHasIconSet) {
+            $defaults['icon_set'] = (string) ($webUi['icon_set'] ?? 'bootstrap-icons');
+        }
+
+        if ($defaults !== []) {
+            $container->prependExtensionConfig('nowo_ui_kit', $defaults);
+        }
+    }
+
     public function load(array $configs, ContainerBuilder $container): void
     {
         $configuration = new BundleConfiguration();
