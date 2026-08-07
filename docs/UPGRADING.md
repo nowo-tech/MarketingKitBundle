@@ -1,5 +1,11 @@
 # Upgrading
 
+## To 1.3.1
+
+Patch release from **1.3.0**. No configuration changes required for host apps.
+
+- Maintainer-only: PHPUnit coverage for FormKit/UiKit `prepend` seeding restored to 100% for CI.
+
 ## To 1.3.0
 
 From **1.2.1** — FormKit, UiKit, Twig Extra (REQ-TWIG-004), Twig-CS-Fixer.

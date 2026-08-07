@@ -27,7 +27,8 @@ This bundle is **FrankenPHP worker mode friendly**.
 
 | Version | PHP | Symfony | Status |
 |---------|-----|---------|--------|
-| 1.2.x | >= 8.2, < 8.6 | 7.4 – 8.x | Stable |
+| 1.3.x | >= 8.2, < 8.6 | 7.4 – 8.x | Stable |
+| 1.2.x | >= 8.2, < 8.6 | 7.4 – 8.x | Maintenance |
 | 1.1.x | >= 8.2, < 8.6 | 7.4 – 8.x | Maintenance |
 | 1.0.x | >= 8.2, < 8.6 | 7.4 – 8.x | Maintained |
 

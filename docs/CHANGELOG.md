@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-08-07
+
+### Fixed
+
+- PHPUnit coverage for `NowoMarketingKitExtension::prepend` FormKit/UiKit seeding branches (restore CI 100% line coverage)
+
 ## [1.3.0] - 2026-08-04
 
 ### Changed
@@ -21,8 +27,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **REQ-UI-001-kit:** Requires **[UiKitBundle](https://github.com/nowo-tech/UiKitBundle)** (`nowo-tech/ui-kit-bundle` `^1.4`). Admin `base.html.twig` loads `asset('css/nowo-ui.css', 'nowo_ui_kit')` and imports `@NowoUiKitBundle/macros/ui.html.twig` (flashes via `ui.flash`, admin index create via `ui.btn`). Extension implements `PrependExtensionInterface` and seeds `nowo_ui_kit` from `web_ui.css_framework` (and `bootstrap-icons` when `icon_set` is unset) when the host has not configured UiKit.
-
-[1.3.0]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.3.0
 
 ## [1.2.1] - 2026-08-03
 
@@ -88,3 +92,6 @@ Initial public release of **MarketingKitBundle**.
 - Flex recipe, FrankenPHP Symfony 8 demo (Web Profiler + Twig Inspector), Spec Kit baseline
 - i18n for admin UI: `en`, `es`, `it`, `fr`, `pt`, `de`, `nl`
 - PHPUnit **100%** line coverage
+
+[1.3.1]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.3.1
+[1.3.0]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.3.0

@@ -12,10 +12,13 @@ use Nowo\MarketingKitBundle\Security\MarketingKitAccessCheckerInterface;
 use Nowo\MarketingKitBundle\Service\MarketingScriptRenderer;
 use Nowo\MarketingKitBundle\Twig\MarketingKitExtension;
 use PHPUnit\Framework\TestCase;
+use ReflectionProperty;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Extension\ExtensionInterface;
 use Symfony\Component\DependencyInjection\Reference;
+
+use function is_array;
 
 final class NowoMarketingKitExtensionTest extends TestCase
 {
@@ -156,5 +159,175 @@ final class NowoMarketingKitExtensionTest extends TestCase
             'nowo_marketing_kit.access_checker.default',
             (string) $container->getAlias(MarketingKitAccessCheckerInterface::class),
         );
+    }
+
+    public function testPrependIsNoOpWhenFormKitAndUiKitAreAbsent(): void
+    {
+        $container = new ContainerBuilder();
+        $extension = new NowoMarketingKitExtension();
+        $extension->prepend($container);
+
+        self::assertSame([], $container->getExtensionConfig('nowo_form_kit'));
+        self::assertSame([], $container->getExtensionConfig('nowo_ui_kit'));
+    }
+
+    public function testPrependSeedsFormKitProfileAndCssFrameworkWhenMissing(): void
+    {
+        $container = new ContainerBuilder();
+        $this->registerNamedExtension($container, 'nowo_form_kit');
+
+        $extension = new NowoMarketingKitExtension();
+        $extension->prepend($container);
+
+        $configs = $container->getExtensionConfig('nowo_form_kit');
+        self::assertNotEmpty($configs);
+        $seed = $configs[0];
+        self::assertSame('bootstrap', $seed['css_framework']);
+        self::assertArrayHasKey('marketing_kit', $seed['profiles']);
+        self::assertSame('NowoMarketingKitBundle', $seed['profiles']['marketing_kit']['translation_domain']);
+        self::assertSame('form-select', $seed['profiles']['marketing_kit']['field_types']['choice']['attr']['class']);
+    }
+
+    public function testPrependSkipsFormKitKeysAlreadyConfiguredByHost(): void
+    {
+        $container = new ContainerBuilder();
+        $this->registerNamedExtension($container, 'nowo_form_kit');
+        $container->prependExtensionConfig('nowo_form_kit', [
+            'css_framework' => 'tailwind',
+            'profiles'      => [
+                'marketing_kit' => [
+                    'alias' => 'custom_mk',
+                ],
+            ],
+        ]);
+
+        $before = $container->getExtensionConfig('nowo_form_kit');
+        (new NowoMarketingKitExtension())->prepend($container);
+        $after = $container->getExtensionConfig('nowo_form_kit');
+
+        self::assertSame($before, $after);
+    }
+
+    public function testPrependSeedsOnlyMissingFormKitProfileWhenCssFrameworkExists(): void
+    {
+        $container = new ContainerBuilder();
+        $this->registerNamedExtension($container, 'nowo_form_kit');
+        $container->prependExtensionConfig('nowo_form_kit', [
+            'css_framework' => 'tabler',
+            'profiles'      => 'not-an-array',
+        ]);
+
+        (new NowoMarketingKitExtension())->prepend($container);
+
+        $configs = $container->getExtensionConfig('nowo_form_kit');
+        self::assertArrayHasKey('profiles', $configs[0]);
+        self::assertArrayHasKey('marketing_kit', $configs[0]['profiles']);
+        self::assertArrayNotHasKey('css_framework', $configs[0]);
+    }
+
+    public function testPrependSeedsOnlyMissingFormKitCssFrameworkWhenProfileExists(): void
+    {
+        $container = new ContainerBuilder();
+        $this->registerNamedExtension($container, 'nowo_form_kit');
+        $container->prependExtensionConfig('nowo_form_kit', [
+            'profiles' => [
+                'marketing_kit' => ['alias' => 'marketing_kit'],
+            ],
+        ]);
+
+        (new NowoMarketingKitExtension())->prepend($container);
+
+        $configs = $container->getExtensionConfig('nowo_form_kit');
+        self::assertSame(['css_framework' => 'bootstrap'], $configs[0]);
+        self::assertArrayNotHasKey('profiles', $configs[0]);
+    }
+
+    public function testPrependSeedsUiKitFromWebUiDefaults(): void
+    {
+        $container = new ContainerBuilder();
+        $this->registerNamedExtension($container, 'nowo_ui_kit');
+        $container->prependExtensionConfig('nowo_marketing_kit', [
+            'web_ui' => [
+                'css_framework' => 'bootstrap',
+            ],
+        ]);
+
+        (new NowoMarketingKitExtension())->prepend($container);
+
+        $configs = $container->getExtensionConfig('nowo_ui_kit');
+        self::assertSame([
+            'css_framework' => 'bootstrap5',
+            'icon_set'      => 'bootstrap-icons',
+        ], $configs[0]);
+    }
+
+    public function testPrependSkipsUiKitWhenHostAlreadyConfiguredBothKeys(): void
+    {
+        $container = new ContainerBuilder();
+        $this->registerNamedExtension($container, 'nowo_ui_kit');
+        $container->prependExtensionConfig('nowo_ui_kit', [
+            'css_framework' => 'foundation',
+            'icon_set'      => 'bootstrap-icons',
+        ]);
+        // Defensive branch: ignore non-array host config entries.
+        $this->appendRawExtensionConfig($container, 'nowo_ui_kit', 'invalid');
+
+        $before = array_values(array_filter(
+            $container->getExtensionConfig('nowo_ui_kit'),
+            static fn (mixed $cfg): bool => is_array($cfg),
+        ));
+        (new NowoMarketingKitExtension())->prepend($container);
+        $after = array_values(array_filter(
+            $container->getExtensionConfig('nowo_ui_kit'),
+            static fn (mixed $cfg): bool => is_array($cfg),
+        ));
+
+        self::assertSame($before, $after);
+    }
+
+    public function testPrependSeedsOnlyMissingUiKitIconSet(): void
+    {
+        $container = new ContainerBuilder();
+        $this->registerNamedExtension($container, 'nowo_ui_kit');
+        $container->prependExtensionConfig('nowo_ui_kit', [
+            'css_framework' => 'tailwind',
+        ]);
+
+        (new NowoMarketingKitExtension())->prepend($container);
+
+        $configs = $container->getExtensionConfig('nowo_ui_kit');
+        self::assertSame(['icon_set' => 'bootstrap-icons'], $configs[0]);
+        self::assertArrayNotHasKey('css_framework', $configs[0]);
+    }
+
+    public function testPrependSeedsOnlyMissingUiKitCssFramework(): void
+    {
+        $container = new ContainerBuilder();
+        $this->registerNamedExtension($container, 'nowo_ui_kit');
+        $container->prependExtensionConfig('nowo_ui_kit', [
+            'icon_set' => 'fontawesome',
+        ]);
+
+        (new NowoMarketingKitExtension())->prepend($container);
+
+        $configs = $container->getExtensionConfig('nowo_ui_kit');
+        self::assertSame(['css_framework' => 'none'], $configs[0]);
+        self::assertArrayNotHasKey('icon_set', $configs[0]);
+    }
+
+    private function registerNamedExtension(ContainerBuilder $container, string $alias): void
+    {
+        $named = $this->createMock(ExtensionInterface::class);
+        $named->method('getAlias')->willReturn($alias);
+        $container->registerExtension($named);
+    }
+
+    private function appendRawExtensionConfig(ContainerBuilder $container, string $alias, mixed $config): void
+    {
+        $property = new ReflectionProperty(ContainerBuilder::class, 'extensionConfigs');
+        /** @var array<string, list<mixed>> $configs */
+        $configs           = $property->getValue($container);
+        $configs[$alias][] = $config;
+        $property->setValue($container, $configs);
     }
 }
