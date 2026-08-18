@@ -1,5 +1,14 @@
 # Upgrading
 
+## To 1.3.2
+
+No application upgrade steps. **Demos only:** Hot Reload Bundle `^1.4` (FrankenPHP Mercure/`hot_reload`, `dev`/`test`).
+
+```bash
+composer update nowo-tech/marketing-kit-bundle
+php bin/console cache:clear
+```
+
 ## To 1.3.1
 
 Patch release from **1.3.0**. No configuration changes required for host apps.
