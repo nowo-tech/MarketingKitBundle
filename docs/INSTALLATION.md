@@ -6,6 +6,8 @@
 composer require nowo-tech/marketing-kit-bundle
 ```
 
+The Flex recipe lives under `.symfony/recipe/` (copy those files if Flex does not apply them).
+
 Flex registers the bundle, copies `config/packages/nowo_marketing_kit.yaml` and `config/routes/nowo_marketing_kit.yaml`, and adds env placeholders for provider IDs.
 
 Without Flex:

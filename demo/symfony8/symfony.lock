@@ -31,6 +31,9 @@
     "nowo-tech/marketing-kit-bundle": {
         "version": "dev-main"
     },
+    "nowo-tech/hot-reload-bundle": {
+        "version": "v1.3.2"
+    },
     "nowo-tech/twig-inspector-bundle": {
         "version": "dev-main"
     },
