@@ -111,7 +111,7 @@ final class MarketingConfigResolverTest extends TestCase
             ],
         ], 'default', false);
 
-        $first = $resolver->resolve();
+        $first  = $resolver->resolve();
         $second = $resolver->resolve();
 
         self::assertSame($first, $second);
