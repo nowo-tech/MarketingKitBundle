@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.3] - 2026-08-19
+
+### Fixed
+
+- **`MarketingConfigResolver`:** memoize resolved profiles per request and implement `ResetInterface` so FrankenPHP worker mode does not reuse stale marketing config across HTTP requests.
+
+### Changed
+
+- **CI:** run `composer audit --locked` after dependency install.
+
+[1.3.3]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.3.3
+
 ## [1.3.2] - 2026-08-18
 
 ### Changed

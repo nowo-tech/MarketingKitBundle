@@ -6,6 +6,7 @@ namespace Nowo\MarketingKitBundle\Config;
 
 use Nowo\MarketingKitBundle\Entity\MarketingTool;
 use Nowo\MarketingKitBundle\Repository\MarketingToolRepository;
+use Symfony\Contracts\Service\ResetInterface;
 
 use function is_array;
 
@@ -16,9 +17,14 @@ use function is_array;
  * - YAML is the baseline for profile enabled flag and tools.
  * - When use_database_config is true and the profile has DB rows, tools are a full replace from DB.
  * - When DB has no rows for the profile, YAML tools are used.
+ *
+ * Resolved profiles are memoized for the service lifetime (typically one request).
  */
-final readonly class MarketingConfigResolver
+final class MarketingConfigResolver implements ResetInterface
 {
+    /** @var array<string, ResolvedMarketingConfig> */
+    private array $resolvedByProfile = [];
+
     /**
      * @param array<string, array{enabled?: bool, tools?: array<string, array<string, mixed>>}> $profiles
      */
@@ -30,23 +36,33 @@ final readonly class MarketingConfigResolver
     ) {
     }
 
+    public function reset(): void
+    {
+        $this->resolvedByProfile = [];
+    }
+
     public function resolve(?string $profile = null): ResolvedMarketingConfig
     {
-        $name        = $profile ?? $this->defaultProfile;
+        $name = $profile ?? $this->defaultProfile;
+
+        if (isset($this->resolvedByProfile[$name])) {
+            return $this->resolvedByProfile[$name];
+        }
+
         $yamlProfile = $this->profiles[$name] ?? null;
         if ($yamlProfile === null) {
-            return new ResolvedMarketingConfig($name, false, [], false);
+            return $this->resolvedByProfile[$name] = new ResolvedMarketingConfig($name, false, [], false);
         }
 
         $enabled = (bool) ($yamlProfile['enabled'] ?? true);
         if (!$enabled) {
-            return new ResolvedMarketingConfig($name, false, [], false);
+            return $this->resolvedByProfile[$name] = new ResolvedMarketingConfig($name, false, [], false);
         }
 
         if ($this->useDatabaseConfig && $this->toolRepository instanceof MarketingToolRepository) {
             $dbTools = $this->toolRepository->findByProfileOrdered($name);
             if ($dbTools !== []) {
-                return new ResolvedMarketingConfig(
+                return $this->resolvedByProfile[$name] = new ResolvedMarketingConfig(
                     $name,
                     true,
                     array_map($this->fromEntity(...), $dbTools),
@@ -58,7 +74,12 @@ final readonly class MarketingConfigResolver
         /** @var array<string, array<string, mixed>> $yamlTools */
         $yamlTools = $yamlProfile['tools'] ?? [];
 
-        return new ResolvedMarketingConfig($name, true, $this->fromYamlMap($yamlTools), false);
+        return $this->resolvedByProfile[$name] = new ResolvedMarketingConfig(
+            $name,
+            true,
+            $this->fromYamlMap($yamlTools),
+            false,
+        );
     }
 
     /**
