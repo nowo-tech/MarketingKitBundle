@@ -99,4 +99,28 @@ final class MarketingConfigResolverTest extends TestCase
         self::assertFalse($resolved->enabled);
         self::assertSame([], $resolved->tools);
     }
+
+    public function testMemoizesResolvedProfileUntilReset(): void
+    {
+        $resolver = new MarketingConfigResolver([
+            'default' => [
+                'enabled' => true,
+                'tools'   => [
+                    'gtm' => ['type' => 'gtm', 'options' => ['container_id' => 'GTM-1']],
+                ],
+            ],
+        ], 'default', false);
+
+        $first = $resolver->resolve();
+        $second = $resolver->resolve();
+
+        self::assertSame($first, $second);
+
+        $resolver->reset();
+
+        $third = $resolver->resolve();
+
+        self::assertNotSame($first, $third);
+        self::assertSame('gtm', $third->tools[0]->code);
+    }
 }
