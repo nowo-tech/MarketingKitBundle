@@ -76,3 +76,10 @@ nowo_marketing_kit:
                     position: head
                     options:
                         project_id: '%env(default::CLARITY_PROJECT_ID)%'
+
+when@prod:
+    nowo_marketing_kit:
+        respect_cookie_consent: true
+        security:
+            access_roles: [ROLE_ADMIN]
+            allow_unauthenticated: false
