@@ -1,5 +1,14 @@
 # Upgrading
 
+## To 1.3.4
+
+Review Flex `when@prod` (`respect_cookie_consent`, `ROLE_ADMIN`) and `security_nowo_marketing_kit.yaml`. Prefer **`^1.3.4`**.
+
+```bash
+composer update nowo-tech/marketing-kit-bundle
+php bin/console cache:clear
+```
+
 ## To 1.3.2
 
 No application upgrade steps. **Demos only:** Hot Reload Bundle `^1.4` (FrankenPHP Mercure/`hot_reload`, `dev`/`test`).

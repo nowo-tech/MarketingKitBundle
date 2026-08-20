@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.4] - 2026-08-20
+
+### Security
+
+- **Flex recipe:** `when@prod` keeps cookie-consent respect and `ROLE_ADMIN`; ship `security_nowo_marketing_kit.yaml` (`access_control` for `/admin/marketing`). Prefer **`^1.3.4`**.
+
+[1.3.4]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.3.4
+
 ## [1.3.3] - 2026-08-19
 
 ### Fixed
