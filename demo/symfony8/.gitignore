@@ -29,3 +29,8 @@ node_modules/
 /config/secrets/prod/prod.decrypt.private.php
 /public/bundles/
 ###< symfony/framework-bundle ###
+
+# SQLite artifacts (REQ-DEMO-011 — demos use MySQL)
+*.db
+*.sqlite
+*.sqlite3
