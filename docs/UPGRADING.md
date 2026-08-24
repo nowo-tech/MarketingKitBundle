@@ -1,5 +1,27 @@
 # Upgrading
 
+## Table of contents
+
+- [From 1.3.4 to 1.3.5](#from-134-to-135)
+
+## From 1.3.4 to 1.3.5
+
+No breaking changes. **No application upgrade steps.**
+
+```bash
+composer update nowo-tech/marketing-kit-bundle
+```
+
+## From 1.3.4 to 1.3.5
+
+No breaking changes. **No application upgrade steps.**
+
+```bash
+composer update nowo-tech/marketing-kit-bundle
+```
+
+# Upgrading
+
 ## To 1.3.4
 
 Review Flex `when@prod` (`respect_cookie_consent`, `ROLE_ADMIN`) and `security_nowo_marketing_kit.yaml`. Prefer **`^1.3.4`**.
