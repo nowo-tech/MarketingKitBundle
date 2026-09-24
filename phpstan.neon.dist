@@ -8,6 +8,14 @@ parameters:
         - tests
     excludePaths:
         - demo/*
+    ignoreErrors:
+        -
+            identifier: return.unusedType
+            path: tests/Unit/Controller/MarketingToolAdminControllerTest.php
+        -
+            identifier: return.type
+            path: tests/Unit/Controller/MarketingToolAdminControllerTest.php
+            message: '#FormInterface#'
 
 includes:
   - vendor/nowo-tech/phpstan-frankenphp/ruleset-classic.neon

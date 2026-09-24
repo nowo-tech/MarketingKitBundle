@@ -34,4 +34,27 @@ class MarketingToolRepository extends ServiceEntityRepository
 
         return $tools;
     }
+
+    /**
+     * Scalar rows for a profile, ordered like {@see findByProfileOrdered()}.
+     *
+     * Array hydration bypasses the identity map, so rows reflect the database even when a long-running
+     * worker still holds managed `MarketingTool` instances loaded in an earlier request.
+     *
+     * @return list<array{code: string, type: string, enabled: bool, category: string, position: string, sortOrder: int, options: array<string, mixed>}>
+     */
+    public function findToolRowsByProfile(string $profile): array
+    {
+        /** @var list<array{code: string, type: string, enabled: bool, category: string, position: string, sortOrder: int, options: array<string, mixed>}> $rows */
+        $rows = $this->createQueryBuilder('t')
+            ->select('t.code', 't.type', 't.enabled', 't.category', 't.position', 't.sortOrder', 't.options')
+            ->andWhere('t.profile = :profile')
+            ->setParameter('profile', $profile)
+            ->orderBy('t.sortOrder', 'ASC')
+            ->addOrderBy('t.code', 'ASC')
+            ->getQuery()
+            ->getArrayResult();
+
+        return $rows;
+    }
 }

@@ -1,15 +1,10 @@
 # Code inventory — MarketingKitBundle baseline
 
-**Last audited**: 2026-08-03
+**Last audited**: 2026-09-24
 
-**Total production sources under `src/`:** **47 / 47**
+**Total production sources under `src/`:** count with `find src -type f ! -path '*/assets/dist/*' ! -name '*.test.ts' | wc -l`
 
-```bash
-find src -type f ! -path '*/assets/dist/*' ! -name '*.test.ts' | wc -l
-# → 47
-```
-
-## PHP (34)
+## PHP
 
 | Path | FR / notes |
 |------|------------|
@@ -18,16 +13,17 @@ find src -type f ! -path '*/assets/dist/*' ! -name '*.test.ts' | wc -l
 | `src/DependencyInjection/NowoMarketingKitExtension.php` | FR-MK-001, FR-MK-009 |
 | `src/DependencyInjection/TablePrefixListener.php` | FR-MK-004 |
 | `src/DependencyInjection/Compiler/TwigPathsPass.php` | FR-MK-008 |
-| `src/Config/MarketingConfigResolver.php` | FR-MK-001, FR-MK-004 |
+| `src/Config/MarketingConfigResolver.php` | FR-MK-001, FR-MK-004, FR-MK-010 |
 | `src/Config/ResolvedMarketingConfig.php` | FR-MK-001 |
 | `src/Config/ResolvedTool.php` | FR-MK-001 |
 | `src/Consent/ConsentGateInterface.php` | FR-MK-005 |
-| `src/Consent/CookieConsentGate.php` | FR-MK-005 |
+| `src/Consent/CookieConsentGate.php` | FR-MK-005, FR-MK-010 |
 | `src/Enum/ToolType.php` | FR-MK-002 |
 | `src/Enum/ToolPosition.php` | FR-MK-002 |
 | `src/Enum/ConsentCookieNames.php` | FR-MK-005 |
 | `src/Entity/MarketingTool.php` | FR-MK-004, FR-MK-006 |
-| `src/Repository/MarketingToolRepository.php` | FR-MK-004, FR-MK-006 |
+| `src/Repository/MarketingToolRepository.php` | FR-MK-004, FR-MK-006, FR-MK-010 |
+| `src/EventSubscriber/ClosedEntityManagerSubscriber.php` | FR-MK-006, FR-MK-010 |
 | `src/Provider/ToolRendererInterface.php` | FR-MK-002 |
 | `src/Provider/ToolRendererRegistry.php` | FR-MK-002 |
 | `src/Provider/GtmRenderer.php` | FR-MK-002 |

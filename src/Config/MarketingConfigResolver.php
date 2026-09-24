@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Nowo\MarketingKitBundle\Config;
 
-use Nowo\MarketingKitBundle\Entity\MarketingTool;
 use Nowo\MarketingKitBundle\Repository\MarketingToolRepository;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Contracts\Service\ResetInterface;
+use WeakMap;
 
 use function is_array;
 
@@ -18,54 +20,69 @@ use function is_array;
  * - When use_database_config is true and the profile has DB rows, tools are a full replace from DB.
  * - When DB has no rows for the profile, YAML tools are used.
  *
- * Resolved profiles are memoized for the service lifetime (typically one request).
+ * Resolved profiles are memoized per main request only: the service may live for many requests
+ * (long-running workers without `kernel.reset`), and database edits made by any worker must be
+ * visible on the next request. Without a main request (CLI, no RequestStack) nothing is memoized.
  */
 final class MarketingConfigResolver implements ResetInterface
 {
-    /** @var array<string, ResolvedMarketingConfig> */
-    private array $resolvedByProfile = [];
+    /** @var WeakMap<Request, array<string, ResolvedMarketingConfig>> */
+    private WeakMap $resolvedByRequest;
 
     /**
      * @param array<string, array{enabled?: bool, tools?: array<string, array<string, mixed>>}> $profiles
      */
     public function __construct(
         private array $profiles,
-        private string $defaultProfile,
-        private bool $useDatabaseConfig,
-        private ?MarketingToolRepository $toolRepository = null,
+        private readonly string $defaultProfile,
+        private readonly bool $useDatabaseConfig,
+        private readonly ?MarketingToolRepository $toolRepository = null,
+        private readonly ?RequestStack $requestStack = null,
     ) {
+        $this->resolvedByRequest = new WeakMap();
     }
 
     public function reset(): void
     {
-        $this->resolvedByProfile = [];
+        $this->resolvedByRequest = new WeakMap();
     }
 
     public function resolve(?string $profile = null): ResolvedMarketingConfig
     {
-        $name = $profile ?? $this->defaultProfile;
-
-        if (isset($this->resolvedByProfile[$name])) {
-            return $this->resolvedByProfile[$name];
+        $name    = $profile ?? $this->defaultProfile;
+        $request = $this->requestStack?->getMainRequest();
+        if (!$request instanceof Request) {
+            return $this->doResolve($name);
         }
 
+        $memo = $this->resolvedByRequest[$request] ?? [];
+        if (!isset($memo[$name])) {
+            $memo[$name]                       = $this->doResolve($name);
+            $this->resolvedByRequest[$request] = $memo;
+        }
+
+        return $memo[$name];
+    }
+
+    private function doResolve(string $name): ResolvedMarketingConfig
+    {
         $yamlProfile = $this->profiles[$name] ?? null;
         if ($yamlProfile === null) {
-            return $this->resolvedByProfile[$name] = new ResolvedMarketingConfig($name, false, [], false);
+            return new ResolvedMarketingConfig($name, false, [], false);
         }
 
         $enabled = (bool) ($yamlProfile['enabled'] ?? true);
         if (!$enabled) {
-            return $this->resolvedByProfile[$name] = new ResolvedMarketingConfig($name, false, [], false);
+            return new ResolvedMarketingConfig($name, false, [], false);
         }
 
         if ($this->useDatabaseConfig && $this->toolRepository instanceof MarketingToolRepository) {
-            $dbTools = $this->toolRepository->findByProfileOrdered($name);
-            if ($dbTools !== []) {
-                return $this->resolvedByProfile[$name] = new ResolvedMarketingConfig(
+            $dbRows = $this->toolRepository->findToolRowsByProfile($name);
+            if ($dbRows !== []) {
+                return new ResolvedMarketingConfig(
                     $name,
                     true,
-                    array_map($this->fromEntity(...), $dbTools),
+                    array_map($this->fromRow(...), $dbRows),
                     true,
                 );
             }
@@ -74,7 +91,7 @@ final class MarketingConfigResolver implements ResetInterface
         /** @var array<string, array<string, mixed>> $yamlTools */
         $yamlTools = $yamlProfile['tools'] ?? [];
 
-        return $this->resolvedByProfile[$name] = new ResolvedMarketingConfig(
+        return new ResolvedMarketingConfig(
             $name,
             true,
             $this->fromYamlMap($yamlTools),
@@ -111,16 +128,19 @@ final class MarketingConfigResolver implements ResetInterface
         return $resolved;
     }
 
-    private function fromEntity(MarketingTool $tool): ResolvedTool
+    /**
+     * @param array{code: string, type: string, enabled: bool, category: string, position: string, sortOrder: int, options: array<string, mixed>} $row
+     */
+    private function fromRow(array $row): ResolvedTool
     {
         return new ResolvedTool(
-            code: $tool->getCode(),
-            type: $tool->getType(),
-            enabled: $tool->isEnabled(),
-            category: $tool->getCategory(),
-            position: $tool->getPosition(),
-            sortOrder: $tool->getSortOrder(),
-            options: $tool->getOptions(),
+            code: $row['code'],
+            type: $row['type'],
+            enabled: $row['enabled'],
+            category: $row['category'],
+            position: $row['position'],
+            sortOrder: $row['sortOrder'],
+            options: $row['options'],
             source: 'database',
         );
     }

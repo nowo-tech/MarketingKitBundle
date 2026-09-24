@@ -52,14 +52,16 @@ Install and configure marketing tools (GTM, GA4, Meta Pixel, LinkedIn, TikTok, H
 | FR-MK-007 | Flex recipe + FrankenPHP demo |
 | FR-MK-008 | Twig namespace `NowoMarketingKitBundle` with app override precedence |
 | FR-MK-009 | Admin access control: `security.access_roles`, custom `access_checker`, demo-only `allow_unauthenticated` (REQ-UI-002) |
+| FR-MK-010 | FrankenPHP worker safe with kernel **not** reset between requests: per-main-request config memo, DB array hydration for public tools, closed-EM recovery + detach of stale `MarketingTool` on admin routes (see `docs/FRANKENPHP-WORKER-AUDIT.md`) |
 
 ---
 
 ## Success Criteria
 
-- **SC-001**: **47/47** production files under `src/` mapped in [`code-inventory.md`](code-inventory.md).
-- **SC-002**: PHPUnit covers config merge, consent gate, renderers, admin services, and DI extension.
+- **SC-001**: Production files under `src/` mapped in [`code-inventory.md`](code-inventory.md) (includes `EventSubscriber/ClosedEntityManagerSubscriber`).
+- **SC-002**: PHPUnit covers config merge, consent gate, renderers, admin services, DI extension, and FrankenPHP worker hygiene (resolver memo + closed EM).
 - **SC-003**: Config keys match [`docs/CONFIGURATION.md`](../../docs/CONFIGURATION.md).
+- **SC-004**: Bundle is viable under FrankenPHP worker with kernel not reset ([`docs/FRANKENPHP-WORKER-AUDIT.md`](../../docs/FRANKENPHP-WORKER-AUDIT.md)).
 
 ---
 

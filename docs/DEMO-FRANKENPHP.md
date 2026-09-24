@@ -35,6 +35,7 @@ Recreate containers after changing mode: `docker compose up -d`.
 2. Twig Inspector: panel `twig_inspector` in the profiler; overlay via the `</>` toolbar icon (cookie).
 3. Admin: seed catalog → enable tools → set provider IDs → view page source.
 4. `use_database_config: true` — DB tools replace YAML when the profile has rows.
+5. Worker / no kernel reset: admin edits appear on the next public request without restarting workers (see [FRANKENPHP-WORKER-AUDIT.md](FRANKENPHP-WORKER-AUDIT.md)).
 
 ## Troubleshooting
 
@@ -43,4 +44,5 @@ Recreate containers after changing mode: `docker compose up -d`.
 - **No toolbar / profiler**: ensure `config/packages/web_profiler.yaml` enables the toolbar in `dev`, and `framework.profiler.enabled: true`. After config changes in `FRANKENPHP_MODE=worker`, restart the PHP container so workers reload.
 - **Empty admin**: use **Seed catalog** or **Import from YAML**.
 - **No tags in HTML**: enable tools; with `respect_cookie_consent: true` set `Cookie_Category_*` cookies.
+- **Stale tags after admin edit (worker)**: should not happen since 1.3.6; if it does, confirm you are on `^1.3.6` and see the worker audit.
 - **Healthcheck**: `make -C demo release-check` expects HTTP 200, “Marketing Kit Demo”, and `/admin/marketing`.

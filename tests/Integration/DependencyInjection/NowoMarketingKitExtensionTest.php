@@ -12,13 +12,10 @@ use Nowo\MarketingKitBundle\Security\MarketingKitAccessCheckerInterface;
 use Nowo\MarketingKitBundle\Service\MarketingScriptRenderer;
 use Nowo\MarketingKitBundle\Twig\MarketingKitExtension;
 use PHPUnit\Framework\TestCase;
-use ReflectionProperty;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Extension\ExtensionInterface;
 use Symfony\Component\DependencyInjection\Reference;
-
-use function is_array;
 
 final class NowoMarketingKitExtensionTest extends TestCase
 {
@@ -269,20 +266,11 @@ final class NowoMarketingKitExtensionTest extends TestCase
             'css_framework' => 'foundation',
             'icon_set'      => 'bootstrap-icons',
         ]);
-        // Defensive branch: ignore non-array host config entries.
-        $this->appendRawExtensionConfig($container, 'nowo_ui_kit', 'invalid');
 
-        $before = array_values(array_filter(
-            $container->getExtensionConfig('nowo_ui_kit'),
-            static fn (mixed $cfg): bool => is_array($cfg),
-        ));
+        $before = $container->getExtensionConfig('nowo_ui_kit');
         (new NowoMarketingKitExtension())->prepend($container);
-        $after = array_values(array_filter(
-            $container->getExtensionConfig('nowo_ui_kit'),
-            static fn (mixed $cfg): bool => is_array($cfg),
-        ));
 
-        self::assertSame($before, $after);
+        self::assertSame($before, $container->getExtensionConfig('nowo_ui_kit'));
     }
 
     public function testPrependSeedsOnlyMissingUiKitIconSet(): void
@@ -320,14 +308,5 @@ final class NowoMarketingKitExtensionTest extends TestCase
         $named = $this->createMock(ExtensionInterface::class);
         $named->method('getAlias')->willReturn($alias);
         $container->registerExtension($named);
-    }
-
-    private function appendRawExtensionConfig(ContainerBuilder $container, string $alias, mixed $config): void
-    {
-        $property = new ReflectionProperty(ContainerBuilder::class, 'extensionConfigs');
-        /** @var array<string, list<mixed>> $configs */
-        $configs           = $property->getValue($container);
-        $configs[$alias][] = $config;
-        $property->setValue($container, $configs);
     }
 }

@@ -8,7 +8,7 @@ Symfony marketing kit: install and configure GTM, GA4, Meta Pixel, LinkedIn Insi
 
 ![FrankenPHP Friendly Worker Mode](docs/images/frankenphp-friendly.png)
 
-This bundle is **FrankenPHP worker mode friendly**.
+This bundle is **FrankenPHP worker mode friendly**, including **kernel not reset** between requests (see [FrankenPHP worker audit](docs/FRANKENPHP-WORKER-AUDIT.md)).
 
 ## Features
 
@@ -138,6 +138,7 @@ make -C demo up-symfony8
 
 - [GitHub Actions CI requirements](docs/GITHUB_CI.md)
 - [Demo with FrankenPHP](docs/DEMO-FRANKENPHP.md) (includes worker mode)
+- [FrankenPHP worker audit](docs/FRANKENPHP-WORKER-AUDIT.md) (kernel not reset / scenario B)
 - [Server cookbook (Nginx, php-fpm, FrankenPHP)](docs/SERVERS.md)
 
 ## Tests and coverage

@@ -114,9 +114,6 @@ final class NowoMarketingKitExtension extends Extension implements PrependExtens
         $hostHasCssFramework = false;
         $hostHasIconSet      = false;
         foreach ($container->getExtensionConfig('nowo_ui_kit') as $cfg) {
-            if (!is_array($cfg)) {
-                continue;
-            }
             if (array_key_exists('css_framework', $cfg)) {
                 $hostHasCssFramework = true;
             }
@@ -141,9 +138,7 @@ final class NowoMarketingKitExtension extends Extension implements PrependExtens
             $defaults['icon_set'] = (string) ($webUi['icon_set'] ?? 'bootstrap-icons');
         }
 
-        if ($defaults !== []) {
-            $container->prependExtensionConfig('nowo_ui_kit', $defaults);
-        }
+        $container->prependExtensionConfig('nowo_ui_kit', $defaults);
     }
 
     public function load(array $configs, ContainerBuilder $container): void

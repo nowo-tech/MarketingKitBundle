@@ -52,4 +52,45 @@ final class MarketingToolRepositoryTest extends TestCase
 
         self::assertSame([$tool], $repo->findByProfileOrdered('default'));
     }
+
+    public function testFindToolRowsByProfileUsesArrayHydration(): void
+    {
+        $rows = [['code' => 'gtm', 'type' => 'gtm', 'enabled' => true, 'category' => 'analytics', 'position' => 'head', 'sortOrder' => 0, 'options' => []]];
+
+        $query = $this->getMockBuilder(Query::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['getArrayResult'])
+            ->getMock();
+        $query->method('getArrayResult')->willReturn($rows);
+
+        $qb = $this->createMock(QueryBuilder::class);
+        $qb->expects(self::once())->method('select')
+            ->with('t.code', 't.type', 't.enabled', 't.category', 't.position', 't.sortOrder', 't.options')
+            ->willReturnSelf();
+        $qb->method('andWhere')->with('t.profile = :profile')->willReturnSelf();
+        $qb->method('setParameter')->with('profile', 'default')->willReturnSelf();
+        $qb->method('orderBy')->with('t.sortOrder', 'ASC')->willReturnSelf();
+        $qb->method('addOrderBy')->with('t.code', 'ASC')->willReturnSelf();
+        $qb->method('getQuery')->willReturn($query);
+
+        $em = $this->createMock(EntityManagerInterface::class);
+        $em->method('getClassMetadata')->willReturn(new ClassMetadata(MarketingTool::class));
+
+        $registry = $this->createMock(ManagerRegistry::class);
+        $registry->method('getManagerForClass')->willReturn($em);
+
+        $repo = new class($registry, $qb) extends MarketingToolRepository {
+            public function __construct(ManagerRegistry $registry, private readonly QueryBuilder $qb)
+            {
+                parent::__construct($registry);
+            }
+
+            public function createQueryBuilder(string $alias, ?string $indexBy = null): QueryBuilder
+            {
+                return $this->qb;
+            }
+        };
+
+        self::assertSame($rows, $repo->findToolRowsByProfile('default'));
+    }
 }

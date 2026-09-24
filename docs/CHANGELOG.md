@@ -5,8 +5,19 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.3.6] - 2026-09-24
 
+### Fixed
+
+- **FrankenPHP worker mode (no kernel reset):** `MarketingConfigResolver` memoizes resolved profiles per main request only (`WeakMap` keyed by the main `Request`, optional `RequestStack`); still implements `ResetInterface`. Database tools use array hydration (`MarketingToolRepository::findToolRowsByProfile()`), so admin edits from any worker are visible on the next request.
+- **FrankenPHP worker mode:** `ClosedEntityManagerSubscriber` resets a closed Doctrine manager before admin routes (`nowo_marketing_kit_*`) and detaches stale `MarketingTool` instances from open managers so admin CRUD stays correct without `services_resetter`.
+- **Demo:** MySQL stack aligned (pdo_mysql, MySQL 8.4 service, Docker embedded DNS first) so `doctrine:schema:update` works under FrankenPHP worker.
+
+### Added
+
+- Audit document: [`docs/FRANKENPHP-WORKER-AUDIT.md`](FRANKENPHP-WORKER-AUDIT.md) (scenario B verdict: 100% viable).
+
+[1.3.6]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.3.6
 
 ## [1.3.5] - 2026-08-24
 
