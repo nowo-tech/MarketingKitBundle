@@ -32,6 +32,7 @@ class NowoMarketingKitBundle extends Bundle
     public function getContainerExtension(): ?ExtensionInterface
     {
         if (!$this->extension instanceof ExtensionInterface) {
+            // @igor-ignore - Symfony bundle extension lazy-init at boot; not request state
             $this->extension = new NowoMarketingKitExtension();
         }
 

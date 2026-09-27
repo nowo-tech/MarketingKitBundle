@@ -59,6 +59,7 @@ class MarketingTool
 
     public function setProfile(string $profile): self
     {
+        // @igor-ignore - Doctrine entity instance state; not a FrankenPHP shared service
         $this->profile = $profile;
 
         return $this;
@@ -71,6 +72,7 @@ class MarketingTool
 
     public function setCode(string $code): self
     {
+        // @igor-ignore - Doctrine entity instance state; not a FrankenPHP shared service
         $this->code = $code;
 
         return $this;
@@ -83,6 +85,7 @@ class MarketingTool
 
     public function setType(string $type): self
     {
+        // @igor-ignore - Doctrine entity instance state; not a FrankenPHP shared service
         $this->type = $type;
 
         return $this;
@@ -95,6 +98,7 @@ class MarketingTool
 
     public function setEnabled(bool $enabled): self
     {
+        // @igor-ignore - Doctrine entity instance state; not a FrankenPHP shared service
         $this->enabled = $enabled;
 
         return $this;
@@ -107,6 +111,7 @@ class MarketingTool
 
     public function setCategory(string $category): self
     {
+        // @igor-ignore - Doctrine entity instance state; not a FrankenPHP shared service
         $this->category = $category;
 
         return $this;
@@ -119,6 +124,7 @@ class MarketingTool
 
     public function setPosition(string $position): self
     {
+        // @igor-ignore - Doctrine entity instance state; not a FrankenPHP shared service
         $this->position = $position;
 
         return $this;
@@ -131,6 +137,7 @@ class MarketingTool
 
     public function setSortOrder(int $sortOrder): self
     {
+        // @igor-ignore - Doctrine entity instance state; not a FrankenPHP shared service
         $this->sortOrder = $sortOrder;
 
         return $this;
@@ -149,6 +156,7 @@ class MarketingTool
      */
     public function setOptions(array $options): self
     {
+        // @igor-ignore - Doctrine entity instance state; not a FrankenPHP shared service
         $this->options = $options;
 
         return $this;
