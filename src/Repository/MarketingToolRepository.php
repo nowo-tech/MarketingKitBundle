@@ -7,6 +7,7 @@ namespace Nowo\MarketingKitBundle\Repository;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 use Nowo\MarketingKitBundle\Entity\MarketingTool;
+use SortDirection;
 
 /**
  * @extends ServiceEntityRepository<MarketingTool>
@@ -27,8 +28,8 @@ class MarketingToolRepository extends ServiceEntityRepository
         $tools = $this->createQueryBuilder('t')
             ->andWhere('t.profile = :profile')
             ->setParameter('profile', $profile)
-            ->orderBy('t.sortOrder', 'ASC')
-            ->addOrderBy('t.code', 'ASC')
+            ->orderBy('t.sortOrder', SortDirection::Ascending)
+            ->addOrderBy('t.code', SortDirection::Ascending)
             ->getQuery()
             ->getResult();
 
@@ -50,8 +51,8 @@ class MarketingToolRepository extends ServiceEntityRepository
             ->select('t.code', 't.type', 't.enabled', 't.category', 't.position', 't.sortOrder', 't.options')
             ->andWhere('t.profile = :profile')
             ->setParameter('profile', $profile)
-            ->orderBy('t.sortOrder', 'ASC')
-            ->addOrderBy('t.code', 'ASC')
+            ->orderBy('t.sortOrder', SortDirection::Ascending)
+            ->addOrderBy('t.code', SortDirection::Ascending)
             ->getQuery()
             ->getArrayResult();
 
