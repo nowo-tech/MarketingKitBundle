@@ -29,8 +29,8 @@ final class MarketingToolRepositoryTest extends TestCase
         $qb = $this->createMock(QueryBuilder::class);
         $qb->method('andWhere')->with('t.profile = :profile')->willReturnSelf();
         $qb->method('setParameter')->with('profile', 'default')->willReturnSelf();
-        $qb->method('orderBy')->with('t.sortOrder', SortDirection::AscendingASC->willReturnSelf();
-        $qb->method('addOrderBy')->with('t.code', SortDirection::AscendingASC->willReturnSelf();
+        $qb->method('orderBy')->with('t.sortOrder', SortDirection::Ascending)->willReturnSelf();
+        $qb->method('addOrderBy')->with('t.code', SortDirection::Ascending)->willReturnSelf();
         $qb->method('getQuery')->willReturn($query);
 
         $em = $this->createMock(EntityManagerInterface::class);
@@ -70,8 +70,8 @@ final class MarketingToolRepositoryTest extends TestCase
             ->willReturnSelf();
         $qb->method('andWhere')->with('t.profile = :profile')->willReturnSelf();
         $qb->method('setParameter')->with('profile', 'default')->willReturnSelf();
-        $qb->method('orderBy')->with('t.sortOrder', SortDirection::AscendingASC->willReturnSelf();
-        $qb->method('addOrderBy')->with('t.code', SortDirection::AscendingASC->willReturnSelf();
+        $qb->method('orderBy')->with('t.sortOrder', SortDirection::Ascending)->willReturnSelf();
+        $qb->method('addOrderBy')->with('t.code', SortDirection::Ascending)->willReturnSelf();
         $qb->method('getQuery')->willReturn($query);
 
         $em = $this->createMock(EntityManagerInterface::class);
