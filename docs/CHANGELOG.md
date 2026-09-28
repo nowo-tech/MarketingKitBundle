@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-09-28
+
+### Fixed
+
+- CI: cover `CustomScriptRenderer` empty-html branch so PHPUnit line coverage stays at 100%.
+
 ## [1.4.0] - 2026-09-28
 
 ### Security
@@ -27,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Worker safety (Igor):** justified `// @igor-ignore` annotations and/or `ResetInterface` / request-scoped fixes so `make igor` passes on package `src/`.
 
+[1.4.1]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.4.1
 [1.4.0]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.4.0
 [1.3.7]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.3.7
 

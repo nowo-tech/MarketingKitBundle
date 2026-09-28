@@ -3,7 +3,16 @@
 
 ## Unreleased
 
+## To 1.4.1
+
+From **1.4.0** — CI coverage test only. **No application upgrade steps.**
+
+```bash
+composer update nowo-tech/marketing-kit-bundle
+```
+
 ## To 1.4.0
+
 
 From **1.3.7** — `allow_custom_html` default false; Doctrine `SortDirection`.
 
