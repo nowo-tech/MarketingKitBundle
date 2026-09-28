@@ -55,6 +55,12 @@ final class ToolRenderersTest extends TestCase
         self::assertSame('<script>x</script>', (new CustomScriptRenderer(true))->render(
             new ResolvedTool('c', 'custom', true, 'marketing', 'body_end', 0, ['html' => '<script>x</script>'], 'yaml'),
         ));
+        self::assertSame('', (new CustomScriptRenderer(true))->render(
+            new ResolvedTool('c', 'custom', true, 'marketing', 'body_end', 0, ['html' => '  '], 'yaml'),
+        ));
+        self::assertSame('', (new CustomScriptRenderer(true))->render(
+            new ResolvedTool('c', 'custom', true, 'marketing', 'body_end', 0, ['html' => 1], 'yaml'),
+        ));
     }
 
     public function testEmptyOptionsYieldEmptyHtml(): void
