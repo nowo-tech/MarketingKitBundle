@@ -11,7 +11,7 @@
 
 ## Attack surface
 
-- **Custom snippets** (`type: custom`, option `html`) are emitted as trusted HTML. Restrict admin access and treat YAML/DB authors as trusted.
+- **Custom snippets** (`type: custom`, option `html`) are emitted only when `security.allow_custom_html` is **true** (default **false**). When enabled, treat YAML/DB authors as trusted and restrict admin access.
 - **Provider IDs** (GTM, pixel IDs, etc.) are escaped for HTML attribute/JS string context; do not put untrusted user input into options.
 - **Admin CRUD** (`/admin/marketing`) is denied unless the configured MarketingKit access checker allows it, but the host app must still add firewall/login and `access_control` rules for that path prefix.
 - **Consent gate** fails closed when `respect_cookie_consent: true` and the category cookie is missing (no scripts).
@@ -50,4 +50,4 @@ Use `nowo_marketing_kit.security.access_roles` for simple role-based access or `
 | No-secret logs | yes |
 | Admin routes secured | `security.access_roles` default `ROLE_ADMIN`; `allow_unauthenticated` demo-only; host `access_control` for `/admin/marketing` |
 | Limits/DoS | N/A (static snippets) |
-| **REQ-SEC-004 (AI audit)** | Pass (conditional) — Medium residual (third-party tags / custom HTML); admin CRUD gated (remediation 2026-07-29) |
+| **REQ-SEC-004 (AI audit)** | Pass (good) — `allow_custom_html` default false; residual only if host enables custom HTML / third-party tags (re-audit 2026-09-28) |

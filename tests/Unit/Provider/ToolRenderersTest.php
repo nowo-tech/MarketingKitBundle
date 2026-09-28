@@ -49,7 +49,10 @@ final class ToolRenderersTest extends TestCase
         self::assertStringContainsString('abc', (new ClarityRenderer())->render(
             new ResolvedTool('cl', 'clarity', true, 'analytics', 'head', 0, ['project_id' => 'abc'], 'yaml'),
         ));
-        self::assertSame('<script>x</script>', (new CustomScriptRenderer())->render(
+        self::assertSame('', (new CustomScriptRenderer())->render(
+            new ResolvedTool('c', 'custom', true, 'marketing', 'body_end', 0, ['html' => '<script>x</script>'], 'yaml'),
+        ));
+        self::assertSame('<script>x</script>', (new CustomScriptRenderer(true))->render(
             new ResolvedTool('c', 'custom', true, 'marketing', 'body_end', 0, ['html' => '<script>x</script>'], 'yaml'),
         ));
     }

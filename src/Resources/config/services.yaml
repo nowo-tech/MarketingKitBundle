@@ -63,6 +63,8 @@ services:
         tags: ['nowo_marketing_kit.tool_renderer']
 
     Nowo\MarketingKitBundle\Provider\CustomScriptRenderer:
+        arguments:
+            $allowCustomHtml: '%nowo_marketing_kit.security.allow_custom_html%'
         tags: ['nowo_marketing_kit.tool_renderer']
 
     Nowo\MarketingKitBundle\Twig\MarketingKitExtension:
