@@ -73,12 +73,13 @@ jobs:
 
       - name: Prepare release body
         id: body
+        env:
+          TAG_MSG: ${{ steps.tag_message.outputs.MESSAGE }}
+          HAS_CHANGELOG: ${{ steps.changelog.outputs.HAS_CHANGELOG }}
         run: |
           BODY_FILE="release_body.md"
-          TAG_MSG="${{ steps.tag_message.outputs.MESSAGE }}"
-          HAS_CHANGELOG="${{ steps.changelog.outputs.HAS_CHANGELOG }}"
           {
-            echo "$TAG_MSG"
+            printf '%s\n' "$TAG_MSG"
             if [ "$HAS_CHANGELOG" = "true" ] && [ -f changelog_entry.md ]; then
               echo ""
               echo "## Changelog"
