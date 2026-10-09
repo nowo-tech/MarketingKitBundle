@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.2] - 2026-10-09
+
+### Fixed
+
+- CI release workflow passes the tag message and changelog flag through `env:` so backticks in release notes are no longer expanded by bash.
+
+### Dependencies
+
+- Bundle lockfile: `doctrine/orm` 3.7.4, `doctrine/dbal` 4.5.0, `nowo-tech/form-kit-bundle` 2.6.0, `nowo-tech/ui-kit-bundle` 1.9.1, Symfony 8.1.8, `twig/twig` 3.30.0; dev `phpstan/phpstan` 2.3.1, `nowo-tech/phpstan-frankenphp` 1.2.3, `rector/rector` 2.7.0.
+- Demo (`demo/symfony8`): Symfony 8.1.8, `doctrine/orm` 3.7.4; regenerated `config/reference.php`.
+
 ## [1.4.1] - 2026-09-28
 
 ### Fixed
@@ -33,6 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Worker safety (Igor):** justified `// @igor-ignore` annotations and/or `ResetInterface` / request-scoped fixes so `make igor` passes on package `src/`.
 
+[1.4.2]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.4.2
 [1.4.1]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.4.1
 [1.4.0]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.4.0
 [1.3.7]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.3.7

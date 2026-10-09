@@ -3,6 +3,14 @@
 
 ## Unreleased
 
+## To 1.4.2
+
+From **1.4.1** — dependency updates and CI release-notes fix. **No application upgrade steps.**
+
+```bash
+composer update nowo-tech/marketing-kit-bundle
+```
+
 ## To 1.4.1
 
 From **1.4.0** — CI coverage test only. **No application upgrade steps.**
@@ -37,6 +45,7 @@ php bin/console cache:clear
 
 ## Table of contents
 
+- [To 1.4.2](#to-142)
 - [From 1.3.5 to 1.3.6](#from-135-to-136)
 - [From 1.3.4 to 1.3.5](#from-134-to-135)
 - [To 1.3.4](#to-134)
