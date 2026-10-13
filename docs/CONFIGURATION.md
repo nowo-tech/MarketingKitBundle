@@ -30,7 +30,6 @@ nowo_marketing_kit:
         icon_set: bootstrap-icons
     doctrine:
         table_prefix: ''
-        connection: default
     default_profile: default
     profiles:
         default:
@@ -49,6 +48,7 @@ nowo_marketing_kit:
 | `web_ui.css_framework` | enum | `none` | Host CSS stack (REQ-UI-001): `bootstrap` (→`bootstrap5`), `bootstrap4`, `bootstrap5`, `tabler`, `tailwind`, `foundation`, `custom`, `none`. Twig global `nowo_marketing_kit_css_framework` |
 | `web_ui.icon_set` | string | `bootstrap-icons` | Seeded into `nowo_ui_kit.icon_set` when UiKit is installed and the host has not set it |
 | `doctrine.table_prefix` | string | `''` | Prefixed onto `marketing_tool` |
+| `doctrine.connection` | string | `default` | **Deprecated since 1.6, no effect.** The bundle always reads and writes `MarketingTool` through the default Doctrine entity manager and its connection; the `marketing_tool` table must live there. Setting the key triggers a deprecation; remove it. |
 | `default_profile` | string | `default` | Must exist under `profiles` |
 | `profiles` | map | `{default: …}` | Named profiles (REQ-CFG-001) |
 

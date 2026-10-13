@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\MarketingKitBundle\Tests\Unit\DependencyInjection;
 
 use Nowo\MarketingKitBundle\DependencyInjection\Configuration;
+use PHPUnit\Framework\Attributes\IgnoreDeprecations;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\Config\Definition\Processor;
@@ -25,6 +26,25 @@ final class ConfigurationTest extends TestCase
         self::assertSame('bootstrap-icons', $config['web_ui']['icon_set']);
         self::assertSame('default', $config['default_profile']);
         self::assertArrayHasKey('default', $config['profiles']);
+    }
+
+    #[IgnoreDeprecations]
+    public function testDoctrineConnectionIsDeprecated(): void
+    {
+        $this->expectUserDeprecationMessageMatches('/"connection" option at "nowo_marketing_kit\\.doctrine" is deprecated/');
+
+        $config = (new Processor())->processConfiguration(new Configuration(), [[
+            'doctrine' => ['connection' => 'other'],
+        ]]);
+
+        self::assertSame('other', $config['doctrine']['connection']);
+    }
+
+    public function testDoctrineConnectionDefaultDoesNotTriggerDeprecation(): void
+    {
+        $config = (new Processor())->processConfiguration(new Configuration(), [[]]);
+
+        self::assertSame('default', $config['doctrine']['connection']);
     }
 
     public function testInvalidDefaultProfileFails(): void

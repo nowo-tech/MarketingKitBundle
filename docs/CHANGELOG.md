@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Deprecated
+
+- `nowo_marketing_kit.doctrine.connection` was documented but never used. It is now deprecated (setting it triggers a deprecation) and has no effect: the default Doctrine entity manager and its connection are always used. Removal planned for 2.0.
+
 ## [1.5.0] - 2026-10-13
 
 ### Security

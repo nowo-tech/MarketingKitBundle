@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- `nowo_marketing_kit.doctrine.connection` is deprecated and never had any effect. Remove it from `config/packages/nowo_marketing_kit.yaml`. The bundle keeps using the default Doctrine entity manager and its connection, so no data moves.
+
 ## To 1.5.0
 
 From **1.4.3** — security and fixes - validated provider IDs, Twig globals registered, unique tool codes.
