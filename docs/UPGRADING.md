@@ -1,7 +1,16 @@
 # Upgrading
 
-
 ## Unreleased
+
+## To 1.4.3
+
+From **1.4.2** — dependency refresh and repository maintenance.
+
+```bash
+composer update nowo-tech/marketing-kit-bundle
+```
+
+- No breaking changes. No application upgrade steps.
 
 ## To 1.4.2
 
@@ -20,7 +29,6 @@ composer update nowo-tech/marketing-kit-bundle
 ```
 
 ## To 1.4.0
-
 
 From **1.3.7** — `allow_custom_html` default false; Doctrine `SortDirection`.
 
@@ -45,6 +53,7 @@ php bin/console cache:clear
 
 ## Table of contents
 
+- [To 1.4.3](#to-143)
 - [To 1.4.2](#to-142)
 - [From 1.3.5 to 1.3.6](#from-135-to-136)
 - [From 1.3.4 to 1.3.5](#from-134-to-135)

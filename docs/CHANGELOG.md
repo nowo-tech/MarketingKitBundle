@@ -7,9 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.3] - 2026-10-13
+
 ### Changed
 
 - Development: `composer.json` pins `config.platform.php` to 8.2.0 so the committed lock stays installable on the minimum PHP; CI overrides the platform per matrix cell. Dev lock re-resolved for PHP 8.2 (Symfony 8.1 -> 7.4 LTS, `doctrine/doctrine-bundle` 3.3 -> 2.19).
+- Repository: `.twig-cs-fixer.cache` is now git-ignored.
+
+### Dependencies
+
+- `nowo-tech/form-kit-bundle` 2.6.2 → 2.7.1 (development lock; #14).
+- `igor-php/igor-php` 0.9.7 → 0.10.1 (require-dev constraint + development lock; #15).
+- `doctrine/orm` 3.7.4 → 3.7.5 (development lock; #16).
+- `nowo-tech/ui-kit-bundle` 1.9.2 → 1.11.0 (development lock; #18).
+- `vincentlanglet/twig-cs-fixer` 3.14.0 → 4.1.1 (require-dev constraint + development lock; #17).
 
 ## [1.4.2] - 2026-10-09
 
@@ -48,6 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Worker safety (Igor):** justified `// @igor-ignore` annotations and/or `ResetInterface` / request-scoped fixes so `make igor` passes on package `src/`.
 
+[1.4.3]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.4.3
 [1.4.2]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.4.2
 [1.4.1]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.4.1
 [1.4.0]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.4.0
