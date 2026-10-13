@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## To 1.6.0
+
+From **1.5.0** — unused doctrine.connection option deprecated.
+
+```bash
+composer update nowo-tech/marketing-kit-bundle
+```
+
 - `nowo_marketing_kit.doctrine.connection` is deprecated and never had any effect. Remove it from `config/packages/nowo_marketing_kit.yaml`. The bundle keeps using the default Doctrine entity manager and its connection, so no data moves.
 
 ## To 1.5.0
@@ -67,6 +75,7 @@ php bin/console cache:clear
 
 ## Table of contents
 
+- [To 1.6.0](#to-160)
 - [To 1.5.0](#to-150)
 - [To 1.4.3](#to-143)
 - [To 1.4.2](#to-142)
