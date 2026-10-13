@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-10-13
+
 ### Security
 
 - Provider tracking IDs (GTM, GA4, Meta Pixel, LinkedIn, TikTok, Hotjar, Clarity) are validated against a per-provider format at YAML config compile time and on admin save; renderers emit nothing for a non-matching ID and place IDs in JavaScript as JSON string literals, so a crafted ID can no longer break out of the snippet.
@@ -69,6 +71,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Worker safety (Igor):** justified `// @igor-ignore` annotations and/or `ResetInterface` / request-scoped fixes so `make igor` passes on package `src/`.
 
+[1.5.0]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.5.0
 [1.4.3]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.4.3
 [1.4.2]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.4.2
 [1.4.1]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.4.1

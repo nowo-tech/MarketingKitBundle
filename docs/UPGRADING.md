@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+## To 1.5.0
+
+From **1.4.3** — security and fixes - validated provider IDs, Twig globals registered, unique tool codes.
+
+```bash
+composer update nowo-tech/marketing-kit-bundle
+```
+
+- Provider IDs that do not match their format (e.g. GA4 `G-XXXX`, GTM `GTM-XXXX`, numeric Meta/LinkedIn/Hotjar) now fail container compilation from YAML, are rejected on admin save, and render nothing when already stored.
+- `web_ui.layout_template` / `web_ui.css_framework` now really apply (Twig globals were never registered).
+- Saving a duplicate profile+code shows a form error instead of HTTP 500. `symfony/validator` is now a hard requirement.
+
 ## To 1.4.3
 
 From **1.4.2** — dependency refresh and repository maintenance.
@@ -53,6 +65,7 @@ php bin/console cache:clear
 
 ## Table of contents
 
+- [To 1.5.0](#to-150)
 - [To 1.4.3](#to-143)
 - [To 1.4.2](#to-142)
 - [From 1.3.5 to 1.3.6](#from-135-to-136)
