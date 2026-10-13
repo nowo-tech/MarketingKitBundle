@@ -6,12 +6,14 @@ namespace Nowo\MarketingKitBundle\Twig;
 
 use Nowo\MarketingKitBundle\Service\MarketingScriptRenderer;
 use Twig\Extension\AbstractExtension;
+use Twig\Extension\GlobalsInterface;
 use Twig\TwigFunction;
 
 /**
- * Twig helpers: nowo_marketing_head / body_start / body_end.
+ * Twig helpers: nowo_marketing_head / body_start / body_end, plus the
+ * nowo_marketing_kit_layout / nowo_marketing_kit_css_framework globals (REQ-UI-001).
  */
-final class MarketingKitExtension extends AbstractExtension
+final class MarketingKitExtension extends AbstractExtension implements GlobalsInterface
 {
     public function __construct(
         private readonly MarketingScriptRenderer $renderer,

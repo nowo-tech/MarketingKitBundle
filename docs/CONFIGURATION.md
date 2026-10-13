@@ -27,6 +27,7 @@ nowo_marketing_kit:
     web_ui:
         layout_template: '@NowoMarketingKitBundle/admin/layout.html.twig'
         css_framework: none
+        icon_set: bootstrap-icons
     doctrine:
         table_prefix: ''
         connection: default
@@ -46,6 +47,7 @@ nowo_marketing_kit:
 | `security.allow_unauthenticated` | bool | `false` | Demo/dev only bypass for admin access; never enable in production |
 | `web_ui.layout_template` | string | `@NowoMarketingKitBundle/admin/layout.html.twig` | Twig layout extended by `admin/base.html.twig` via global `nowo_marketing_kit_layout`; set this to your app/admin layout in host apps |
 | `web_ui.css_framework` | enum | `none` | Host CSS stack (REQ-UI-001): `bootstrap` (→`bootstrap5`), `bootstrap4`, `bootstrap5`, `tabler`, `tailwind`, `foundation`, `custom`, `none`. Twig global `nowo_marketing_kit_css_framework` |
+| `web_ui.icon_set` | string | `bootstrap-icons` | Seeded into `nowo_ui_kit.icon_set` when UiKit is installed and the host has not set it |
 | `doctrine.table_prefix` | string | `''` | Prefixed onto `marketing_tool` |
 | `default_profile` | string | `default` | Must exist under `profiles` |
 | `profiles` | map | `{default: …}` | Named profiles (REQ-CFG-001) |
@@ -69,16 +71,18 @@ Each entry under `profiles.<name>.tools` is keyed by a stable `code`:
 
 ## Provider options
 
-| Type | Required options |
-|------|------------------|
-| `gtm` | `container_id` (head = script; `body_start` = noscript iframe) |
-| `ga4` | `measurement_id` |
-| `meta_pixel` | `pixel_id` |
-| `linkedin` | `partner_id` |
-| `tiktok` | `pixel_id` |
-| `hotjar` | `site_id` (digits) |
-| `clarity` | `project_id` |
-| `custom` | `html` (trusted snippet) |
+| Type | Required options | Accepted ID format |
+|------|------------------|--------------------|
+| `gtm` | `container_id` (head = script; `body_start` = noscript iframe) | `GTM-` + uppercase letters/digits |
+| `ga4` | `measurement_id` | `G-` + uppercase letters/digits |
+| `meta_pixel` | `pixel_id` | digits |
+| `linkedin` | `partner_id` | digits |
+| `tiktok` | `pixel_id` | letters/digits |
+| `hotjar` | `site_id` | digits |
+| `clarity` | `project_id` | letters/digits |
+| `custom` | `html` (trusted snippet) | — |
+
+IDs are validated against these formats when the YAML config is compiled (invalid IDs fail container compile) and when saved from the admin form; at render time a tool whose stored ID does not match emits nothing, and IDs placed in JavaScript are emitted as JSON string literals.
 
 ## Database configuration
 

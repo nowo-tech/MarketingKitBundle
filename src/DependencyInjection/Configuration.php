@@ -6,9 +6,13 @@ namespace Nowo\MarketingKitBundle\DependencyInjection;
 
 use Nowo\MarketingKitBundle\Enum\ToolPosition;
 use Nowo\MarketingKitBundle\Enum\ToolType;
+use Nowo\MarketingKitBundle\Provider\ToolIdValidator;
 use Symfony\Component\Config\Definition\Builder\ArrayNodeDefinition;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\ConfigurationInterface;
+use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
+
+use function sprintf;
 
 /**
  * Validates and normalizes `nowo_marketing_kit` configuration (REQ-CFG-001 profiles).
@@ -80,6 +84,11 @@ final class Configuration implements ConfigurationInterface
                             ->defaultValue('none')
                             ->info('Host-chosen CSS stack (REQ-UI-001). Twig global nowo_marketing_kit_css_framework. Values: bootstrap (alias of bootstrap5), bootstrap4, bootstrap5, tabler, tailwind, foundation, custom, none. Default none matches semantic mk-* / nowo-ui-* demo markup.')
                         ->end()
+                        ->scalarNode('icon_set')
+                            ->defaultValue('bootstrap-icons')
+                            ->cannotBeEmpty()
+                            ->info('Icon set seeded into nowo_ui_kit.icon_set when UiKit is installed and the host has not set it.')
+                        ->end()
                     ->end()
                 ->end()
                 ->arrayNode('doctrine')
@@ -121,6 +130,16 @@ final class Configuration implements ConfigurationInterface
                                             ->variablePrototype()->end()
                                             ->defaultValue([])
                                         ->end()
+                                    ->end()
+                                    ->validate()
+                                        ->ifTrue(static function (array $tool): bool {
+                                            $key = ToolIdValidator::optionKeyFor((string) $tool['type']);
+
+                                            return $key !== null && !ToolIdValidator::isValidOrEmpty((string) $tool['type'], $tool['options'][$key] ?? null);
+                                        })
+                                        ->then(static function (array $tool): never {
+                                            throw new InvalidConfigurationException(sprintf('Invalid %s for marketing tool type "%s": the value does not match the provider ID format.', (string) ToolIdValidator::optionKeyFor((string) $tool['type']), (string) $tool['type']));
+                                        })
                                     ->end()
                                 ->end()
                             ->end()

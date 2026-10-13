@@ -9,11 +9,13 @@ use Nowo\FormKitBundle\Form\FormOptionsTrait;
 use Nowo\MarketingKitBundle\Entity\MarketingTool;
 use Nowo\MarketingKitBundle\Enum\ToolPosition;
 use Nowo\MarketingKitBundle\Enum\ToolType;
+use Nowo\MarketingKitBundle\Provider\ToolIdValidator;
 use Nowo\MarketingKitBundle\Service\MarketingToolCatalog;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\TextareaType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\Form\FormError;
 use Symfony\Component\Form\FormEvent;
 use Symfony\Component\Form\FormEvents;
 use Symfony\Component\Form\FormInterface;
@@ -111,6 +113,13 @@ final class MarketingToolType extends AbstractType
                 if ($form->has($field)) {
                     $value            = $form->get($field)->getData();
                     $optionsMap[$key] = is_scalar($value) || $value === null ? (string) $value : '';
+                    if (ToolIdValidator::optionKeyFor($tool->getType()) === $key) {
+                        if (ToolIdValidator::isValidOrEmpty($tool->getType(), $optionsMap[$key])) {
+                            $optionsMap[$key] = trim($optionsMap[$key]);
+                        } else {
+                            $form->get($field)->addError(new FormError('This ID does not match the provider format.'));
+                        }
+                    }
                 }
             }
             $tool->setOptions($optionsMap);

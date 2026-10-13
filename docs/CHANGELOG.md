@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- Provider tracking IDs (GTM, GA4, Meta Pixel, LinkedIn, TikTok, Hotjar, Clarity) are validated against a per-provider format at YAML config compile time and on admin save; renderers emit nothing for a non-matching ID and place IDs in JavaScript as JSON string literals, so a crafted ID can no longer break out of the snippet.
+
+### Fixed
+
+- Twig globals `nowo_marketing_kit_layout` / `nowo_marketing_kit_css_framework` were never registered (the extension did not implement `GlobalsInterface`), so `web_ui.layout_template` and `web_ui.css_framework` were ignored by the admin templates.
+- Admin create/edit of a marketing tool with an existing `(profile, code)` pair (e.g. after "Seed catalog") now shows a validation error instead of a 500; blank or over-long `profile` / `code` are rejected too (`UniqueEntity`, `NotBlank`, `Length`). `symfony/validator` is now an explicit requirement.
+- `web_ui.icon_set` is now a real configuration key (default `bootstrap-icons`) used to seed `nowo_ui_kit.icon_set`; previously it was read but could not be set.
+
 ## [1.4.3] - 2026-10-13
 
 ### Changed

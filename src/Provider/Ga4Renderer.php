@@ -9,9 +9,6 @@ use Nowo\MarketingKitBundle\Enum\ToolType;
 
 use function sprintf;
 
-use const ENT_QUOTES;
-use const ENT_SUBSTITUTE;
-
 /**
  * Google Analytics 4 (gtag). Options: measurement_id.
  */
@@ -24,19 +21,18 @@ final class Ga4Renderer implements ToolRendererInterface
 
     public function render(ResolvedTool $tool): string
     {
-        $id = trim((string) ($tool->options['measurement_id'] ?? ''));
-        if ($id === '') {
+        $id = ToolIdValidator::normalize(ToolType::Ga4->value, $tool->options['measurement_id'] ?? null);
+        if ($id === null) {
             return '';
         }
-
-        $safe = htmlspecialchars($id, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 
         return sprintf(
             <<<'HTML'
 <script async src="https://www.googletagmanager.com/gtag/js?id=%1$s"></script>
-<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','%1$s');</script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config',%2$s);</script>
 HTML,
-            $safe,
+            $id,
+            ToolIdValidator::jsString($id),
         );
     }
 }

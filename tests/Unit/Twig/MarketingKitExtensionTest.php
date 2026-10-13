@@ -11,6 +11,9 @@ use Nowo\MarketingKitBundle\Service\MarketingScriptRenderer;
 use Nowo\MarketingKitBundle\Twig\MarketingKitExtension;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\RequestStack;
+use Twig\Environment;
+use Twig\Extension\GlobalsInterface;
+use Twig\Loader\ArrayLoader;
 use Twig\TwigFunction;
 
 final class MarketingKitExtensionTest extends TestCase
@@ -33,5 +36,23 @@ final class MarketingKitExtensionTest extends TestCase
         self::assertSame('', $extension->head());
         self::assertSame('', $extension->bodyStart());
         self::assertSame('', $extension->bodyEnd());
+    }
+
+    public function testGlobalsAreExposedToTwigEnvironment(): void
+    {
+        $extension = new MarketingKitExtension(new MarketingScriptRenderer(
+            new MarketingConfigResolver(['default' => ['enabled' => true, 'tools' => []]], 'default', false),
+            new ToolRendererRegistry([]),
+            new CookieConsentGate(new RequestStack(), false),
+        ), 'host/layout.html.twig', 'tailwind');
+
+        self::assertContains(GlobalsInterface::class, class_implements($extension));
+
+        $twig = new Environment(new ArrayLoader([
+            'probe' => '{{ nowo_marketing_kit_layout|default("unset") }}|{{ nowo_marketing_kit_css_framework|default("unset") }}',
+        ]));
+        $twig->addExtension($extension);
+
+        self::assertSame('host/layout.html.twig|tailwind', $twig->render('probe'));
     }
 }

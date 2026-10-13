@@ -258,6 +258,19 @@ final class NowoMarketingKitExtensionTest extends TestCase
         ], $configs[0]);
     }
 
+    public function testPrependSeedsUiKitIconSetFromWebUi(): void
+    {
+        $container = new ContainerBuilder();
+        $this->registerNamedExtension($container, 'nowo_ui_kit');
+        $container->prependExtensionConfig('nowo_marketing_kit', [
+            'web_ui' => ['icon_set' => 'fontawesome'],
+        ]);
+
+        (new NowoMarketingKitExtension())->prepend($container);
+
+        self::assertSame('fontawesome', $container->getExtensionConfig('nowo_ui_kit')[0]['icon_set']);
+    }
+
     public function testPrependSkipsUiKitWhenHostAlreadyConfiguredBothKeys(): void
     {
         $container = new ContainerBuilder();

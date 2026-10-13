@@ -36,12 +36,6 @@ final class NowoMarketingKitExtension extends Extension implements PrependExtens
     }
 
     /**
-     * When UiKit is installed, seed nowo_ui_kit.css_framework / icon_set from web_ui
-     * so kit macros resolve the same stack. Does not override keys the host already set.
-     * web_ui.icon_set is optional — defaults to bootstrap-icons when seeding UiKit.
-     */
-
-    /**
      * When FormKit is installed, register the marketing_kit profile. Forms select it via #[FormKitConfig].
      */
     private function prependFormKitDefaults(ContainerBuilder $container): void
@@ -105,6 +99,11 @@ final class NowoMarketingKitExtension extends Extension implements PrependExtens
         }
     }
 
+    /**
+     * When UiKit is installed, seed nowo_ui_kit.css_framework / icon_set from web_ui
+     * so kit macros resolve the same stack. Does not override keys the host already set.
+     * web_ui.icon_set defaults to bootstrap-icons.
+     */
     private function prependUiKitDefaults(ContainerBuilder $container): void
     {
         if (!$container->hasExtension('nowo_ui_kit')) {

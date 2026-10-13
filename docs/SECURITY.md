@@ -12,7 +12,7 @@
 ## Attack surface
 
 - **Custom snippets** (`type: custom`, option `html`) are emitted only when `security.allow_custom_html` is **true** (default **false**). When enabled, treat YAML/DB authors as trusted and restrict admin access.
-- **Provider IDs** (GTM, pixel IDs, etc.) are escaped for HTML attribute/JS string context; do not put untrusted user input into options.
+- **Provider IDs** (GTM, GA4, pixel IDs, etc.) must match a per-provider format (see [Configuration](CONFIGURATION.md#provider-options)); they are validated at config compile time, on admin save, and again at render time (non-matching IDs render nothing). IDs in JavaScript are emitted as JSON string literals. Do not put untrusted user input into options.
 - **Admin CRUD** (`/admin/marketing`) is denied unless the configured MarketingKit access checker allows it, but the host app must still add firewall/login and `access_control` rules for that path prefix.
 - **Consent gate** fails closed when `respect_cookie_consent: true` and the category cookie is missing (no scripts).
 

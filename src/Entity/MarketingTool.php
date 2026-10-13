@@ -7,6 +7,8 @@ namespace Nowo\MarketingKitBundle\Entity;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Nowo\MarketingKitBundle\Repository\MarketingToolRepository;
+use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
+use Symfony\Component\Validator\Constraints as Assert;
 
 /**
  * Database-backed marketing tool definition (overrides YAML when use_database_config is true).
@@ -14,6 +16,7 @@ use Nowo\MarketingKitBundle\Repository\MarketingToolRepository;
 #[ORM\Entity(repositoryClass: MarketingToolRepository::class)]
 #[ORM\Table(name: 'marketing_tool')]
 #[ORM\UniqueConstraint(name: 'uniq_marketing_tool_profile_code', columns: ['profile', 'code'])]
+#[UniqueEntity(fields: ['profile', 'code'], message: 'A marketing service with this code already exists in this profile.', errorPath: 'code')]
 class MarketingTool
 {
     #[ORM\Id]
@@ -23,9 +26,13 @@ class MarketingTool
     private ?int $id = null;
 
     #[ORM\Column(length: 64)]
+    #[Assert\NotBlank]
+    #[Assert\Length(max: 64)]
     private string $profile = 'default';
 
     #[ORM\Column(length: 64)]
+    #[Assert\NotBlank]
+    #[Assert\Length(max: 64)]
     private string $code = '';
 
     #[ORM\Column(length: 32)]

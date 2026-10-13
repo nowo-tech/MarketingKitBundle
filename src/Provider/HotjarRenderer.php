@@ -21,8 +21,8 @@ final class HotjarRenderer implements ToolRendererInterface
 
     public function render(ResolvedTool $tool): string
     {
-        $id = trim((string) ($tool->options['site_id'] ?? ''));
-        if ($id === '' || !ctype_digit($id)) {
+        $id = ToolIdValidator::normalize(ToolType::Hotjar->value, $tool->options['site_id'] ?? null);
+        if ($id === null) {
             return '';
         }
 
