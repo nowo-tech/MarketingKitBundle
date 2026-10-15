@@ -16,6 +16,7 @@ Never add Cursor co-author trailers to commits:
 
 ```text
 Co-authored-by: Cursor <cursoragent@cursor.com>
+Never add `Co-Authored-By: Claude …` / `noreply@anthropic.com` trailers either (REQ-GIT-001).
 ```
 
 See `docs/GITHUB_CI.md` and `.cursor/rules/01-git-commits.mdc`.
