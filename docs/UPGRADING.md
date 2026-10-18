@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 1.6.1](#to-161)
 - [To 1.6.0](#to-160)
 - [To 1.5.0](#to-150)
 - [To 1.4.3](#to-143)
@@ -24,6 +25,14 @@
   - [From nothing to 1.0.0](#from-nothing-to-100)
 
 ## Unreleased
+
+## To 1.6.1
+
+From **1.6.0**:
+
+```bash
+composer update nowo-tech/marketing-kit-bundle
+```
 
 ## To 1.6.0
 
