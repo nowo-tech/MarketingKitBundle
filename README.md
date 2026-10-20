@@ -23,15 +23,6 @@ This bundle is **FrankenPHP worker mode friendly**, including **kernel not reset
 
 **FrankenPHP:** Demos use a **single PHP service** (FrankenPHP, no nginx). Runtime mode is controlled by **`FRANKENPHP_MODE`** in `.env` (`worker` default, or `classic`). The entrypoint selects `Caddyfile` (workers) or `Caddyfile.dev` (no workers) accordingly; see [docs/DEMO-FRANKENPHP.md](docs/DEMO-FRANKENPHP.md). Demo URL: `http://localhost:8060` (see `demo/README.md` and `.env.example`).
 
-## Version information
-
-| Version | PHP | Symfony | Status |
-|---------|-----|---------|--------|
-| 1.3.x | >= 8.2, < 8.6 | 7.4 – 8.x | Stable |
-| 1.2.x | >= 8.2, < 8.6 | 7.4 – 8.x | Maintenance |
-| 1.1.x | >= 8.2, < 8.6 | 7.4 – 8.x | Maintenance |
-| 1.0.x | >= 8.2, < 8.6 | 7.4 – 8.x | Maintained |
-
 ## Installation
 
 ```bash
@@ -61,6 +52,15 @@ composer require nowo-tech/cookie-consent-bundle
 - PHP >= 8.2, < 8.6
 - Symfony >= 7.4 || >= 8.0
 - Doctrine ORM (for entities / optional DB config)
+
+## Version information
+
+| Version | PHP | Symfony | Status |
+|---------|-----|---------|--------|
+| 1.3.x | >= 8.2, < 8.6 | 7.4 – 8.x | Stable |
+| 1.2.x | >= 8.2, < 8.6 | 7.4 – 8.x | Maintenance |
+| 1.1.x | >= 8.2, < 8.6 | 7.4 – 8.x | Maintenance |
+| 1.0.x | >= 8.2, < 8.6 | 7.4 – 8.x | Maintained |
 
 ## Quick configuration
 
@@ -122,7 +122,6 @@ make -C demo up-symfony8
 
 - [Installation](docs/INSTALLATION.md)
 - [Configuration](docs/CONFIGURATION.md)
-- [PSR evaluation (REQ-CS-007)](docs/PSR.md)
 - [Usage](docs/USAGE.md)
 - [Contributing](docs/CONTRIBUTING.md)
 - [Code of Conduct](CODE_OF_CONDUCT.md)
@@ -136,6 +135,7 @@ make -C demo up-symfony8
 
 ### Additional documentation
 
+- [PSR evaluation (REQ-CS-007)](docs/PSR.md)
 - [GitHub Actions CI requirements](docs/GITHUB_CI.md)
 - [Demo with FrankenPHP](docs/DEMO-FRANKENPHP.md) (includes worker mode)
 - [FrankenPHP worker audit](docs/FRANKENPHP-WORKER-AUDIT.md) (kernel not reset / scenario B)
@@ -153,3 +153,7 @@ make -C demo up-symfony8
 composer test
 composer test-coverage
 ```
+
+## License
+
+The MIT License (MIT). Please see [LICENSE](LICENSE) for more information.

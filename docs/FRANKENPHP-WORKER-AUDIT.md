@@ -9,6 +9,15 @@
 | **Verdict** | ✅ **100% viable under scenario B** (kernel not reset, `services_resetter` off) — and therefore under scenario A and classic / PHP-FPM |
 | Remediation | W-01/W-03: per-main-request `WeakMap` memo + `findToolRowsByProfile()` array hydration. W-02: `ClosedEntityManagerSubscriber` resets closed managers **and** detaches stale `MarketingTool` from open managers before admin routes. |
 
+## Table of contents
+
+- [Execution model assumed](#execution-model-assumed)
+- [Summary](#summary)
+- [Services reviewed](#services-reviewed)
+- [Findings (all resolved)](#findings-all-resolved)
+- [Usage recommendations in worker mode](#usage-recommendations-in-worker-mode)
+- [Re-audit triggers](#re-audit-triggers)
+
 ## Execution model assumed
 
 FrankenPHP worker mode boots the Symfony kernel once per worker and serves many requests with the same container. This audit assumes the **strict** variant: the kernel is **not** rebooted between requests, so every shared service, static property and PHP global survives from one request to the next. Two scenarios are evaluated:

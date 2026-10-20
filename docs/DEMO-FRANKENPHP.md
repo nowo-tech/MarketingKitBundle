@@ -4,12 +4,12 @@
 
 ## Table of contents
 
-- [Start](#start)
-- [Worker mode](#worker-mode)
+- [Start the demo (development)](#start-the-demo-development)
 - [What to check](#what-to-check)
 - [Troubleshooting](#troubleshooting)
+- [Start the demo (production)](#start-the-demo-production)
 
-## Start
+## Start the demo (development)
 
 ```bash
 make -C demo up-symfony8
@@ -46,3 +46,14 @@ Recreate containers after changing mode: `docker compose up -d`.
 - **No tags in HTML**: enable tools; with `respect_cookie_consent: true` set `Cookie_Category_*` cookies.
 - **Stale tags after admin edit (worker)**: should not happen since 1.3.6; if it does, confirm you are on `^1.3.6` and see the worker audit.
 - **Healthcheck**: `make -C demo release-check` expects HTTP 200, “Marketing Kit Demo”, and `/admin/marketing`.
+
+## Start the demo (production)
+
+The worker Caddyfile (`docker/frankenphp/Caddyfile`, `php_server { worker { file /app/public/index.php; watch } }`) is the default runtime (`FRANKENPHP_MODE=worker`). To run the demo with a production profile:
+
+1. In `demo/symfony8/.env` set `APP_ENV=prod`, `APP_DEBUG=0`, a real `APP_SECRET` and keep `FRANKENPHP_MODE=worker`.
+2. Do not mount `docker/php-dev.ini` (dev-only OPcache revalidation) and do not enable Nowo Hot Reload / Twig Inspector (dev-only bundles).
+3. Install without dev dependencies and warm the cache inside the container: `composer install --no-dev --optimize-autoloader` and `php bin/console cache:clear --env=prod`.
+4. Recreate the container: `docker compose up -d` (a plain `restart` does not reload environment variables).
+
+Worker mode keeps the kernel booted between requests; see the [worker audit](FRANKENPHP-WORKER-AUDIT.md) when it exists for the services reviewed for request-to-request state.
