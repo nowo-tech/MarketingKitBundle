@@ -7,6 +7,7 @@ namespace Nowo\MarketingKitBundle\Tests\Unit\Entity;
 use Nowo\MarketingKitBundle\Entity\MarketingTool;
 use PHPUnit\Framework\TestCase;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
+use Symfony\Component\Validator\Constraint;
 use Symfony\Component\Validator\Mapping\ClassMetadata;
 use Symfony\Component\Validator\Validation;
 
@@ -42,7 +43,7 @@ final class MarketingToolTest extends TestCase
         self::assertInstanceOf(ClassMetadata::class, $metadata);
 
         /** @var list<UniqueEntity> $unique */
-        $unique = array_values(array_filter($metadata->getConstraints(), static fn ($c): bool => $c instanceof UniqueEntity));
+        $unique = array_values(array_filter($metadata->getConstraints(), static fn (Constraint $c): bool => $c instanceof UniqueEntity));
         self::assertCount(1, $unique);
         self::assertSame(['profile', 'code'], $unique[0]->fields);
         self::assertSame('code', $unique[0]->errorPath);

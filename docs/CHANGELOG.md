@@ -35,6 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Dependencies refreshed (Composer and pnpm/npm lock files of the bundle and its demos, campaign 2026-10-19).
 - `.php-cs-fixer.dist.php`: `new ParallelConfig(2)` (REQ-CS-001).
+- `MarketingToolAdminController` is marked `@final` (real `final` in 2.0); its unit test drives the real controller through a test container instead of subclassing it, and `phpstan.neon.dist` is back to `ignoreErrors: []` (REQ-PHP-001, REQ-CS-006). See [UPGRADING](UPGRADING.md).
+- Demo: `make up` installs `vendor/` in a one-off container first, so worker mode boots from a fresh checkout; `make restart`, `make test` (container + Twig lint) and `make verify` (final HTTP 200 on `/` and `/admin/marketing`); `release-verify` / `make demo-smoke` require a final HTTP 200; new `Demo smoke` workflow (tags, weekly, manual) (REQ-MAKE-003, REQ-TEST-011); the co-author check accepts git worktrees.
 - Documentation: wave-1 REQ compliance — README documentation list order and section order (Version information after Requirements, License section), canonical issue templates, CONTRIBUTING Cursor Agent settings (REQ-IDE-006), tables of contents in long docs, DEMO-FRANKENPHP production section, commented demo `.env.example`, Spec Kit baseline refresh (categorized 49/49 inventory, FR-MK-011, non-goals).
 
 ## [1.6.1] - 2026-10-18

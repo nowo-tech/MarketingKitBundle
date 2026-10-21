@@ -22,6 +22,8 @@ use function sprintf;
 
 /**
  * CRUD admin to configure marketing services (providers) stored in Doctrine.
+ *
+ * @final since 1.7, will be final in 2.0 (not an extension point; decorate or replace the service instead)
  */
 #[Route(path: '/admin/marketing', name: 'nowo_marketing_kit_admin_')]
 class MarketingToolAdminController extends AbstractController

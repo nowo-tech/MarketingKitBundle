@@ -14,18 +14,17 @@ use Nowo\MarketingKitBundle\Service\MarketingToolAdminService;
 use Nowo\MarketingKitBundle\Service\MarketingToolCatalog;
 use PHPUnit\Framework\TestCase;
 use ReflectionProperty;
-use RuntimeException;
 use Symfony\Component\DependencyInjection\Container;
 use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\Form\FormView;
-use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
-use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Session\Session;
 use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
+use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 use Twig\Environment;
 
 final class MarketingToolAdminControllerTest extends TestCase
@@ -304,67 +303,26 @@ final class MarketingToolAdminControllerTest extends TestCase
             }
         };
 
-        $controller = new class($repo, $em, $admin, new MarketingToolCatalog(), $accessChecker, true, $csrfValid, $twig, $formFactory) extends MarketingToolAdminController {
-            public function __construct(
-                MarketingToolRepository $repository,
-                EntityManagerInterface $entityManager,
-                MarketingToolAdminService $adminService,
-                MarketingToolCatalog $catalog,
-                MarketingKitAccessCheckerInterface $accessChecker,
-                bool $useDatabaseConfig,
-                private readonly bool $csrfValidFlag,
-                private readonly Environment $twigEngine,
-                private readonly ?FormFactoryInterface $forms,
-            ) {
-                parent::__construct($repository, $entityManager, $adminService, $catalog, $accessChecker, $useDatabaseConfig);
-            }
+        $controller = new MarketingToolAdminController($repo, $em, $admin, new MarketingToolCatalog(), $accessChecker, true);
 
-            /**
-             * @param array<string, mixed> $parameters
-             */
-            protected function render(string $view, array $parameters = [], ?Response $response = null): Response
-            {
-                return new Response($this->twigEngine->render($view, $parameters));
-            }
-
-            protected function isCsrfTokenValid(string $id, ?string $token): bool
-            {
-                return $this->csrfValidFlag;
-            }
-
-            protected function createForm(string $type, mixed $data = null, array $options = []): FormInterface
-            {
-                if (!$this->forms instanceof FormFactoryInterface) {
-                    throw new RuntimeException('Form factory required');
-                }
-
-                return $this->forms->create($type, $data, $options);
-            }
-
-            protected function addFlash(string $type, mixed $message): void
-            {
-                $request = $this->container->get('request_stack')->getCurrentRequest();
-                if ($request !== null && $request->hasSession()) {
-                    $request->getSession()->getFlashBag()->add($type, (string) $message);
-                }
-            }
-
-            /**
-             * @param array<string, mixed> $parameters
-             */
-            protected function redirectToRoute(string $route, array $parameters = [], int $status = 302): RedirectResponse
-            {
-                return new RedirectResponse('/' . $route, $status);
-            }
-        };
-
-        $stack = new RequestStack();
-        if ($request instanceof Request) {
-            $stack->push($request);
+        // Real AbstractController helpers, wired to test doubles (no subclassing of the controller).
+        $request ??= Request::create('/');
+        if (!$request->hasSession()) {
+            $request->setSession(new Session(new MockArraySessionStorage()));
         }
+        $stack = new RequestStack();
+        $stack->push($request);
+
+        $csrf = $this->createStub(CsrfTokenManagerInterface::class);
+        $csrf->method('isTokenValid')->willReturn($csrfValid);
+        $router = $this->createStub(UrlGeneratorInterface::class);
+        $router->method('generate')->willReturnCallback(static fn (string $route): string => '/' . $route);
+
         $container = new Container();
         $container->set('request_stack', $stack);
         $container->set('twig', $twig);
+        $container->set('security.csrf.token_manager', $csrf);
+        $container->set('router', $router);
         if ($formFactory instanceof FormFactoryInterface) {
             $container->set('form.factory', $formFactory);
         }

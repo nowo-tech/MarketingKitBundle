@@ -15,10 +15,10 @@ use function is_string;
  * Disabled unless {@see $allowCustomHtml} is true (config security.allow_custom_html).
  * When enabled, the snippet is emitted as configured by the integrator (trusted admin/YAML only).
  */
-final class CustomScriptRenderer implements ToolRendererInterface
+final readonly class CustomScriptRenderer implements ToolRendererInterface
 {
     public function __construct(
-        private readonly bool $allowCustomHtml = false,
+        private bool $allowCustomHtml = false,
     ) {
     }
 

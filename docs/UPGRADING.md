@@ -26,6 +26,8 @@
 
 ## Unreleased
 
+- `MarketingToolAdminController` is now `@final`: Symfony's debug class loader reports a deprecation if your application extends it, and it becomes `final` in 2.0. Override the routes or decorate the services it uses instead.
+
 ## To 1.6.1
 
 From **1.6.0**:

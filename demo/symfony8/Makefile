@@ -9,7 +9,7 @@ COMPOSE ?= $(shell $(DOCKER_BIN) compose version >/dev/null 2>&1 && echo "$(DOCK
 endif
 SERVICE_PHP = php
 
-.PHONY: help up down build install shell update-bundle ensure-up ensure-env
+.PHONY: help up down restart build install shell update-bundle ensure-up ensure-env test verify
 
 help:
 	@echo "Symfony 8 Demo - Marketing Kit Bundle"
@@ -19,8 +19,13 @@ help:
 	@echo "  make install        Install dependencies"
 	@echo "  make shell          Open shell in PHP container"
 	@echo "  make update-bundle  Sync bundle autoload and clear cache"
+	@echo "  make restart        Restart the PHP container"
+	@echo "  make test           Demo checks: container lint + Twig lint (no PHPUnit suite in this demo)"
+	@echo "  make verify         HTTP check: / and /admin/marketing answer a final 200"
 
 up: ensure-env
+	@# Install vendor/ in a one-off container first: worker mode cannot boot a fresh checkout without it.
+	@$(COMPOSE) run --rm -T --no-deps --entrypoint composer -e COMPOSER_MEMORY_LIMIT=-1 $(SERVICE_PHP) install --no-interaction
 	@$(COMPOSE) up -d
 	@echo "Waiting for container..."
 	@sleep 5
@@ -60,3 +65,21 @@ update-bundle: ensure-up
 BUNDLE_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/../..)
 # Optional: monorepo helper absent on standalone GitHub Actions checkout (REQ-MAKE-009).
 -include $(BUNDLE_ROOT)/../.scripts/Makefile.demo-update-deps.mk
+
+restart: ensure-up
+	@$(COMPOSE) restart $(SERVICE_PHP)
+
+# REQ-MAKE-003: the demo has no PHPUnit suite; lint the container wiring and the templates instead.
+test: ensure-up
+	@$(COMPOSE) exec -T $(SERVICE_PHP) php bin/console lint:container
+	@$(COMPOSE) exec -T $(SERVICE_PHP) php bin/console lint:twig templates
+
+verify: ensure-up
+	@PORT=$$(grep "^PORT=" .env 2>/dev/null | cut -d= -f2 | tr -d '\r'); \
+	[ -z "$$PORT" ] && PORT=$$(grep "^PORT=" .env.example 2>/dev/null | cut -d= -f2 | tr -d '\r'); \
+	for path in / /admin/marketing; do \
+		code=$$(curl -sL -o /dev/null -w "%{http_code}" "http://127.0.0.1:$$PORT$$path" 2>/dev/null || echo 000); \
+		if [ "$$code" != "200" ]; then echo "verify failed: $$path HTTP $$code"; exit 1; fi; \
+		echo "OK $$path (HTTP 200)"; \
+	done
+
