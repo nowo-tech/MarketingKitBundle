@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 1.7.0](#to-170)
 - [To 1.6.1](#to-161)
 - [To 1.6.0](#to-160)
 - [To 1.5.0](#to-150)
@@ -25,6 +26,14 @@
   - [From nothing to 1.0.0](#from-nothing-to-100)
 
 ## Unreleased
+
+## To 1.7.0
+
+From **1.6.1**:
+
+```bash
+composer update nowo-tech/marketing-kit-bundle
+```
 
 - `MarketingToolAdminController` is now `@final`: Symfony's debug class loader reports a deprecation if your application extends it, and it becomes `final` in 2.0. Override the routes or decorate the services it uses instead.
 

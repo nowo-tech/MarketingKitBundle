@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[1.7.0] - 2026-10-21](#170---2026-10-21)
 - [[1.6.1] - 2026-10-18](#161---2026-10-18)
 - [[1.6.0] - 2026-10-13](#160---2026-10-13)
 - [[1.5.0] - 2026-10-13](#150---2026-10-13)
@@ -30,6 +31,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [[1.0.0] - 2026-07-24](#100---2026-07-24)
 
 ## [Unreleased]
+
+## [1.7.0] - 2026-10-21
+
+Dependency refresh, @final admin controller, PHPStan without ignores, demo restart/test/verify targets and demo smoke workflow. See [UPGRADING](UPGRADING.md#to-170).
 
 ### Changed
 
@@ -117,6 +122,7 @@ Allows nowo-tech/ui-kit-bundle 2.x (^1.4 || ^2.2) so hosts can move to UiKit 2.2
 
 - **Worker safety (Igor):** justified `// @igor-ignore` annotations and/or `ResetInterface` / request-scoped fixes so `make igor` passes on package `src/`.
 
+[1.7.0]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.7.0
 [1.6.1]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.6.1
 [1.6.0]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.6.0
 [1.5.0]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.5.0
