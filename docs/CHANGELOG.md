@@ -32,6 +32,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `admin/form.html.twig` renders the tool form through the child loop instead of one `form_row(form.x)` per field: the main fields loop skips the `option_*` children, which the "Provider options" fieldset renders with a second loop guarded by `not child.rendered` (REQ-TWIG-003).
+
 ## [1.7.0] - 2026-10-21
 
 Dependency refresh, @final admin controller, PHPStan without ignores, demo restart/test/verify targets and demo smoke workflow. See [UPGRADING](UPGRADING.md#to-170).

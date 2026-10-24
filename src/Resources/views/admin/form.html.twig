@@ -20,18 +20,17 @@
     {% endif %}
 
     {{ form_start(form, {attr: {class: 'mk-form nowo-ui-form'}}) }}
-        {{ form_row(form.profile) }}
-        {{ form_row(form.code) }}
-        {{ form_row(form.type) }}
-        {{ form_row(form.enabled) }}
-        {{ form_row(form.category) }}
-        {{ form_row(form.position) }}
-        {{ form_row(form.sortOrder) }}
+        {# REQ-TWIG-003: child loop; the provider options (option_*) are grouped in the fieldset below #}
+        {% for child in form %}
+            {% if not child.rendered and not (child.vars.name starts with 'option_') %}
+                {{ form_row(child) }}
+            {% endif %}
+        {% endfor %}
 
         <fieldset class="mk-fieldset">
             <legend>{{ 'admin.provider_options'|trans({}, 'NowoMarketingKitBundle') }}</legend>
             {% for child in form %}
-                {% if child.vars.name starts with 'option_' %}
+                {% if not child.rendered %}
                     {{ form_row(child) }}
                 {% endif %}
             {% endfor %}
