@@ -7,6 +7,7 @@
 - [GTM example](#gtm-example)
 - [Database admin (CRUD)](#database-admin-crud)
 - [Twig overrides](#twig-overrides)
+  - [Forms in the admin views (REQ-TWIG-005)](#forms-in-the-admin-views-req-twig-005)
 - [Translation overrides](#translation-overrides)
 
 ## Layout helpers
@@ -83,6 +84,22 @@ Copy templates to `templates/bundles/NowoMarketingKitBundle/` (REQ-TWIG-001). Na
 | `admin/form.html.twig` | `templates/bundles/NowoMarketingKitBundle/admin/form.html.twig` |
 
 Logical names: `@NowoMarketingKitBundle/admin/index.html.twig`, etc.
+
+### Forms in the admin views (REQ-TWIG-005)
+
+Every control in the admin UI is a Symfony Form (types under `Nowo\MarketingKitBundle\Form`, FormKit options on the editor): the service editor (`MarketingToolType`), the GET profile switcher (`ProfileFilterType`, query `?profile=`) and the CSRF-only actions seed / import YAML / toggle / delete (`CsrfActionType`, flat `_token` and hidden `profile`, same CSRF ids as before). `MarketingToolAdminController::index()` always passes `profile_form`, `seed_form`, `import_form`, `toggle_forms` and `delete_forms` (the last two keyed by tool id). Render each with `form_start`, the child loop and `form_end`; overrides and demos must not reintroduce raw `<form>` / `<input>` / `<select>` markup:
+
+```twig
+{% set delete_form = delete_forms[tool.id] %}
+{{ form_start(delete_form) }}
+    {% for child in delete_form %}
+        {% if not child.rendered %}
+            {{ form_row(child) }}
+        {% endif %}
+    {% endfor %}
+    <button type="submit" class="nowo-ui-action-delete">{{ 'admin.delete'|trans({}, 'NowoMarketingKitBundle') }}</button>
+{{ form_end(delete_form) }}
+```
 
 ## Translation overrides
 

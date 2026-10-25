@@ -15,8 +15,11 @@ use Nowo\MarketingKitBundle\Service\MarketingToolCatalog;
 use PHPUnit\Framework\TestCase;
 use ReflectionProperty;
 use Symfony\Component\DependencyInjection\Container;
+use Symfony\Component\Form\Extension\Csrf\CsrfExtension;
+use Symfony\Component\Form\Extension\HttpFoundation\HttpFoundationExtension;
 use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\Form\FormInterface;
+use Symfony\Component\Form\Forms;
 use Symfony\Component\Form\FormView;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -24,6 +27,7 @@ use Symfony\Component\HttpFoundation\Session\Session;
 use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
+use Symfony\Component\Security\Csrf\CsrfToken;
 use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 use Twig\Environment;
 
@@ -79,6 +83,57 @@ final class MarketingToolAdminControllerTest extends TestCase
 
         self::assertSame(200, $response->getStatusCode());
         self::assertSame('OK', $response->getContent());
+    }
+
+    public function testIndexPassesToolbarAndRowForms(): void
+    {
+        $tool = (new MarketingTool())->setProfile('default')->setCode('gtm');
+        $this->setId($tool, 5);
+        $repo = $this->createMock(MarketingToolRepository::class);
+        $repo->method('findByProfileOrdered')->with('default')->willReturn([$tool]);
+
+        $context = [];
+        $twig    = $this->createMock(Environment::class);
+        $twig->method('render')->willReturnCallback(static function (string $name, array $ctx) use (&$context): string {
+            $context = $ctx;
+
+            return 'OK';
+        });
+
+        $controller = $this->controller($repo, $this->createMock(EntityManagerInterface::class), $this->adminService($repo), $twig);
+        $controller->index(Request::create('/admin/marketing'));
+
+        self::assertInstanceOf(FormView::class, $context['profile_form']);
+        self::assertSame('profile', $context['profile_form']->children['profile']->vars['full_name']);
+        self::assertSame('GET', $context['profile_form']->vars['method']);
+
+        self::assertInstanceOf(FormView::class, $context['seed_form']);
+        self::assertSame('/nowo_marketing_kit_admin_seed', $context['seed_form']->vars['action']);
+        self::assertSame('profile', $context['seed_form']->children['profile']->vars['full_name']);
+        self::assertSame('profile_seed', $context['seed_form']->children['profile']->vars['id']);
+        self::assertSame('token-seed_marketing_tools_default', $context['seed_form']->children['_token']->vars['value']);
+        self::assertInstanceOf(FormView::class, $context['import_form']);
+        self::assertSame('profile_import', $context['import_form']->children['profile']->vars['id']);
+
+        self::assertSame('token-toggle_marketing_tool_5', $context['toggle_forms'][5]->children['_token']->vars['value']);
+        self::assertSame('_token', $context['delete_forms'][5]->children['_token']->vars['full_name']);
+        self::assertSame('token-delete_marketing_tool_5', $context['delete_forms'][5]->children['_token']->vars['value']);
+    }
+
+    public function testToggleWithInvalidCsrfDoesNothing(): void
+    {
+        $tool = (new MarketingTool())->setProfile('default')->setCode('gtm')->setEnabled(false);
+        $this->setId($tool, 7);
+
+        $em = $this->createMock(EntityManagerInterface::class);
+        $em->expects(self::never())->method('flush');
+
+        $request    = Request::create('/admin/marketing/7/toggle', 'POST', ['_token' => 'bad']);
+        $repo       = $this->createMock(MarketingToolRepository::class);
+        $controller = $this->controller($repo, $em, $this->adminService($repo), $this->createMock(Environment::class), csrfValid: false);
+
+        self::assertSame(302, $controller->toggle($request, $tool)->getStatusCode());
+        self::assertFalse($tool->isEnabled());
     }
 
     public function testSeedCreatesCatalogAndRedirects(): void
@@ -315,6 +370,7 @@ final class MarketingToolAdminControllerTest extends TestCase
 
         $csrf = $this->createStub(CsrfTokenManagerInterface::class);
         $csrf->method('isTokenValid')->willReturn($csrfValid);
+        $csrf->method('getToken')->willReturnCallback(static fn (string $id): CsrfToken => new CsrfToken($id, 'token-' . $id));
         $router = $this->createStub(UrlGeneratorInterface::class);
         $router->method('generate')->willReturnCallback(static fn (string $route): string => '/' . $route);
 
@@ -323,9 +379,10 @@ final class MarketingToolAdminControllerTest extends TestCase
         $container->set('twig', $twig);
         $container->set('security.csrf.token_manager', $csrf);
         $container->set('router', $router);
-        if ($formFactory instanceof FormFactoryInterface) {
-            $container->set('form.factory', $formFactory);
-        }
+        $container->set('form.factory', $formFactory ?? Forms::createFormFactoryBuilder()
+            ->addExtension(new HttpFoundationExtension())
+            ->addExtension(new CsrfExtension($csrf))
+            ->getFormFactory());
         $controller->setContainer($container);
 
         return $controller;

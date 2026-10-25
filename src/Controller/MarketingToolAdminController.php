@@ -6,12 +6,17 @@ namespace Nowo\MarketingKitBundle\Controller;
 
 use Doctrine\ORM\EntityManagerInterface;
 use Nowo\MarketingKitBundle\Entity\MarketingTool;
+use Nowo\MarketingKitBundle\Form\CsrfActionType;
 use Nowo\MarketingKitBundle\Form\MarketingToolType;
+use Nowo\MarketingKitBundle\Form\ProfileFilterType;
 use Nowo\MarketingKitBundle\Repository\MarketingToolRepository;
 use Nowo\MarketingKitBundle\Security\MarketingKitAccessCheckerInterface;
 use Nowo\MarketingKitBundle\Service\MarketingToolAdminService;
 use Nowo\MarketingKitBundle\Service\MarketingToolCatalog;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Form\FormFactoryInterface;
+use Symfony\Component\Form\FormInterface;
+use Symfony\Component\Form\FormView;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -49,12 +54,32 @@ class MarketingToolAdminController extends AbstractController
             $profile = $this->adminService->defaultProfile();
         }
 
+        $tools = $this->repository->findByProfileOrdered($profile);
+
+        /** @var array<int|string, FormView> $toggleForms */
+        $toggleForms = [];
+        /** @var array<int|string, FormView> $deleteForms */
+        $deleteForms = [];
+        foreach ($tools as $tool) {
+            $id               = (int) $tool->getId();
+            $toggleForms[$id] = $this->csrfActionForm('toggle_marketing_tool_' . $id, $this->generateUrl('nowo_marketing_kit_admin_toggle', ['id' => $id]))->createView();
+            $deleteForms[$id] = $this->csrfActionForm('delete_marketing_tool_' . $id, $this->generateUrl('nowo_marketing_kit_admin_delete', ['id' => $id]))->createView();
+        }
+
         return $this->render('@NowoMarketingKitBundle/admin/index.html.twig', [
-            'tools'               => $this->repository->findByProfileOrdered($profile),
+            'tools'               => $tools,
             'profile'             => $profile,
             'profiles'            => $profiles,
             'catalog'             => $this->catalog,
             'use_database_config' => $this->useDatabaseConfig,
+            'profile_form'        => $this->formFactory()->createNamed('', ProfileFilterType::class, ['profile' => $profile], [
+                'action'   => $this->generateUrl('nowo_marketing_kit_admin_index'),
+                'profiles' => $profiles,
+            ])->createView(),
+            'seed_form'    => $this->csrfActionForm('seed_marketing_tools_' . $profile, $this->generateUrl('nowo_marketing_kit_admin_seed'), $profile, 'seed')->createView(),
+            'import_form'  => $this->csrfActionForm('import_marketing_yaml_' . $profile, $this->generateUrl('nowo_marketing_kit_admin_import_yaml'), $profile, 'import')->createView(),
+            'toggle_forms' => $toggleForms,
+            'delete_forms' => $deleteForms,
         ]);
     }
 
@@ -64,7 +89,7 @@ class MarketingToolAdminController extends AbstractController
         $this->denyUnlessGranted();
 
         $profile = (string) $request->request->get('profile', $this->adminService->defaultProfile());
-        if (!$this->isCsrfTokenValid('seed_marketing_tools_' . $profile, (string) $request->request->get('_token'))) {
+        if (!$this->isCsrfActionValid($request, $this->csrfActionForm('seed_marketing_tools_' . $profile, '', $profile))) {
             $this->addFlash('error', 'Invalid CSRF token.');
 
             return $this->redirectToRoute('nowo_marketing_kit_admin_index', ['profile' => $profile]);
@@ -87,7 +112,7 @@ class MarketingToolAdminController extends AbstractController
         $this->denyUnlessGranted();
 
         $profile = (string) $request->request->get('profile', $this->adminService->defaultProfile());
-        if (!$this->isCsrfTokenValid('import_marketing_yaml_' . $profile, (string) $request->request->get('_token'))) {
+        if (!$this->isCsrfActionValid($request, $this->csrfActionForm('import_marketing_yaml_' . $profile, '', $profile))) {
             $this->addFlash('error', 'Invalid CSRF token.');
 
             return $this->redirectToRoute('nowo_marketing_kit_admin_index', ['profile' => $profile]);
@@ -136,7 +161,7 @@ class MarketingToolAdminController extends AbstractController
     {
         $this->denyUnlessGranted();
 
-        if ($this->isCsrfTokenValid('toggle_marketing_tool_' . $tool->getId(), (string) $request->request->get('_token'))) {
+        if ($this->isCsrfActionValid($request, $this->csrfActionForm('toggle_marketing_tool_' . $tool->getId(), ''))) {
             $tool->setEnabled(!$tool->isEnabled());
             $this->entityManager->flush();
             $this->addFlash('success', sprintf('Service "%s" is now %s.', $tool->getCode(), $tool->isEnabled() ? 'enabled' : 'disabled'));
@@ -151,7 +176,7 @@ class MarketingToolAdminController extends AbstractController
         $this->denyUnlessGranted();
 
         $profile = $tool->getProfile();
-        if ($this->isCsrfTokenValid('delete_marketing_tool_' . $tool->getId(), (string) $request->request->get('_token'))) {
+        if ($this->isCsrfActionValid($request, $this->csrfActionForm('delete_marketing_tool_' . $tool->getId(), ''))) {
             $this->entityManager->remove($tool);
             $this->entityManager->flush();
             $this->addFlash('success', 'Service deleted.');
@@ -182,6 +207,41 @@ class MarketingToolAdminController extends AbstractController
             'catalog'             => $this->catalog,
             'use_database_config' => $this->useDatabaseConfig,
         ]);
+    }
+
+    /**
+     * Flat-named CSRF-only form (`_token`, optional hidden `profile`) — REQ-TWIG-005.
+     *
+     * @return FormInterface<mixed>
+     */
+    private function csrfActionForm(string $csrfTokenId, string $action, ?string $profile = null, string $idSuffix = ''): FormInterface
+    {
+        return $this->formFactory()->createNamed('', CsrfActionType::class, $profile === null ? null : ['profile' => $profile], [
+            'action'        => $action,
+            'csrf_token_id' => $csrfTokenId,
+            'with_profile'  => $profile !== null,
+            'id_suffix'     => $idSuffix,
+        ]);
+    }
+
+    /**
+     * @param FormInterface<mixed> $form
+     */
+    private function isCsrfActionValid(Request $request, FormInterface $form): bool
+    {
+        // Root-less form: submit the POST body explicitly (handleRequest() skips a root-less form whose payload has no
+        // child field, which is the case of the CSRF-only actions).
+        $form->submit($request->request->all());
+
+        return $form->isSubmitted() && $form->isValid();
+    }
+
+    private function formFactory(): FormFactoryInterface
+    {
+        /** @var FormFactoryInterface $factory */
+        $factory = $this->container->get('form.factory');
+
+        return $factory;
     }
 
     private function denyUnlessGranted(): void

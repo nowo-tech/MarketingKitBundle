@@ -28,6 +28,8 @@
 
 ## Unreleased
 
+- **Template override (REQ-TWIG-005):** `admin/index.html.twig` no longer contains raw `<form>` / `<select>` / `<input name="_token">` markup. `MarketingToolAdminController::index()` now always passes `profile_form`, `seed_form`, `import_form`, `toggle_forms` and `delete_forms` (FormViews; the last two keyed by tool id). If you override `@NowoMarketingKitBundle/admin/index.html.twig`, render them with `form_start` / child loop / `form_end` (see [USAGE](USAGE.md#forms-in-the-admin-views-req-twig-005)). Routes, posted field names (`_token`, `profile`) and CSRF token ids are unchanged, so existing overrides keep working until migrated.
+
 ## To 1.7.1
 
 From **1.7.0**:

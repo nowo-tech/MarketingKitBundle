@@ -20,26 +20,31 @@
     {% endif %}
 
     <div class="mk-toolbar nowo-ui-toolbar">
-        <form method="get" class="mk-inline">
-            <label for="profile">{{ 'admin.profile'|trans({}, 'NowoMarketingKitBundle') }}</label>
-            <select name="profile" id="profile" onchange="this.form.submit()">
-                {% for name in profiles %}
-                    <option value="{{ name }}" {% if name == profile %}selected{% endif %}>{{ name }}</option>
-                {% endfor %}
-            </select>
-        </form>
+        {{ form_start(profile_form, {attr: {class: 'mk-inline'}}) }}
+            {% for child in profile_form %}
+                {% if not child.rendered %}
+                    {{ form_row(child) }}
+                {% endif %}
+            {% endfor %}
+        {{ form_end(profile_form) }}
 
-        <form method="post" action="{{ path('nowo_marketing_kit_admin_seed') }}" class="mk-inline">
-            <input type="hidden" name="profile" value="{{ profile }}">
-            <input type="hidden" name="_token" value="{{ csrf_token('seed_marketing_tools_' ~ profile) }}">
+        {{ form_start(seed_form, {attr: {class: 'mk-inline'}}) }}
+            {% for child in seed_form %}
+                {% if not child.rendered %}
+                    {{ form_row(child) }}
+                {% endif %}
+            {% endfor %}
             <button type="submit" class="{{ ui.btn('secondary', null, _css_fw) }} mk-btn">{{ 'admin.seed'|trans({}, 'NowoMarketingKitBundle') }}</button>
-        </form>
+        {{ form_end(seed_form) }}
 
-        <form method="post" action="{{ path('nowo_marketing_kit_admin_import_yaml') }}" class="mk-inline">
-            <input type="hidden" name="profile" value="{{ profile }}">
-            <input type="hidden" name="_token" value="{{ csrf_token('import_marketing_yaml_' ~ profile) }}">
+        {{ form_start(import_form, {attr: {class: 'mk-inline'}}) }}
+            {% for child in import_form %}
+                {% if not child.rendered %}
+                    {{ form_row(child) }}
+                {% endif %}
+            {% endfor %}
             <button type="submit" class="{{ ui.btn('secondary', null, _css_fw) }} mk-btn">{{ 'admin.import_yaml'|trans({}, 'NowoMarketingKitBundle') }}</button>
-        </form>
+        {{ form_end(import_form) }}
     </div>
 
     <table class="mk-table nowo-ui-table">
@@ -65,12 +70,17 @@
                 <td>{{ tool.category }}</td>
                 <td>{{ tool.position }}</td>
                 <td>
-                    <form method="post" action="{{ path('nowo_marketing_kit_admin_toggle', {id: tool.id}) }}">
-                        <input type="hidden" name="_token" value="{{ csrf_token('toggle_marketing_tool_' ~ tool.id) }}">
+                    {% set toggle_form = toggle_forms[tool.id] %}
+                    {{ form_start(toggle_form) }}
+                        {% for child in toggle_form %}
+                            {% if not child.rendered %}
+                                {{ form_row(child) }}
+                            {% endif %}
+                        {% endfor %}
                         <button type="submit" class="mk-badge {{ tool.enabled ? 'mk-badge-on' : 'mk-badge-off' }}">
                             {{ tool.enabled ? 'admin.on'|trans({}, 'NowoMarketingKitBundle') : 'admin.off'|trans({}, 'NowoMarketingKitBundle') }}
                         </button>
-                    </form>
+                    {{ form_end(toggle_form) }}
                 </td>
                 <td class="mk-options">
                     {% for key, value in tool.options %}
@@ -82,10 +92,15 @@
                 <td class="mk-actions nowo-ui-actions">
                     <div class="{{ ui.row_actions(_css_fw) }}">
                         <a class="{{ ui.btn('secondary', 'sm', _css_fw) }} mk-btn nowo-ui-action-edit" href="{{ path('nowo_marketing_kit_admin_edit', {id: tool.id}) }}">{{ 'admin.edit'|trans({}, 'NowoMarketingKitBundle') }}</a>
-                        <form method="post" action="{{ path('nowo_marketing_kit_admin_delete', {id: tool.id}) }}" onsubmit="return confirm('{{ 'admin.confirm_delete'|trans({}, 'NowoMarketingKitBundle') }}');">
-                            <input type="hidden" name="_token" value="{{ csrf_token('delete_marketing_tool_' ~ tool.id) }}">
+                        {% set delete_form = delete_forms[tool.id] %}
+                        {{ form_start(delete_form, {attr: {onsubmit: "return confirm('" ~ ('admin.confirm_delete'|trans({}, 'NowoMarketingKitBundle')|e('js')) ~ "');"}}) }}
+                            {% for child in delete_form %}
+                                {% if not child.rendered %}
+                                    {{ form_row(child) }}
+                                {% endif %}
+                            {% endfor %}
                             <button type="submit" class="{{ ui.btn('danger', 'sm', _css_fw) }} mk-link-danger nowo-ui-action-delete">{{ 'admin.delete'|trans({}, 'NowoMarketingKitBundle') }}</button>
-                        </form>
+                        {{ form_end(delete_form) }}
                     </div>
                 </td>
             </tr>
