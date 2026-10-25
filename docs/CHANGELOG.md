@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[1.8.0] - 2026-10-26](#180---2026-10-26)
 - [[1.7.1] - 2026-10-24](#171---2026-10-24)
 - [[1.7.0] - 2026-10-21](#170---2026-10-21)
 - [[1.6.1] - 2026-10-18](#161---2026-10-18)
@@ -32,6 +33,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [[1.0.0] - 2026-07-24](#100---2026-07-24)
 
 ## [Unreleased]
+
+## [1.8.0] - 2026-10-26
+
+Forms in the bundle views are Symfony Form Types rendered with form_start / child loop / form_end, no raw form controls (REQ-TWIG-005). See [UPGRADING](UPGRADING.md#to-180).
 
 ### Changed
 
@@ -136,6 +141,7 @@ Allows nowo-tech/ui-kit-bundle 2.x (^1.4 || ^2.2) so hosts can move to UiKit 2.2
 
 - **Worker safety (Igor):** justified `// @igor-ignore` annotations and/or `ResetInterface` / request-scoped fixes so `make igor` passes on package `src/`.
 
+[1.8.0]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.8.0
 [1.7.1]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.7.1
 [1.7.0]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.7.0
 [1.6.1]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.6.1
