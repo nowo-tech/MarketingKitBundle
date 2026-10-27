@@ -13,6 +13,7 @@
 - [Logging](#logging)
 - [Dependencies](#dependencies)
 - [Release security checklist (12.4.1)](#release-security-checklist-1241)
+- [AI security audit](#ai-security-audit)
 
 ## Threat model
 
@@ -115,4 +116,16 @@ tags to another. Admin pages must not be cached by shared caches (they are behin
 | No-secret logs | yes |
 | Admin routes secured | `security.access_roles` default `ROLE_ADMIN` (empty list denies); access checked before any lookup; CSRF required at compile time; `allow_unauthenticated` demo-only; host `access_control` for `web_ui.path_prefix` |
 | Limits/DoS | N/A (static snippets) |
-| **REQ-SEC-004 (AI audit)** | Pass (good) — `allow_custom_html` default false; residual only if host enables custom HTML / third-party tags (re-audit 2026-09-28) |
+| **REQ-SEC-004 (AI audit)** | Pass (good) / Low — AI re-audit 2026-10-27 (`ac4d52e` → fixes PR #24 `31683cf`, 1.9.0); residuals: admin = script authority (dedicated role), trusted custom HTML without nonce, host CSP / consent mode |
+
+## AI security audit
+
+| Field | Value |
+| ----- | ----- |
+| Date | 2026-10-27 |
+| Scope | First pass on `main` `ac4d52e` (PR #23: UiKit page contract, `web_ui.*`, CSRF action forms, YAML import, seed, toggle/delete, profile filter); fix verification on PR #24 (`31683cf`), released in 1.9.0 |
+| Method | Claude Code security review (static: `src/`, Twig, Flex recipe, demo, docs) + PHP PoCs without network: ID break-out vectors, CSRF without the form CSRF extension, env placeholders and disguised literals, `required` consent bypass (YAML / form / stored rows), CSP nonce injection, `Vary: Cookie`, empty role list |
+| Grade | **Pass (good)** — overall risk **Low** (first pass: Pass (conditional) / Medium) |
+| Fixed in 1.9.0 | M1 empty `access_roles` now denies; L1 container fails to compile without form CSRF (`CsrfProtectionPass`); L2 category allowlist, built-in trackers cannot use `required` without `allow_required_trackers` (stored rows gated as `marketing`); L3/L5/L6 threat model, path-prefix sync and supported versions documented; L4 optional CSP nonce on built-in scripts (validated); I1 `%env()%` IDs compile (render-time check kept); I2 access check before lookup; I3 `Vary: Cookie`; I4 Hotjar ID format; I5 configured profiles only; I6 explicit tool-form token id; I7 custom HTML not saved while disabled; N1 admin `{id}` limited to 18 digits (no 500 on overflow) |
+| Residuals | Admin access = site-wide script authority (dedicated role; host `access_control` on the configured prefix, kept in sync by hand); custom HTML is trusted, can use `required` and gets no nonce; HTML stored before 1.9 renders if `allow_custom_html` is turned on; third-party scripts loaded by tags need host CSP (`strict-dynamic` / host allowlist); consent banner + GTM consent mode on the host |
+| Report | `BUNDLES_SECURITY_ANALYSIS.md` — Appendix AN (nowo-tech bundles monorepo) |

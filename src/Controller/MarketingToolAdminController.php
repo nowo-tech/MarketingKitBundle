@@ -172,7 +172,7 @@ class MarketingToolAdminController extends AbstractController
         return $this->handleForm($request, $tool, true);
     }
 
-    #[Route(path: '/{id}/edit', name: 'edit', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]
+    #[Route(path: '/{id}/edit', name: 'edit', requirements: ['id' => '\d{1,18}'], methods: ['GET', 'POST'])]
     public function edit(Request $request, int $id): Response
     {
         $this->denyUnlessGranted();
@@ -181,7 +181,7 @@ class MarketingToolAdminController extends AbstractController
         return $this->handleForm($request, $tool, false);
     }
 
-    #[Route(path: '/{id}/toggle', name: 'toggle', requirements: ['id' => '\d+'], methods: ['POST'])]
+    #[Route(path: '/{id}/toggle', name: 'toggle', requirements: ['id' => '\d{1,18}'], methods: ['POST'])]
     public function toggle(Request $request, int $id): Response
     {
         $this->denyUnlessGranted();
@@ -196,7 +196,7 @@ class MarketingToolAdminController extends AbstractController
         return $this->redirectToRoute('nowo_marketing_kit_admin_index', ['profile' => $tool->getProfile()]);
     }
 
-    #[Route(path: '/{id}/delete', name: 'delete', requirements: ['id' => '\d+'], methods: ['POST'])]
+    #[Route(path: '/{id}/delete', name: 'delete', requirements: ['id' => '\d{1,18}'], methods: ['POST'])]
     public function delete(Request $request, int $id): Response
     {
         $this->denyUnlessGranted();

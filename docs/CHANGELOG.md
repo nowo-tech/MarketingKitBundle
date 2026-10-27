@@ -62,6 +62,7 @@ Security hardening after the SEC-004 audit of 2026-10-27. See [UPGRADING](UPGRAD
 
 ### Fixed
 
+- Admin `{id}` routes accept at most 18 digits, so an id beyond `PHP_INT_MAX` returns 404 instead of a 500 `TypeError` (SEC-004 fix verification N1).
 - `%env()%` provider IDs (as in the Flex recipe and the README) no longer fail the compile-time ID check; they are
   validated at render time (I1). The Flex recipe no longer sets the removed `admin/layout.html.twig` layout.
 
