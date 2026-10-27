@@ -3,11 +3,12 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 1.9.0](#to-190)
   - [Template contract (REQ-UI-003)](#template-contract-req-ui-003)
   - [Configuration (REQ-UI-003 vocabulary)](#configuration-req-ui-003-vocabulary)
   - [FormKit profile](#formkit-profile)
-  - [Tests (REQ-SF-005)](#tests-req-sf-005)
   - [Security hardening (SEC-004 2026-10-27)](#security-hardening-sec-004-2026-10-27)
+  - [Tests (REQ-SF-005)](#tests-req-sf-005)
 - [To 1.8.0](#to-180)
 - [To 1.7.1](#to-171)
 - [To 1.7.0](#to-170)
@@ -33,6 +34,14 @@
   - [From nothing to 1.0.0](#from-nothing-to-100)
 
 ## Unreleased
+
+## To 1.9.0
+
+From **1.8.0**:
+
+```bash
+composer update nowo-tech/marketing-kit-bundle
+```
 
 From **1.8.0**:
 
