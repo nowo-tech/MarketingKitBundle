@@ -22,3 +22,9 @@ admin.col.category: Categoria
 admin.col.position: Posizione
 admin.col.enabled: Attivo
 admin.col.options: Opzioni
+admin.enable: Attiva
+admin.disable: Disattiva
+admin.confirm_delete_title: Eliminare «%name%»?
+admin.empty_title: Nessun servizio di marketing
+admin.col.actions: Azioni
+admin.form_intro: '%name% · tipo di provider %type%'

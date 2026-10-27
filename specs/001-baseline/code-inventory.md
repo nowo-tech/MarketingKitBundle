@@ -2,11 +2,11 @@
 
 **Baseline spec**: [`spec.md`](spec.md)  
 **Package**: `nowo-tech/marketing-kit-bundle`  
-**Last audited**: 2026-10-20
+**Last audited**: 2026-10-27
 
 Every production file tracked under `src/` is listed once below with the spec section and requirement IDs it implements. Tests (`tests/`) and the demo (`demo/`) are out of scope.
 
-Audit command (production count): `git ls-files src | wc -l` → **49** (2026-10-20).
+Audit command (production count): `git ls-files src | wc -l` → **51** (2026-10-27).
 
 ## Bundle & DI (`src/`, `src/DependencyInjection/`)
 
@@ -74,12 +74,15 @@ Audit command (production count): `git ls-files src | wc -l` → **49** (2026-10
 | `src/Service/MarketingToolAdminService.php` | Seed catalog and import YAML into the database | FR-MK-006 |
 | `src/Twig/MarketingKitExtension.php` | `nowo_marketing_head` / `_body_start` / `_body_end` functions | FR-MK-003 |
 
-## Admin UI (`src/Controller/`, `src/Form/`)
+## Admin UI (`src/Controller/`, `src/Form/`, `src/Ui/`)
 
 | Source file | Spec section | Requirement IDs |
 | --- | --- | --- |
-| `src/Controller/MarketingToolAdminController.php` | `/admin/marketing` CRUD (seed, import, toggle, edit) | FR-MK-006, FR-MK-009 |
+| `src/Controller/MarketingToolAdminController.php` | `web_ui.path_prefix` (`/admin/marketing`) CRUD (seed, import, toggle, edit, delete) | FR-MK-006, FR-MK-009 |
 | `src/Form/MarketingToolType.php` | Tool form with typed option fields | FR-MK-006, FR-MK-011 |
+| `src/Form/ProfileFilterType.php` | GET profile switcher of the list (filters region) | FR-MK-006 |
+| `src/Form/CsrfActionType.php` | CSRF-only forms of the seed / import / toggle / delete actions | FR-MK-006, FR-MK-009 |
+| `src/Ui/MarketingKitPages.php` | UiKit page contract: layout / templates / form themes, `ListPage` / `FormPage` view models | FR-MK-006, FR-MK-008 |
 
 ## Security (`src/Security/`)
 
@@ -100,10 +103,9 @@ Audit command (production count): `git ls-files src | wc -l` → **49** (2026-10
 
 | Source file | Spec section | Requirement IDs |
 | --- | --- | --- |
-| `src/Resources/views/admin/base.html.twig` | Admin page shell (REQ-UI-001, `parent()` stacking) | FR-MK-006, FR-MK-008 |
-| `src/Resources/views/admin/layout.html.twig` | Default standalone admin layout | FR-MK-006, FR-MK-008 |
-| `src/Resources/views/admin/index.html.twig` | Tool list (seed, import, toggle) | FR-MK-006, FR-MK-008 |
-| `src/Resources/views/admin/form.html.twig` | Tool create/edit form | FR-MK-006, FR-MK-008 |
+| `src/Resources/views/admin/index.html.twig` | Tool list on the UiKit list scaffold (seed, import, toggle, delete) | FR-MK-006, FR-MK-008 |
+| `src/Resources/views/admin/form.html.twig` | Tool create/edit form on the UiKit form scaffold | FR-MK-006, FR-MK-008 |
+| `src/Resources/views/admin/_legacy_layout.html.twig` | Deprecated bridge around a 1.x host layout (removed in 2.0) | FR-MK-008 |
 
 ## Translations (`src/Resources/translations/`)
 
@@ -130,9 +132,9 @@ Domain **`NowoMarketingKitBundle`** (REQ-I18N-003).
 | Persistence | 3 | 3 |
 | Providers | 11 | 11 |
 | Services & Twig | 4 | 4 |
-| Admin UI | 2 | 2 |
+| Admin UI | 5 | 5 |
 | Security | 3 | 3 |
 | Config YAML | 2 | 2 |
-| Twig views | 4 | 4 |
+| Twig views | 3 | 3 |
 | Translations | 7 | 7 |
-| **Total production sources** | **49** | **49** |
+| **Total production sources** | **51** | **51** |

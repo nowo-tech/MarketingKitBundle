@@ -68,7 +68,7 @@ Install and configure marketing tools (GTM, GA4, Meta Pixel, LinkedIn, TikTok, H
 | ID | Requirement |
 |----|-------------|
 | FR-MK-004 | `use_database_config` replace-all tools from Doctrine when profile has rows |
-| FR-MK-006 | Admin CRUD for `MarketingTool` (seed, import YAML, toggle) |
+| FR-MK-006 | Admin CRUD for `MarketingTool` (seed, import YAML, toggle, delete with confirm) on the UiKit page contract (list / form scaffolds, `web_ui.*` vocabulary; REQ-UI-001 / REQ-UI-003) |
 | FR-MK-009 | Admin access control: `security.access_roles`, custom `access_checker`, demo-only `allow_unauthenticated` (REQ-UI-002) |
 
 ### Runtime (FrankenPHP worker)
@@ -81,7 +81,7 @@ Install and configure marketing tools (GTM, GA4, Meta Pixel, LinkedIn, TikTok, H
 
 ## Success Criteria
 
-- **SC-001**: **49/49** production files under `src/` mapped in [`code-inventory.md`](code-inventory.md) (audited 2026-10-20; `git ls-files src | wc -l`).
+- **SC-001**: **51/51** production files under `src/` mapped in [`code-inventory.md`](code-inventory.md) (audited 2026-10-27; `git ls-files src | wc -l`).
 - **SC-002**: PHPUnit covers config merge, consent gate, renderers, admin services, DI extension, and FrankenPHP worker hygiene (resolver memo + closed EM).
 - **SC-003**: Config keys match [`docs/CONFIGURATION.md`](../../docs/CONFIGURATION.md).
 - **SC-004**: Bundle is viable under FrankenPHP worker with kernel not reset ([`docs/FRANKENPHP-WORKER-AUDIT.md`](../../docs/FRANKENPHP-WORKER-AUDIT.md)).

@@ -7,6 +7,7 @@ Thank you for contributing to MarketingKitBundle.
 - [Setup](#setup)
 - [Git hygiene (REQ-GIT-001)](#git-hygiene-req-git-001)
 - [Quality checks](#quality-checks)
+- [Demo e2e and screenshots (REQ-DEMO-013)](#demo-e2e-and-screenshots-req-demo-013)
 - [Code of Conduct](#code-of-conduct)
 - [Pull requests](#pull-requests)
 - [AI co-author trailers](#ai-co-author-trailers)
@@ -53,7 +54,20 @@ make release-check
 ```
 
 When changing `src/Resources/translations/`, keep key parity across `en/es/it/fr/pt/de/nl` (`make validate-translations`).
-When adding production files under `src/`, update `specs/001-baseline/code-inventory.md` (43 files today).
+When adding production files under `src/`, update `specs/001-baseline/code-inventory.md` (see its coverage summary).
+
+## Demo e2e and screenshots (REQ-DEMO-013)
+
+The Symfony 8 demo ships a Playwright suite (`demo/symfony8/e2e`) run in the official Playwright image (no local
+Node needed). Both targets start the demo when needed and reset its database (`make -C demo/symfony8 reset-demo`)
+first:
+
+```bash
+make -C demo/symfony8 test-e2e           # admin happy path: seed, import YAML, edit (422 on an invalid ID), toggle, delete
+make -C demo/symfony8 demo-screenshots   # docs/images/demo/admin-list.webp + admin-form.webp (PNG -> WebP via sharp)
+```
+
+Screenshots show the demo masthead, the admin UI and the Symfony web debug toolbar; look at them before committing.
 
 ## Code of Conduct
 

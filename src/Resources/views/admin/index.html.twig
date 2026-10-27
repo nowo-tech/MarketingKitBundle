@@ -1,114 +1,39 @@
-{% extends '@NowoMarketingKitBundle/admin/base.html.twig' %}
-{% import '@NowoUiKitBundle/macros/ui.html.twig' as ui %}
-{% set _css_fw = nowo_marketing_kit_css_framework|default('none') %}
+{#
+  Marketing services admin list (REQ-UI-003): UiKit list scaffold.
+  View model: page (View\ListPage, MarketingKitPages::listPage()): header actions Add service (GET), Seed catalog and
+  Import from YAML (POST + CSRF-only FormView); filters = the GET profile switcher (ProfileFilterType); one row per
+  tool: id, name, code, type, category, position, enabled, options (key => shortened value); row actions Edit,
+  Enable / Disable (POST + CSRF) and Delete (POST + CSRF behind the UiKit confirm dialog).
+  Extra variables (1.x, kept for web_ui.templates overrides): tools, profile, profiles, catalog, use_database_config,
+  profile_form, seed_form, import_form, toggle_forms, delete_forms.
+  Data blocks: nowo_ui_list_row (cells); nowo_ui_content prepends the use_database_config notice (flash_warning).
+#}
+{% extends '@NowoUiKit/page/list.html.twig' %}
 
-{% block title %}{{ 'admin.title'|trans({}, 'NowoMarketingKitBundle') }}{% endblock %}
-
-{% block body %}
-    <div class="mk-header nowo-ui-header">
-        <div>
-            <h1>{{ 'admin.title'|trans({}, 'NowoMarketingKitBundle') }}</h1>
-            <p class="mk-lead">{{ 'admin.lead'|trans({}, 'NowoMarketingKitBundle') }}</p>
-        </div>
-        <a class="{{ ui.btn('primary', null, _css_fw) }} mk-btn mk-btn-primary nowo-ui-action-create" href="{{ path('nowo_marketing_kit_admin_new', {profile: profile}) }}">{{ 'admin.new'|trans({}, 'NowoMarketingKitBundle') }}</a>
-    </div>
-
-    {% if not use_database_config %}
-        <div class="mk-alert mk-alert-warn nowo-ui-flash">
-            {{ 'admin.db_config_hint'|trans({}, 'NowoMarketingKitBundle') }}
-        </div>
+{% block nowo_ui_content %}
+    {% if not use_database_config|default(true) %}
+        <div class="{{ nowo_ui_class('flash_warning', page.bundle) }}" role="status" data-testid="marketing-kit-db-config-hint">{{ 'admin.db_config_hint'|trans({}, 'NowoMarketingKitBundle') }}</div>
     {% endif %}
+    {{ parent() }}
+{% endblock %}
 
-    <div class="mk-toolbar nowo-ui-toolbar">
-        {{ form_start(profile_form, {attr: {class: 'mk-inline'}}) }}
-            {% for child in profile_form %}
-                {% if not child.rendered %}
-                    {{ form_row(child) }}
-                {% endif %}
-            {% endfor %}
-        {{ form_end(profile_form) }}
-
-        {{ form_start(seed_form, {attr: {class: 'mk-inline'}}) }}
-            {% for child in seed_form %}
-                {% if not child.rendered %}
-                    {{ form_row(child) }}
-                {% endif %}
-            {% endfor %}
-            <button type="submit" class="{{ ui.btn('secondary', null, _css_fw) }} mk-btn">{{ 'admin.seed'|trans({}, 'NowoMarketingKitBundle') }}</button>
-        {{ form_end(seed_form) }}
-
-        {{ form_start(import_form, {attr: {class: 'mk-inline'}}) }}
-            {% for child in import_form %}
-                {% if not child.rendered %}
-                    {{ form_row(child) }}
-                {% endif %}
-            {% endfor %}
-            <button type="submit" class="{{ ui.btn('secondary', null, _css_fw) }} mk-btn">{{ 'admin.import_yaml'|trans({}, 'NowoMarketingKitBundle') }}</button>
-        {{ form_end(import_form) }}
-    </div>
-
-    <table class="mk-table nowo-ui-table">
-        <thead>
-            <tr>
-                <th>{{ 'admin.col.service'|trans({}, 'NowoMarketingKitBundle') }}</th>
-                <th>{{ 'admin.col.type'|trans({}, 'NowoMarketingKitBundle') }}</th>
-                <th>{{ 'admin.col.category'|trans({}, 'NowoMarketingKitBundle') }}</th>
-                <th>{{ 'admin.col.position'|trans({}, 'NowoMarketingKitBundle') }}</th>
-                <th>{{ 'admin.col.enabled'|trans({}, 'NowoMarketingKitBundle') }}</th>
-                <th>{{ 'admin.col.options'|trans({}, 'NowoMarketingKitBundle') }}</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-        {% for tool in tools %}
-            <tr>
-                <td>
-                    <strong>{{ catalog.labelForCode(tool.code) }}</strong>
-                    <div class="mk-muted"><code>{{ tool.code }}</code></div>
-                </td>
-                <td><code>{{ tool.type }}</code></td>
-                <td>{{ tool.category }}</td>
-                <td>{{ tool.position }}</td>
-                <td>
-                    {% set toggle_form = toggle_forms[tool.id] %}
-                    {{ form_start(toggle_form) }}
-                        {% for child in toggle_form %}
-                            {% if not child.rendered %}
-                                {{ form_row(child) }}
-                            {% endif %}
-                        {% endfor %}
-                        <button type="submit" class="mk-badge {{ tool.enabled ? 'mk-badge-on' : 'mk-badge-off' }}">
-                            {{ tool.enabled ? 'admin.on'|trans({}, 'NowoMarketingKitBundle') : 'admin.off'|trans({}, 'NowoMarketingKitBundle') }}
-                        </button>
-                    {{ form_end(toggle_form) }}
-                </td>
-                <td class="mk-options">
-                    {% for key, value in tool.options %}
-                        <div><span class="mk-muted">{{ key }}:</span> {% if value is empty %}—{% else %}{{ value|length > 40 ? value|slice(0, 40) ~ '…' : value }}{% endif %}</div>
-                    {% else %}
-                        —
-                    {% endfor %}
-                </td>
-                <td class="mk-actions nowo-ui-actions">
-                    <div class="{{ ui.row_actions(_css_fw) }}">
-                        <a class="{{ ui.btn('secondary', 'sm', _css_fw) }} mk-btn nowo-ui-action-edit" href="{{ path('nowo_marketing_kit_admin_edit', {id: tool.id}) }}">{{ 'admin.edit'|trans({}, 'NowoMarketingKitBundle') }}</a>
-                        {% set delete_form = delete_forms[tool.id] %}
-                        {{ form_start(delete_form, {attr: {onsubmit: "return confirm('" ~ ('admin.confirm_delete'|trans({}, 'NowoMarketingKitBundle')|e('js')) ~ "');"}}) }}
-                            {% for child in delete_form %}
-                                {% if not child.rendered %}
-                                    {{ form_row(child) }}
-                                {% endif %}
-                            {% endfor %}
-                            <button type="submit" class="{{ ui.btn('danger', 'sm', _css_fw) }} mk-link-danger nowo-ui-action-delete">{{ 'admin.delete'|trans({}, 'NowoMarketingKitBundle') }}</button>
-                        {{ form_end(delete_form) }}
-                    </div>
-                </td>
-            </tr>
+{% block nowo_ui_list_row %}
+    {%- set _b = page.bundle -%}
+    <td class="{{ nowo_ui_class('table_cell', _b) }}" data-label="{{ 'admin.col.service'|trans({}, 'NowoMarketingKitBundle') }}" data-required="1">
+        <strong>{{ row.name }}</strong>
+        <span class="{{ nowo_ui_class('muted', _b) }}"><code class="{{ nowo_ui_class('code', _b) }}">{{ row.code }}</code></span>
+    </td>
+    <td class="{{ nowo_ui_class('table_cell', _b) }}" data-label="{{ 'admin.col.type'|trans({}, 'NowoMarketingKitBundle') }}"><code class="{{ nowo_ui_class('code', _b) }}">{{ row.type }}</code></td>
+    <td class="{{ nowo_ui_class('table_cell', _b) }}" data-label="{{ 'admin.col.category'|trans({}, 'NowoMarketingKitBundle') }}" data-nowo-ui-priority="2">{{ row.category }}</td>
+    <td class="{{ nowo_ui_class('table_cell', _b) }}" data-label="{{ 'admin.col.position'|trans({}, 'NowoMarketingKitBundle') }}" data-nowo-ui-priority="2">{{ row.position }}</td>
+    <td class="{{ nowo_ui_class('table_cell', _b) }}" data-label="{{ 'admin.col.enabled'|trans({}, 'NowoMarketingKitBundle') }}">
+        <span class="{{ nowo_ui_class(row.enabled ? 'badge_success' : 'badge_neutral', _b) }}" data-testid="marketing-kit-state-{{ row.code }}">{{ (row.enabled ? 'admin.on' : 'admin.off')|trans({}, 'NowoMarketingKitBundle') }}</span>
+    </td>
+    <td class="{{ nowo_ui_class('table_cell', _b) }}{{ row.options is empty ? ' ' ~ nowo_ui_class('table_cell_muted', _b) }}" data-label="{{ 'admin.col.options'|trans({}, 'NowoMarketingKitBundle') }}" data-nowo-ui-priority="3">
+        {% for key, value in row.options %}
+            <div><span class="{{ nowo_ui_class('muted', _b) }}">{{ key }}:</span> {{ value is same as('') ? '—' : value }}</div>
         {% else %}
-            <tr>
-                <td colspan="7">{{ 'admin.empty'|trans({}, 'NowoMarketingKitBundle') }}</td>
-            </tr>
+            —
         {% endfor %}
-        </tbody>
-    </table>
+    </td>
 {% endblock %}

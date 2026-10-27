@@ -22,3 +22,9 @@ admin.col.category: Categorie
 admin.col.position: Positie
 admin.col.enabled: Actief
 admin.col.options: Opties
+admin.enable: Inschakelen
+admin.disable: Uitschakelen
+admin.confirm_delete_title: “%name%” verwijderen?
+admin.empty_title: Geen marketingdiensten
+admin.col.actions: Acties
+admin.form_intro: '%name% · providertype %type%'

@@ -20,6 +20,7 @@ use Symfony\Component\DependencyInjection\Reference;
 use function array_key_exists;
 use function is_array;
 use function is_string;
+use function ltrim;
 
 /**
  * Loads MarketingKit services and publishes configuration parameters.
@@ -66,29 +67,14 @@ final class NowoMarketingKitExtension extends Extension implements PrependExtens
         if (!$hostHasProfile) {
             $seed['profiles'] = [
                 'marketing_kit' => [
-                    'alias'              => 'marketing_kit',
-                    'translation_domain' => 'NowoMarketingKitBundle',
-                    'defaults'           => [
-                        'attr'     => ['class' => 'nowo-ui-input form-control'],
-                        'row_attr' => ['class' => 'mb-2'],
-                    ],
-                    'field_types' => [
-                        'checkbox' => [
-                            'attr'     => ['class' => 'form-check-input'],
-                            'row_attr' => ['class' => 'form-check mb-2'],
-                        ],
-                        'choice' => [
-                            'attr' => ['class' => 'form-select'],
-                        ],
-                        'entity' => [
-                            'attr' => ['class' => 'form-select'],
-                        ],
-                        'file' => [
-                            'attr' => ['class' => 'nowo-ui-input form-control'],
-                        ],
-                        'textarea' => [
-                            'attr' => ['class' => 'nowo-ui-input form-control'],
-                        ],
+                    'alias'                           => 'marketing_kit',
+                    'translation_domain'              => 'NowoMarketingKitBundle',
+                    'convention_requires_translation' => true,
+                    'defaults'                        => [
+                        // REQ-UI-003: no framework classes in the bundle form; the UiKit form theme of
+                        // web_ui.form_themes applies the theme slots (input, check, form_row, ...).
+                        'attr'     => [],
+                        'row_attr' => [],
                     ],
                 ],
             ];
@@ -158,7 +144,12 @@ final class NowoMarketingKitExtension extends Extension implements PrependExtens
         $container->setParameter('nowo_marketing_kit.security.access_checker', $config['security']['access_checker']);
         $container->setParameter('nowo_marketing_kit.security.allow_unauthenticated', $config['security']['allow_unauthenticated']);
         $container->setParameter('nowo_marketing_kit.security.allow_custom_html', (bool) ($config['security']['allow_custom_html'] ?? false));
+        $container->setParameter('nowo_marketing_kit.web_ui.enabled', $config['web_ui']['enabled']);
+        $container->setParameter('nowo_marketing_kit.web_ui.path_prefix', $config['web_ui']['path_prefix']);
+        $container->setParameter('nowo_marketing_kit.web_ui.route_path', ltrim((string) $config['web_ui']['path_prefix'], '/'));
         $container->setParameter('nowo_marketing_kit.web_ui.layout_template', $config['web_ui']['layout_template']);
+        $container->setParameter('nowo_marketing_kit.web_ui.templates', $config['web_ui']['templates']);
+        $container->setParameter('nowo_marketing_kit.web_ui.form_themes', $config['web_ui']['form_themes']);
         $container->setParameter('nowo_marketing_kit.web_ui.css_framework', $config['web_ui']['css_framework']);
 
         if (

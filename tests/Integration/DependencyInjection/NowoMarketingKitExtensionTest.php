@@ -11,6 +11,7 @@ use Nowo\MarketingKitBundle\Security\ConfigurableMarketingKitAccessChecker;
 use Nowo\MarketingKitBundle\Security\MarketingKitAccessCheckerInterface;
 use Nowo\MarketingKitBundle\Service\MarketingScriptRenderer;
 use Nowo\MarketingKitBundle\Twig\MarketingKitExtension;
+use PHPUnit\Framework\Attributes\IgnoreDeprecations;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
@@ -27,7 +28,7 @@ final class NowoMarketingKitExtensionTest extends TestCase
         $extension->load([[
             'use_database_config'    => true,
             'respect_cookie_consent' => false,
-            'doctrine'               => ['table_prefix' => 'app_', 'connection' => 'default'],
+            'doctrine'               => ['table_prefix' => 'app_'],
             'default_profile'        => 'default',
             'profiles'               => [
                 'default' => [
@@ -43,7 +44,12 @@ final class NowoMarketingKitExtensionTest extends TestCase
         self::assertSame('app_', $container->getParameter('nowo_marketing_kit.doctrine.table_prefix'));
         self::assertSame(['ROLE_ADMIN'], $container->getParameter('nowo_marketing_kit.security.access_roles'));
         self::assertFalse($container->getParameter('nowo_marketing_kit.security.allow_unauthenticated'));
-        self::assertSame('@NowoMarketingKitBundle/admin/layout.html.twig', $container->getParameter('nowo_marketing_kit.web_ui.layout_template'));
+        self::assertNull($container->getParameter('nowo_marketing_kit.web_ui.layout_template'));
+        self::assertTrue($container->getParameter('nowo_marketing_kit.web_ui.enabled'));
+        self::assertSame('/admin/marketing', $container->getParameter('nowo_marketing_kit.web_ui.path_prefix'));
+        self::assertSame('admin/marketing', $container->getParameter('nowo_marketing_kit.web_ui.route_path'));
+        self::assertSame(['index' => '@NowoMarketingKitBundle/admin/index.html.twig', 'form' => '@NowoMarketingKitBundle/admin/form.html.twig'], $container->getParameter('nowo_marketing_kit.web_ui.templates'));
+        self::assertSame(['@NowoUiKit/form/nowo_ui_layout.html.twig'], $container->getParameter('nowo_marketing_kit.web_ui.form_themes'));
         self::assertSame('none', $container->getParameter('nowo_marketing_kit.web_ui.css_framework'));
         self::assertTrue($container->hasDefinition(TablePrefixListener::class));
         self::assertTrue($container->hasDefinition(MarketingScriptRenderer::class));
@@ -182,7 +188,8 @@ final class NowoMarketingKitExtensionTest extends TestCase
         self::assertSame('bootstrap', $seed['css_framework']);
         self::assertArrayHasKey('marketing_kit', $seed['profiles']);
         self::assertSame('NowoMarketingKitBundle', $seed['profiles']['marketing_kit']['translation_domain']);
-        self::assertSame('form-select', $seed['profiles']['marketing_kit']['field_types']['choice']['attr']['class']);
+        self::assertSame(['attr' => [], 'row_attr' => []], $seed['profiles']['marketing_kit']['defaults']);
+        self::assertArrayNotHasKey('field_types', $seed['profiles']['marketing_kit']);
     }
 
     public function testPrependSkipsFormKitKeysAlreadyConfiguredByHost(): void
@@ -239,6 +246,7 @@ final class NowoMarketingKitExtensionTest extends TestCase
         self::assertArrayNotHasKey('profiles', $configs[0]);
     }
 
+    #[IgnoreDeprecations]
     public function testPrependSeedsUiKitFromWebUiDefaults(): void
     {
         $container = new ContainerBuilder();
@@ -248,6 +256,7 @@ final class NowoMarketingKitExtensionTest extends TestCase
                 'css_framework' => 'bootstrap',
             ],
         ]);
+        $this->expectUserDeprecationMessageMatches('/"css_framework" option at "nowo_marketing_kit\\.web_ui" is deprecated/');
 
         (new NowoMarketingKitExtension())->prepend($container);
 
@@ -258,8 +267,10 @@ final class NowoMarketingKitExtensionTest extends TestCase
         ], $configs[0]);
     }
 
+    #[IgnoreDeprecations]
     public function testPrependSeedsUiKitIconSetFromWebUi(): void
     {
+        $this->expectUserDeprecationMessageMatches('/"icon_set" option at "nowo_marketing_kit\\.web_ui" is deprecated/');
         $container = new ContainerBuilder();
         $this->registerNamedExtension($container, 'nowo_ui_kit');
         $container->prependExtensionConfig('nowo_marketing_kit', [

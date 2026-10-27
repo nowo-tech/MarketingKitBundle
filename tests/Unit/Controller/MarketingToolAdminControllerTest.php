@@ -12,6 +12,9 @@ use Nowo\MarketingKitBundle\Repository\MarketingToolRepository;
 use Nowo\MarketingKitBundle\Security\MarketingKitAccessCheckerInterface;
 use Nowo\MarketingKitBundle\Service\MarketingToolAdminService;
 use Nowo\MarketingKitBundle\Service\MarketingToolCatalog;
+use Nowo\MarketingKitBundle\Ui\MarketingKitPages;
+use Nowo\UiKitBundle\View\FormPage;
+use Nowo\UiKitBundle\View\ListPage;
 use PHPUnit\Framework\TestCase;
 use ReflectionProperty;
 use Symfony\Component\DependencyInjection\Container;
@@ -25,6 +28,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Session\Session;
 use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 use Symfony\Component\Security\Csrf\CsrfToken;
@@ -309,6 +313,81 @@ final class MarketingToolAdminControllerTest extends TestCase
         self::assertSame('FORM', $controller->edit(Request::create('/admin/marketing/1/edit'), $tool)->getContent());
     }
 
+    public function testIndexRendersTheListPageThroughTheConfiguredTemplate(): void
+    {
+        $tool = (new MarketingTool())->setProfile('default')->setCode('gtm');
+        $this->setId($tool, 5);
+        $repo = $this->createMock(MarketingToolRepository::class);
+        $repo->method('findByProfileOrdered')->willReturn([$tool]);
+
+        /** @var array{0: string, 1: array<string, mixed>} $rendered */
+        $rendered = ['', []];
+        $twig     = $this->createMock(Environment::class);
+        $twig->method('render')->willReturnCallback(static function (string $name, array $ctx) use (&$rendered): string {
+            $rendered = [$name, $ctx];
+
+            return 'OK';
+        });
+
+        $pages      = new MarketingKitPages(true, null, ['index' => 'admin/marketing_index.html.twig']);
+        $controller = $this->controller($repo, $this->createMock(EntityManagerInterface::class), $this->adminService($repo), $twig, pages: $pages);
+        $controller->index(Request::create('/admin/marketing'));
+
+        self::assertSame('admin/marketing_index.html.twig', $rendered[0]);
+        $page = $rendered[1]['page'];
+        self::assertInstanceOf(ListPage::class, $page);
+        self::assertSame($rendered[1]['seed_form'], $page->header->actions[1]->form);
+        self::assertSame('/nowo_marketing_kit_admin_edit', $page->rowActions($page->rows[5], 5)[0]->href);
+    }
+
+    public function testInvalidSubmitRendersTheFormPageWith422(): void
+    {
+        $tool = (new MarketingTool())->setProfile('default')->setCode('ga4')->setType('ga4');
+        $this->setId($tool, 1);
+
+        $form = $this->createMock(FormInterface::class);
+        $form->method('handleRequest')->willReturnSelf();
+        $form->method('isSubmitted')->willReturn(true);
+        $form->method('isValid')->willReturn(false);
+        $form->method('createView')->willReturn(new FormView());
+        $factory = $this->createMock(FormFactoryInterface::class);
+        $factory->method('create')->willReturn($form);
+
+        /** @var array{0: string, 1: array<string, mixed>} $rendered */
+        $rendered = ['', []];
+        $twig     = $this->createMock(Environment::class);
+        $twig->method('render')->willReturnCallback(static function (string $name, array $ctx) use (&$rendered): string {
+            $rendered = [$name, $ctx];
+
+            return 'FORM';
+        });
+
+        $repo       = $this->createMock(MarketingToolRepository::class);
+        $controller = $this->controller($repo, $this->createMock(EntityManagerInterface::class), $this->adminService($repo), $twig, formFactory: $factory);
+        $response   = $controller->edit(Request::create('/admin/marketing/1/edit', 'POST'), $tool);
+
+        self::assertSame(422, $response->getStatusCode());
+        self::assertSame('@NowoMarketingKitBundle/admin/form.html.twig', $rendered[0]);
+        $page = $rendered[1]['page'];
+        self::assertInstanceOf(FormPage::class, $page);
+        self::assertSame($rendered[1]['form'], $page->form);
+    }
+
+    public function testDisabledWebUiAnswers404(): void
+    {
+        $repo       = $this->createMock(MarketingToolRepository::class);
+        $controller = $this->controller(
+            $repo,
+            $this->createMock(EntityManagerInterface::class),
+            $this->adminService($repo),
+            $this->createMock(Environment::class),
+            pages: new MarketingKitPages(false),
+        );
+
+        $this->expectException(NotFoundHttpException::class);
+        $controller->index(Request::create('/admin/marketing'));
+    }
+
     public function testIndexThrowsAccessDeniedWhenCheckerRejectsAccess(): void
     {
         $controller = $this->controller(
@@ -345,6 +424,7 @@ final class MarketingToolAdminControllerTest extends TestCase
         ?FormFactoryInterface $formFactory = null,
         ?Request $request = null,
         bool $accessAllowed = true,
+        ?MarketingKitPages $pages = null,
     ): MarketingToolAdminController {
         $accessChecker = new class($accessAllowed) implements MarketingKitAccessCheckerInterface {
             public function __construct(
@@ -358,7 +438,7 @@ final class MarketingToolAdminControllerTest extends TestCase
             }
         };
 
-        $controller = new MarketingToolAdminController($repo, $em, $admin, new MarketingToolCatalog(), $accessChecker, true);
+        $controller = new MarketingToolAdminController($repo, $em, $admin, new MarketingToolCatalog(), $accessChecker, true, $pages ?? new MarketingKitPages());
 
         // Real AbstractController helpers, wired to test doubles (no subclassing of the controller).
         $request ??= Request::create('/');

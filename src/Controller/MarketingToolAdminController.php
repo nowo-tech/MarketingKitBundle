@@ -13,24 +13,29 @@ use Nowo\MarketingKitBundle\Repository\MarketingToolRepository;
 use Nowo\MarketingKitBundle\Security\MarketingKitAccessCheckerInterface;
 use Nowo\MarketingKitBundle\Service\MarketingToolAdminService;
 use Nowo\MarketingKitBundle\Service\MarketingToolCatalog;
+use Nowo\MarketingKitBundle\Ui\MarketingKitPages;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\Form\FormView;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 
 use function in_array;
 use function sprintf;
 
 /**
- * CRUD admin to configure marketing services (providers) stored in Doctrine.
+ * CRUD admin to configure marketing services (providers) stored in Doctrine. Pages are UiKit page scaffolds
+ * (REQ-UI-003): the view models come from {@see MarketingKitPages}; routes live under `web_ui.path_prefix`
+ * (default `/admin/marketing`) and answer 404 when `web_ui.enabled` is false.
  *
  * @final since 1.7, will be final in 2.0 (not an extension point; decorate or replace the service instead)
  */
-#[Route(path: '/admin/marketing', name: 'nowo_marketing_kit_admin_')]
+#[Route(path: '/%nowo_marketing_kit.web_ui.route_path%', name: 'nowo_marketing_kit_admin_')]
 class MarketingToolAdminController extends AbstractController
 {
     public function __construct(
@@ -40,6 +45,7 @@ class MarketingToolAdminController extends AbstractController
         private readonly MarketingToolCatalog $catalog,
         private readonly MarketingKitAccessCheckerInterface $accessChecker,
         private readonly bool $useDatabaseConfig,
+        private readonly MarketingKitPages $pages = new MarketingKitPages(),
     ) {
     }
 
@@ -56,9 +62,9 @@ class MarketingToolAdminController extends AbstractController
 
         $tools = $this->repository->findByProfileOrdered($profile);
 
-        /** @var array<int|string, FormView> $toggleForms */
+        /** @var array<int, FormView> $toggleForms */
         $toggleForms = [];
-        /** @var array<int|string, FormView> $deleteForms */
+        /** @var array<int, FormView> $deleteForms */
         $deleteForms = [];
         foreach ($tools as $tool) {
             $id               = (int) $tool->getId();
@@ -66,20 +72,25 @@ class MarketingToolAdminController extends AbstractController
             $deleteForms[$id] = $this->csrfActionForm('delete_marketing_tool_' . $id, $this->generateUrl('nowo_marketing_kit_admin_delete', ['id' => $id]))->createView();
         }
 
-        return $this->render('@NowoMarketingKitBundle/admin/index.html.twig', [
+        $profileForm = $this->formFactory()->createNamed('', ProfileFilterType::class, ['profile' => $profile], [
+            'action'   => $this->generateUrl('nowo_marketing_kit_admin_index'),
+            'profiles' => $profiles,
+        ])->createView();
+        $seedForm   = $this->csrfActionForm('seed_marketing_tools_' . $profile, $this->generateUrl('nowo_marketing_kit_admin_seed'), $profile, 'seed')->createView();
+        $importForm = $this->csrfActionForm('import_marketing_yaml_' . $profile, $this->generateUrl('nowo_marketing_kit_admin_import_yaml'), $profile, 'import')->createView();
+
+        return $this->render($this->pages->template('index'), [
+            'page'                => $this->pages->listPage($tools, $profile, $this->catalog, $profileForm, $seedForm, $importForm, $toggleForms, $deleteForms, $this->urls()),
             'tools'               => $tools,
             'profile'             => $profile,
             'profiles'            => $profiles,
             'catalog'             => $this->catalog,
             'use_database_config' => $this->useDatabaseConfig,
-            'profile_form'        => $this->formFactory()->createNamed('', ProfileFilterType::class, ['profile' => $profile], [
-                'action'   => $this->generateUrl('nowo_marketing_kit_admin_index'),
-                'profiles' => $profiles,
-            ])->createView(),
-            'seed_form'    => $this->csrfActionForm('seed_marketing_tools_' . $profile, $this->generateUrl('nowo_marketing_kit_admin_seed'), $profile, 'seed')->createView(),
-            'import_form'  => $this->csrfActionForm('import_marketing_yaml_' . $profile, $this->generateUrl('nowo_marketing_kit_admin_import_yaml'), $profile, 'import')->createView(),
-            'toggle_forms' => $toggleForms,
-            'delete_forms' => $deleteForms,
+            'profile_form'        => $profileForm,
+            'seed_form'           => $seedForm,
+            'import_form'         => $importForm,
+            'toggle_forms'        => $toggleForms,
+            'delete_forms'        => $deleteForms,
         ]);
     }
 
@@ -200,13 +211,16 @@ class MarketingToolAdminController extends AbstractController
             return $this->redirectToRoute('nowo_marketing_kit_admin_index', ['profile' => $tool->getProfile()]);
         }
 
-        return $this->render('@NowoMarketingKitBundle/admin/form.html.twig', [
-            'form'                => $form,
+        $formView = $form->createView();
+
+        return $this->render($this->pages->template('form'), [
+            'page'                => $this->pages->formPage($tool, $isNew, $formView, $this->catalog, $this->urls()),
+            'form'                => $formView,
             'tool'                => $tool,
             'is_new'              => $isNew,
             'catalog'             => $this->catalog,
             'use_database_config' => $this->useDatabaseConfig,
-        ]);
+        ], new Response(null, $form->isSubmitted() ? Response::HTTP_UNPROCESSABLE_ENTITY : Response::HTTP_OK));
     }
 
     /**
@@ -244,8 +258,19 @@ class MarketingToolAdminController extends AbstractController
         return $factory;
     }
 
+    private function urls(): UrlGeneratorInterface
+    {
+        /** @var UrlGeneratorInterface $router */
+        $router = $this->container->get('router');
+
+        return $router;
+    }
+
     private function denyUnlessGranted(): void
     {
+        if (!$this->pages->isEnabled()) {
+            throw new NotFoundHttpException('MarketingKit admin is disabled (web_ui.enabled: false).');
+        }
         if (!$this->accessChecker->canAccess()) {
             throw new AccessDeniedException('Access denied to MarketingKit admin.');
         }
