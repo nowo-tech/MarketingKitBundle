@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\MarketingKitBundle;
 
 use Doctrine\Bundle\DoctrineBundle\DependencyInjection\Compiler\DoctrineOrmMappingsPass;
+use Nowo\MarketingKitBundle\DependencyInjection\Compiler\CsrfProtectionPass;
 use Nowo\MarketingKitBundle\DependencyInjection\Compiler\TwigPathsPass;
 use Nowo\MarketingKitBundle\DependencyInjection\NowoMarketingKitExtension;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -19,6 +20,7 @@ class NowoMarketingKitBundle extends Bundle
     public function build(ContainerBuilder $container): void
     {
         $container->addCompilerPass(new TwigPathsPass());
+        $container->addCompilerPass(new CsrfProtectionPass());
 
         $entityDir = __DIR__ . '/Entity';
         if (is_dir($entityDir)) {

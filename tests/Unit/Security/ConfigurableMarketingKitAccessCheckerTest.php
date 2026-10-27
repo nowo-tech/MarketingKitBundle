@@ -39,13 +39,16 @@ final class ConfigurableMarketingKitAccessCheckerTest extends TestCase
         self::assertFalse($checker->canAccess());
     }
 
-    public function testCanAccessReturnsTrueWhenAccessRolesAreEmpty(): void
+    /**
+     * SEC-004 M1: an empty role list must not open the admin to everyone (anonymous included).
+     */
+    public function testCanAccessDeniesWhenAccessRolesAreEmpty(): void
     {
         $authorizationChecker = $this->createMock(AuthorizationCheckerInterface::class);
         $authorizationChecker->expects(self::never())->method('isGranted');
 
         $checker = new ConfigurableMarketingKitAccessChecker($authorizationChecker, []);
 
-        self::assertTrue($checker->canAccess());
+        self::assertFalse($checker->canAccess());
     }
 }

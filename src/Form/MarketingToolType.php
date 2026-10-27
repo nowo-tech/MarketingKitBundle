@@ -7,6 +7,7 @@ namespace Nowo\MarketingKitBundle\Form;
 use Nowo\FormKitBundle\Attribute\FormKitConfig;
 use Nowo\FormKitBundle\Form\FormOptionsTrait;
 use Nowo\MarketingKitBundle\Entity\MarketingTool;
+use Nowo\MarketingKitBundle\Enum\ToolCategory;
 use Nowo\MarketingKitBundle\Enum\ToolPosition;
 use Nowo\MarketingKitBundle\Enum\ToolType;
 use Nowo\MarketingKitBundle\Provider\ToolIdValidator;
@@ -21,7 +22,10 @@ use Symfony\Component\Form\FormEvents;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
+use function array_combine;
+use function in_array;
 use function is_scalar;
+use function trim;
 
 /**
  * Admin form for marketing services with typed provider option fields.
@@ -33,8 +37,17 @@ final class MarketingToolType extends AbstractType
 {
     use FormOptionsTrait;
 
+    /** CSRF token id of the tool form (SEC-004 I6). */
+    public const CSRF_TOKEN_ID = 'nowo_marketing_kit_tool';
+
+    /**
+     * @param bool $allowCustomHtml security.allow_custom_html: custom snippets can only be saved when true (SEC-004 I7)
+     * @param bool $allowRequiredTrackers security.allow_required_trackers: built-in trackers in the `required` category (SEC-004 L2)
+     */
     public function __construct(
         private readonly MarketingToolCatalog $catalog,
+        private readonly bool $allowCustomHtml = false,
+        private readonly bool $allowRequiredTrackers = false,
     ) {
     }
 
@@ -71,12 +84,7 @@ final class MarketingToolType extends AbstractType
         ]);
         $this->addChoice($builder, 'category', [
             'label'   => 'Consent category',
-            'choices' => [
-                'analytics'   => 'analytics',
-                'marketing'   => 'marketing',
-                'preferences' => 'preferences',
-                'required'    => 'required',
-            ],
+            'choices' => array_combine(ToolCategory::values(), ToolCategory::values()),
         ]);
         $this->addChoice($builder, 'position', [
             'choices' => $positionChoices,
@@ -106,7 +114,14 @@ final class MarketingToolType extends AbstractType
                 return;
             }
 
-            $form       = $event->getForm();
+            $form = $event->getForm();
+            if (!in_array($tool->getProfile(), $this->profileChoices($form), true)) {
+                $form->get('profile')->addError(new FormError('Unknown profile.'));
+            }
+            if ($tool->getCategory() === ToolCategory::Required->value && !ToolCategory::allowsRequired($tool->getType(), $this->allowRequiredTrackers)) {
+                $form->get('category')->addError(new FormError('Built-in trackers cannot use the "required" category (it bypasses consent); enable security.allow_required_trackers to allow it.'));
+            }
+
             $optionsMap = [];
             foreach ($this->catalog->optionKeysForType($tool->getType()) as $key) {
                 $field = 'option_' . $key;
@@ -122,6 +137,14 @@ final class MarketingToolType extends AbstractType
                     }
                 }
             }
+            if (
+                $tool->getType() === ToolType::Custom->value
+                && !$this->allowCustomHtml
+                && trim($optionsMap['html'] ?? '') !== ''
+                && $form->has('option_html')
+            ) {
+                $form->get('option_html')->addError(new FormError('Custom HTML is disabled (security.allow_custom_html: false); it would never be rendered.'));
+            }
             $tool->setOptions($optionsMap);
         });
     }
@@ -131,8 +154,23 @@ final class MarketingToolType extends AbstractType
         $resolver->setDefaults([
             'data_class'      => MarketingTool::class,
             'profile_choices' => ['default'],
+            'csrf_protection' => true,
+            'csrf_token_id'   => self::CSRF_TOKEN_ID,
         ]);
         $resolver->setAllowedTypes('profile_choices', 'array');
+    }
+
+    /**
+     * @param FormInterface<mixed> $form
+     *
+     * @return list<string>
+     */
+    private function profileChoices(FormInterface $form): array
+    {
+        /** @var list<string> $choices */
+        $choices = $form->getConfig()->getOption('profile_choices');
+
+        return $choices;
     }
 
     /**

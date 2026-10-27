@@ -144,6 +144,8 @@ final class NowoMarketingKitExtension extends Extension implements PrependExtens
         $container->setParameter('nowo_marketing_kit.security.access_checker', $config['security']['access_checker']);
         $container->setParameter('nowo_marketing_kit.security.allow_unauthenticated', $config['security']['allow_unauthenticated']);
         $container->setParameter('nowo_marketing_kit.security.allow_custom_html', (bool) ($config['security']['allow_custom_html'] ?? false));
+        $container->setParameter('nowo_marketing_kit.security.allow_required_trackers', (bool) ($config['security']['allow_required_trackers'] ?? false));
+        $container->setParameter('nowo_marketing_kit.security.csp_nonce_attribute', $config['security']['csp_nonce_attribute'] ?? null);
         $container->setParameter('nowo_marketing_kit.web_ui.enabled', $config['web_ui']['enabled']);
         $container->setParameter('nowo_marketing_kit.web_ui.path_prefix', $config['web_ui']['path_prefix']);
         $container->setParameter('nowo_marketing_kit.web_ui.route_path', ltrim((string) $config['web_ui']['path_prefix'], '/'));

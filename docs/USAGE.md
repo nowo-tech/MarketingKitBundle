@@ -31,6 +31,15 @@
 
 Optional profile argument: `{{ nowo_marketing_head('campaign') }}`.
 
+CSP nonce (second argument, or `security.csp_nonce_attribute`): built-in `<script>` tags get `nonce="…"`; custom
+HTML is emitted as configured.
+
+```twig
+{{ nowo_marketing_head(null, csp_nonce('script')) }}   {# NelmioSecurityBundle #}
+```
+
+Pages that render consent-gated tags get `Vary: Cookie` (do not cache them in a shared cache without it).
+
 ## PHP API
 
 Inject `Nowo\MarketingKitBundle\Service\MarketingScriptRenderer`:

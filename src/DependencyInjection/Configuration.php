@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nowo\MarketingKitBundle\DependencyInjection;
 
+use Nowo\MarketingKitBundle\Enum\ToolCategory;
 use Nowo\MarketingKitBundle\Enum\ToolPosition;
 use Nowo\MarketingKitBundle\Enum\ToolType;
 use Nowo\MarketingKitBundle\Provider\ToolIdValidator;
@@ -13,9 +14,11 @@ use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\ConfigurationInterface;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 
+use function implode;
 use function is_string;
 use function preg_match;
 use function sprintf;
+use function str_contains;
 
 /**
  * Validates and normalizes `nowo_marketing_kit` configuration (REQ-CFG-001 profiles).
@@ -64,7 +67,19 @@ final class Configuration implements ConfigurationInterface
                         ->end()
                         ->booleanNode('allow_custom_html')
                             ->defaultFalse()
-                            ->info('When false (default), CustomScriptRenderer emits nothing. Enable only for trusted admin/YAML snippets.')
+                            ->info('When false (default), CustomScriptRenderer emits nothing and the admin refuses to save custom HTML. Enable only for trusted admin/YAML snippets.')
+                        ->end()
+                        ->booleanNode('allow_required_trackers')
+                            ->defaultFalse()
+                            ->info('When false (default), built-in trackers (every type but custom) cannot use the "required" category, which bypasses the consent gate; such rows are gated as "marketing" at render time.')
+                        ->end()
+                        ->scalarNode('csp_nonce_attribute')
+                            ->defaultNull()
+                            ->info('Request attribute holding the CSP script nonce (e.g. set by your CSP listener). When set (or when a nonce is passed to the Twig functions), built-in <script> tags get nonce="…"; custom HTML is emitted as-is.')
+                            ->validate()
+                                ->ifTrue(static fn (mixed $value): bool => $value !== null && (!is_string($value) || $value === ''))
+                                ->thenInvalid('nowo_marketing_kit.security.csp_nonce_attribute must be null or a non-empty string, got %s.')
+                            ->end()
                         ->end()
                     ->end()
                 ->end()
@@ -157,7 +172,10 @@ final class Configuration implements ConfigurationInterface
                                             ->isRequired()
                                         ->end()
                                         ->booleanNode('enabled')->defaultTrue()->end()
-                                        ->scalarNode('category')->defaultValue('marketing')->end()
+                                        ->enumNode('category')
+                                            ->values(ToolCategory::values())
+                                            ->defaultValue(ToolCategory::Marketing->value)
+                                        ->end()
                                         ->enumNode('position')
                                             ->values(ToolPosition::values())
                                             ->defaultValue(ToolPosition::Head->value)
@@ -172,7 +190,13 @@ final class Configuration implements ConfigurationInterface
                                         ->ifTrue(static function (array $tool): bool {
                                             $key = ToolIdValidator::optionKeyFor((string) $tool['type']);
 
-                                            return $key !== null && !ToolIdValidator::isValidOrEmpty((string) $tool['type'], $tool['options'][$key] ?? null);
+                                            if ($key === null) {
+                                                return false;
+                                            }
+                                            $value = $tool['options'][$key] ?? null;
+
+                                            // %env()% values are placeholders at compile time; the render-time check covers them (SEC-004 I1).
+                                            return !self::isEnvPlaceholder($value) && !ToolIdValidator::isValidOrEmpty((string) $tool['type'], $value);
                                         })
                                         ->then(static function (array $tool): never {
                                             throw new InvalidConfigurationException(sprintf('Invalid %s for marketing tool type "%s": the value does not match the provider ID format.', (string) ToolIdValidator::optionKeyFor((string) $tool['type']), (string) $tool['type']));
@@ -188,8 +212,48 @@ final class Configuration implements ConfigurationInterface
                 ->ifTrue(static fn (array $v): bool => !isset($v['profiles'][$v['default_profile']]))
                 ->thenInvalid('default_profile must exist under profiles.')
             ->end()
+            ->validate()
+                ->ifTrue(static fn (array $v): bool => self::requiredTrackerCodes($v) !== [])
+                ->then(static function (array $v): never {
+                    throw new InvalidConfigurationException(sprintf('Built-in trackers cannot use the "required" consent category (it bypasses the consent gate): %s. Use analytics / marketing / preferences, or set nowo_marketing_kit.security.allow_required_trackers: true.', implode(', ', self::requiredTrackerCodes($v))));
+                })
+            ->end()
         ;
 
         return $treeBuilder;
+    }
+
+    /**
+     * Whether a configured value is (or contains) an unresolved %env()% parameter: the raw `%env(...)%` string seen by
+     * prepend(), or the `env_<hash>_…` placeholder seen by load().
+     */
+    public static function isEnvPlaceholder(mixed $value): bool
+    {
+        return is_string($value) && (str_contains($value, '%env(') || preg_match('/env_[0-9a-f]{16}_/', $value) === 1);
+    }
+
+    /**
+     * "profile.code" of every built-in tracker in the `required` category when security.allow_required_trackers is off.
+     *
+     * @param array<string, mixed> $config
+     *
+     * @return list<string>
+     */
+    private static function requiredTrackerCodes(array $config): array
+    {
+        if (($config['security']['allow_required_trackers'] ?? false) === true) {
+            return [];
+        }
+
+        $codes = [];
+        foreach ($config['profiles'] ?? [] as $profile => $profileConfig) {
+            foreach ($profileConfig['tools'] ?? [] as $code => $tool) {
+                if (($tool['category'] ?? null) === ToolCategory::Required->value && !ToolCategory::allowsRequired((string) $tool['type'], false)) {
+                    $codes[] = $profile . '.' . $code;
+                }
+            }
+        }
+
+        return $codes;
     }
 }

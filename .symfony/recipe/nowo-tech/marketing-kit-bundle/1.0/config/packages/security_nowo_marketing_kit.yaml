@@ -1,4 +1,5 @@
 # Merged into security.access_control by Symfony (REQ-SEC-004).
+# The path must match nowo_marketing_kit.web_ui.path_prefix (default /admin/marketing): update it when you change the prefix.
 security:
     access_control:
         - { path: ^/admin/marketing, roles: ROLE_ADMIN }

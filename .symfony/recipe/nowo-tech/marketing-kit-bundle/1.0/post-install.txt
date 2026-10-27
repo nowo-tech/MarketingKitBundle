@@ -12,3 +12,6 @@
   * Optional: composer require nowo-tech/cookie-consent-bundle for GDPR category cookies
 
   * Optional DB admin: set use_database_config: true and open /admin/marketing
+    (web_ui.path_prefix). The admin can inject any tag manager container = site-wide JS: grant it to a
+    dedicated role (e.g. ROLE_MARKETING_ADMIN). If you change web_ui.path_prefix, update the access_control
+    path in config/packages/security_nowo_marketing_kit.yaml.

@@ -4,13 +4,16 @@ nowo_marketing_kit:
     use_database_config: false
     respect_cookie_consent: true
     security:
+        # An empty list denies everyone. Prefer a dedicated role: the admin can add any GTM container (site-wide JS).
         access_roles: ['ROLE_ADMIN']
         # access_checker: App\Security\MarketingKitAccessChecker
         allow_unauthenticated: false
     web_ui:
-        # Set this to your project admin/base layout. Default bundle layout is suitable for demos.
-        layout_template: '@NowoMarketingKitBundle/admin/layout.html.twig'
-        css_framework: none
+        enabled: true
+        # Admin URL prefix. If you change it, change the access_control path in security_nowo_marketing_kit.yaml too.
+        path_prefix: /admin/marketing
+        # null = nowo_ui_kit.layouts.admin (set your admin layout once in nowo_ui_kit)
+        layout_template: null
     doctrine:
         table_prefix: ''
     default_profile: default

@@ -76,6 +76,12 @@ services:
             $allowCustomHtml: '%nowo_marketing_kit.security.allow_custom_html%'
         tags: ['nowo_marketing_kit.tool_renderer']
 
+    Nowo\MarketingKitBundle\Service\MarketingScriptRenderer:
+        arguments:
+            $requestStack: '@request_stack'
+            $allowRequiredTrackers: '%nowo_marketing_kit.security.allow_required_trackers%'
+            $cspNonceAttribute: '%nowo_marketing_kit.security.csp_nonce_attribute%'
+
     Nowo\MarketingKitBundle\Twig\MarketingKitExtension:
         arguments:
             $layoutTemplate: '%nowo_marketing_kit.web_ui.layout_template%'
@@ -86,4 +92,10 @@ services:
     Nowo\MarketingKitBundle\Form\:
         resource: '../../Form/'
         exclude: '../../Form/DataTransformer/'
+        tags: ['form.type']
+
+    Nowo\MarketingKitBundle\Form\MarketingToolType:
+        arguments:
+            $allowCustomHtml: '%nowo_marketing_kit.security.allow_custom_html%'
+            $allowRequiredTrackers: '%nowo_marketing_kit.security.allow_required_trackers%'
         tags: ['form.type']

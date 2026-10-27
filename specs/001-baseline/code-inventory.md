@@ -6,7 +6,7 @@
 
 Every production file tracked under `src/` is listed once below with the spec section and requirement IDs it implements. Tests (`tests/`) and the demo (`demo/`) are out of scope.
 
-Audit command (production count): `git ls-files src | wc -l` → **51** (2026-10-27).
+Audit command (production count): `git ls-files src | wc -l` → **54** (2026-10-27).
 
 ## Bundle & DI (`src/`, `src/DependencyInjection/`)
 
@@ -17,6 +17,7 @@ Audit command (production count): `git ls-files src | wc -l` → **51** (2026-10
 | `src/DependencyInjection/NowoMarketingKitExtension.php` | DI extension, parameters, access checker wiring | FR-MK-001, FR-MK-009 |
 | `src/DependencyInjection/TablePrefixListener.php` | Configurable table prefix on MarketingKit entity metadata | FR-MK-004 |
 | `src/DependencyInjection/Compiler/TwigPathsPass.php` | `@NowoMarketingKitBundle` namespace with app override precedence | FR-MK-008 |
+| `src/DependencyInjection/Compiler/CsrfProtectionPass.php` | Compile error when the admin runs without form CSRF protection | FR-MK-009 |
 
 ## Config resolution (`src/Config/`)
 
@@ -39,6 +40,7 @@ Audit command (production count): `git ls-files src | wc -l` → **51** (2026-10
 | --- | --- | --- |
 | `src/Enum/ToolType.php` | Built-in provider types | FR-MK-002 |
 | `src/Enum/ToolPosition.php` | Snippet injection point (head, body start, body end) | FR-MK-002, FR-MK-003 |
+| `src/Enum/ToolCategory.php` | Consent category allowlist; `required` only for custom or with allow_required_trackers | FR-MK-005 |
 | `src/Enum/ConsentCookieNames.php` | CookieConsent category cookie names | FR-MK-005 |
 
 ## Persistence (`src/Entity/`, `src/Repository/`, `src/EventSubscriber/`)
@@ -48,6 +50,7 @@ Audit command (production count): `git ls-files src | wc -l` → **51** (2026-10
 | `src/Entity/MarketingTool.php` | Database tool row (profile, type, options, enabled) | FR-MK-004, FR-MK-006 |
 | `src/Repository/MarketingToolRepository.php` | Profile queries, array hydration for public tools | FR-MK-004, FR-MK-006, FR-MK-010 |
 | `src/EventSubscriber/ClosedEntityManagerSubscriber.php` | Closed EntityManager recovery + stale entity detach on admin routes | FR-MK-006, FR-MK-010 |
+| `src/EventSubscriber/ConsentVaryCookieSubscriber.php` | `Vary: Cookie` on responses whose tags were gated by consent cookies | FR-MK-005 |
 
 ## Providers (`src/Provider/`)
 
@@ -125,11 +128,11 @@ Domain **`NowoMarketingKitBundle`** (REQ-I18N-003).
 
 | Category | Files | Mapped |
 | --- | ---: | ---: |
-| Bundle & DI | 5 | 5 |
+| Bundle & DI | 6 | 6 |
 | Config resolution | 3 | 3 |
 | Consent | 2 | 2 |
-| Enums | 3 | 3 |
-| Persistence | 3 | 3 |
+| Enums | 4 | 4 |
+| Persistence | 4 | 4 |
 | Providers | 11 | 11 |
 | Services & Twig | 4 | 4 |
 | Admin UI | 5 | 5 |
@@ -137,4 +140,4 @@ Domain **`NowoMarketingKitBundle`** (REQ-I18N-003).
 | Config YAML | 2 | 2 |
 | Twig views | 3 | 3 |
 | Translations | 7 | 7 |
-| **Total production sources** | **51** | **51** |
+| **Total production sources** | **54** | **54** |
