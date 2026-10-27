@@ -10,6 +10,19 @@ Symfony marketing kit: install and configure GTM, GA4, Meta Pixel, LinkedIn Insi
 
 This bundle is **FrankenPHP worker mode friendly**, including **kernel not reset** between requests (see [FrankenPHP worker audit](docs/FRANKENPHP-WORKER-AUDIT.md)).
 
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/images/demo/admin-list.webp" alt="Marketing services admin list with provider IDs, on/off state and row actions" />
+      <br /><sub>Admin list — providers with IDs, on/off state and row actions</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/images/demo/admin-form.webp" alt="Marketing service edit form rejecting an invalid GA4 measurement ID" />
+      <br /><sub>Edit form — provider options with ID format validation</sub>
+    </td>
+  </tr>
+</table>
+
 ## Features
 
 - ✅ **Providers (v1)** — `gtm`, `ga4`, `meta_pixel`, `linkedin`, `tiktok`, `hotjar`, `clarity`, `custom`
@@ -17,9 +30,9 @@ This bundle is **FrankenPHP worker mode friendly**, including **kernel not reset
 - ✅ **Database override** — `use_database_config: true` replaces YAML tools when DB rows exist for the profile
 - ✅ **Twig helpers** — `nowo_marketing_head()`, `nowo_marketing_body_start()`, `nowo_marketing_body_end()`
 - ✅ **CookieConsent-compatible** — reads `Cookie_Category_{analytics|marketing}` (soft dependency)
-- ✅ **Admin CRUD** — `/admin/marketing` to configure services (seed catalog, import YAML, toggle, typed option fields)
+- ✅ **Admin CRUD** — `/admin/marketing` (`web_ui.path_prefix`) to configure services (seed catalog, import YAML, toggle, typed option fields, confirm before delete)
 - ✅ **Admin security** — `security.access_roles` / custom `access_checker` (demo-only `allow_unauthenticated`)
-- ✅ **Embeddable admin UI** — `web_ui.layout_template` + `css_framework` for host layouts
+- ✅ **Embeddable admin UI** — UiKit page scaffolds (list + form): one host layout and theme (`nowo_ui_kit.layouts.admin`, `css_framework`, `theme`) for every Nowo bundle; see [Templates](docs/TEMPLATES.md)
 
 **FrankenPHP:** Demos use a **single PHP service** (FrankenPHP, no nginx). Runtime mode is controlled by **`FRANKENPHP_MODE`** in `.env` (`worker` default, or `classic`). The entrypoint selects `Caddyfile` (workers) or `Caddyfile.dev` (no workers) accordingly; see [docs/DEMO-FRANKENPHP.md](docs/DEMO-FRANKENPHP.md). Demo URL: `http://localhost:8060` (see `demo/README.md` and `.env.example`).
 
@@ -52,6 +65,7 @@ composer require nowo-tech/cookie-consent-bundle
 - PHP >= 8.2, < 8.6
 - Symfony >= 7.4 || >= 8.0
 - Doctrine ORM (for entities / optional DB config)
+- [UiKitBundle](https://github.com/nowo-tech/UiKitBundle) ^2.15 (admin page scaffolds) and [FormKitBundle](https://github.com/nowo-tech/FormKitBundle) ^2.10
 
 ## Version information
 
@@ -73,8 +87,9 @@ nowo_marketing_kit:
         access_roles: ['ROLE_ADMIN']
         allow_unauthenticated: false
     web_ui:
-        layout_template: '@NowoMarketingKitBundle/admin/layout.html.twig'
-        css_framework: none
+        enabled: true
+        path_prefix: /admin/marketing
+        layout_template: null   # null = nowo_ui_kit.layouts.admin
     default_profile: default
     profiles:
         default:
@@ -118,6 +133,13 @@ make -C demo up-symfony8
 # Demo started at: http://localhost:8060
 ```
 
+Playwright e2e and README screenshots (REQ-DEMO-013; both reset the demo database first):
+
+```bash
+make -C demo/symfony8 test-e2e           # happy path of the admin (seed, import, edit, toggle, delete)
+make -C demo/symfony8 demo-screenshots   # refresh docs/images/demo/*.webp
+```
+
 ## Documentation
 
 - [Installation](docs/INSTALLATION.md)
@@ -135,6 +157,7 @@ make -C demo up-symfony8
 
 ### Additional documentation
 
+- [Templates (UiKit page contract, REQ-UI-003)](docs/TEMPLATES.md)
 - [PSR evaluation (REQ-CS-007)](docs/PSR.md)
 - [GitHub Actions CI requirements](docs/GITHUB_CI.md)
 - [Demo with FrankenPHP](docs/DEMO-FRANKENPHP.md) (includes worker mode)

@@ -11,7 +11,8 @@ use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
 /**
- * GET profile switcher of the admin list (`?profile=…`, no CSRF) — REQ-TWIG-005.
+ * GET profile switcher of the admin list (`?profile=…`, no CSRF) — REQ-TWIG-005. Rendered in the filters region of
+ * the UiKit list scaffold (apply button; no inline handler, REQ-UI-003).
  *
  * @extends AbstractType<array{profile?: string|null}>
  */
@@ -31,7 +32,6 @@ final class ProfileFilterType extends AbstractType
             'label'                     => 'admin.profile',
             'choices'                   => array_combine($profiles, $profiles),
             'choice_translation_domain' => false,
-            'attr'                      => ['onchange' => 'this.form.submit()'],
         ]);
     }
 

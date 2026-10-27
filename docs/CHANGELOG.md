@@ -34,6 +34,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Admin pages on the UiKit page contract (REQ-UI-001 / REQ-UI-003), Playwright e2e + README screenshots (REQ-DEMO-013),
+native PHPUnit deprecation gate (REQ-SF-005). See [UPGRADING](UPGRADING.md#unreleased).
+
+### Added
+
+- `web_ui.enabled` (admin routes answer 404 when false), `web_ui.path_prefix` (default `/admin/marketing`),
+  `web_ui.templates.index|form` (per-page template overrides) and `web_ui.form_themes` (default the UiKit form theme
+  `@NowoUiKit/form/nowo_ui_layout.html.twig`) — the REQ-UI-003 configuration vocabulary.
+- `Nowo\MarketingKitBundle\Ui\MarketingKitPages`: layout / template / form-theme resolution and the `ListPage` /
+  `FormPage` view models of the admin pages.
+- `docs/TEMPLATES.md` (page → scaffold, view-model fields, data blocks) and the UiKit page contract test
+  (`tests/Integration/Contract/PageContractTest.php`).
+- Translation keys `admin.enable`, `admin.disable`, `admin.confirm_delete_title`, `admin.empty_title`,
+  `admin.col.actions`, `admin.form_intro` (7 locales).
+- Demo: Playwright e2e (`demo/symfony8/e2e`, `make -C demo/symfony8 test-e2e`), README screenshots
+  (`make -C demo/symfony8 demo-screenshots`, WebP under `docs/images/demo/`), `make -C demo/symfony8 reset-demo`, and
+  a demo host layout (`nowo_ui_kit.layouts.admin`) with a masthead (REQ-DEMO-013).
+
+### Changed
+
+- **Template contract (REQ-UI-003):** `admin/index.html.twig` extends the UiKit list scaffold and
+  `admin/form.html.twig` the UiKit form scaffold; they render inside `nowo_ui_kit.layouts.admin` (or
+  `web_ui.layout_template`). Header actions, filters, row actions (Edit, Enable / Disable, Delete), the confirm
+  dialog, the empty state and flashes come from UiKit; the local `mk-*` styles and the inline `onsubmit` /
+  `onchange` handlers are gone (Delete uses the UiKit confirm `<dialog>`, the profile filter an Apply button).
+- `web_ui.layout_template` defaults to `null` (UiKit layout). A 1.x layout that renders only `{% block body %}` is
+  wrapped in the deprecated bridge `admin/_legacy_layout.html.twig`.
+- The seeded FormKit profile `marketing_kit` no longer adds Bootstrap classes (`form-control`, `form-select`,
+  `mb-2`, …) and sets `convention_requires_translation: true` (no raw `*.help` / `*.placeholder` keys in the form).
+- An invalid tool form submission answers `422` (it did through `AbstractController::render()` with the form object).
+- Requirements: `nowo-tech/ui-kit-bundle` `^2.15` (was `^1.4 || ^2.2`), `nowo-tech/form-kit-bundle` `^2.10` (was
+  `^2.0`).
+- PHPUnit fails on any deprecation triggered by the package (`failOnDeprecation`, `ignoreSuppressionOfDeprecations`,
+  self / direct deprecations not ignored), including Symfony's silenced `trigger_deprecation()` calls;
+  `symfony/phpunit-bridge` does not hook PHPUnit >= 10 (REQ-SF-005).
+- `make coverage-check` gates at 100% PHP lines, like the CI `Code Coverage` job (was 99%) (REQ-TEST-003).
+
+### Fixed
+
+- Demo: the session is enabled (`framework.session`); Seed catalog, Import from YAML, toggle and delete failed with
+  `SessionNotFoundException` when adding their flash message (found by the new e2e suite).
+
+### Deprecated
+
+- `web_ui.css_framework` and `web_ui.icon_set`: set `nowo_ui_kit.css_framework` / `nowo_ui_kit.icon_set` once for
+  every bundle. They still seed the UiKit keys when the host leaves them unset.
+- The 1.x layout bridge `admin/_legacy_layout.html.twig` and the Twig globals `nowo_marketing_kit_layout` /
+  `nowo_marketing_kit_css_framework` (unused by the pages; removed in 2.0).
+
+### Removed
+
+- `admin/base.html.twig` and `admin/layout.html.twig` (the bundle's own page shell with inline CSS). The former
+  default `web_ui.layout_template` value `@NowoMarketingKitBundle/admin/layout.html.twig` is treated as `null`.
+- Demo `compose.override.yaml`, which published the MySQL service port to the host (REQ-DEMO-006).
+
 ## [1.8.0] - 2026-10-26
 
 Forms in the bundle views are Symfony Form Types rendered with form_start / child loop / form_end, no raw form controls (REQ-TWIG-005). See [UPGRADING](UPGRADING.md#to-180).

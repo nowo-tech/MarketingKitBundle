@@ -31,6 +31,15 @@ services:
         arguments:
             $useDatabaseConfig: '%nowo_marketing_kit.use_database_config%'
 
+    # REQ-UI-003 page plumbing: layout, per-page templates, form themes and view models of the admin pages.
+    Nowo\MarketingKitBundle\Ui\MarketingKitPages:
+        arguments:
+            $enabled: '%nowo_marketing_kit.web_ui.enabled%'
+            $layoutTemplate: '%nowo_marketing_kit.web_ui.layout_template%'
+            $templates: '%nowo_marketing_kit.web_ui.templates%'
+            $formThemes: '%nowo_marketing_kit.web_ui.form_themes%'
+            $twig: '@?twig'
+
     Nowo\MarketingKitBundle\Consent\CookieConsentGate:
         arguments:
             $respectCookieConsent: '%nowo_marketing_kit.respect_cookie_consent%'

@@ -11,13 +11,15 @@ use Twig\TwigFunction;
 
 /**
  * Twig helpers: nowo_marketing_head / body_start / body_end, plus the
- * nowo_marketing_kit_layout / nowo_marketing_kit_css_framework globals (REQ-UI-001).
+ * nowo_marketing_kit_layout / nowo_marketing_kit_css_framework globals (REQ-UI-001). Since 1.9 the admin pages are
+ * UiKit scaffolds and do not read these globals (except the deprecated 1.x layout bridge, which extends
+ * nowo_marketing_kit_layout); they stay for host templates and are removed in 2.0.
  */
 final class MarketingKitExtension extends AbstractExtension implements GlobalsInterface
 {
     public function __construct(
         private readonly MarketingScriptRenderer $renderer,
-        private readonly string $layoutTemplate = '@NowoMarketingKitBundle/admin/layout.html.twig',
+        private readonly ?string $layoutTemplate = null,
         private readonly string $cssFramework = 'none',
     ) {
     }
@@ -32,7 +34,7 @@ final class MarketingKitExtension extends AbstractExtension implements GlobalsIn
     }
 
     /**
-     * @return array{nowo_marketing_kit_layout: string, nowo_marketing_kit_css_framework: string}
+     * @return array{nowo_marketing_kit_layout: string|null, nowo_marketing_kit_css_framework: string}
      */
     public function getGlobals(): array
     {

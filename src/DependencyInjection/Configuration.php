@@ -7,11 +7,14 @@ namespace Nowo\MarketingKitBundle\DependencyInjection;
 use Nowo\MarketingKitBundle\Enum\ToolPosition;
 use Nowo\MarketingKitBundle\Enum\ToolType;
 use Nowo\MarketingKitBundle\Provider\ToolIdValidator;
+use Nowo\MarketingKitBundle\Ui\MarketingKitPages;
 use Symfony\Component\Config\Definition\Builder\ArrayNodeDefinition;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\ConfigurationInterface;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 
+use function is_string;
+use function preg_match;
 use function sprintf;
 
 /**
@@ -20,6 +23,9 @@ use function sprintf;
 final class Configuration implements ConfigurationInterface
 {
     public const ALIAS = 'nowo_marketing_kit';
+
+    /** Default of web_ui.path_prefix. */
+    public const DEFAULT_PATH_PREFIX = '/admin/marketing';
 
     /** @var list<string> Host CSS stacks accepted by web_ui.css_framework (REQ-UI-001). */
     public const CSS_FRAMEWORKS = [
@@ -75,19 +81,46 @@ final class Configuration implements ConfigurationInterface
                         })
                     ->end()
                     ->children()
+                        ->booleanNode('enabled')
+                            ->defaultTrue()
+                            ->info('Admin UI on/off (REQ-UI-003). When false the admin routes answer 404.')
+                        ->end()
+                        ->scalarNode('path_prefix')
+                            ->defaultValue(self::DEFAULT_PATH_PREFIX)
+                            ->info('URL prefix of the admin pages (REQ-UI-003).')
+                            ->validate()
+                                ->ifTrue(static fn (mixed $value): bool => !is_string($value) || preg_match('#^(/[A-Za-z0-9._~-]+)+$#', $value) !== 1)
+                                ->thenInvalid('nowo_marketing_kit.web_ui.path_prefix must start with "/" and contain URL path segments only, got %s.')
+                            ->end()
+                        ->end()
                         ->scalarNode('layout_template')
-                            ->defaultValue('@NowoMarketingKitBundle/admin/layout.html.twig')
-                            ->info('Twig layout extended by admin/base.html.twig via global nowo_marketing_kit_layout (REQ-UI-001). Host apps set this to the project layout.')
+                            ->defaultNull()
+                            ->info('Layout the admin page scaffolds extend (REQ-UI-001/003). Null (default) = nowo_ui_kit.layouts.admin. A host layout must render the UiKit canonical blocks; a 1.x layout that renders {% block body %} is wrapped in a deprecated bridge.')
+                        ->end()
+                        ->arrayNode('templates')
+                            ->addDefaultsIfNotSet()
+                            ->info('Per-page template overrides (REQ-UI-003): extend the bundle template and override a data block.')
+                            ->children()
+                                ->scalarNode('index')->defaultValue(MarketingKitPages::TEMPLATES['index'])->cannotBeEmpty()->end()
+                                ->scalarNode('form')->defaultValue(MarketingKitPages::TEMPLATES['form'])->cannotBeEmpty()->end()
+                            ->end()
+                        ->end()
+                        ->arrayNode('form_themes')
+                            ->info('Form themes of the tool form (UiKit FormPage formThemes). Empty = only the host twig.form_themes.')
+                            ->scalarPrototype()->cannotBeEmpty()->end()
+                            ->defaultValue([MarketingKitPages::DEFAULT_FORM_THEME])
                         ->end()
                         ->enumNode('css_framework')
                             ->values(self::CSS_FRAMEWORKS)
                             ->defaultValue('none')
-                            ->info('Host-chosen CSS stack (REQ-UI-001). Twig global nowo_marketing_kit_css_framework. Values: bootstrap (alias of bootstrap5), bootstrap4, bootstrap5, tabler, tailwind, foundation, custom, none. Default none matches semantic mk-* / nowo-ui-* demo markup.')
+                            ->setDeprecated('nowo-tech/marketing-kit-bundle', '1.9', 'The "%node%" option at "%path%" is deprecated: set nowo_ui_kit.css_framework once for every bundle. It only seeds nowo_ui_kit.css_framework when the host leaves it unset.')
+                            ->info('Deprecated since 1.9: set nowo_ui_kit.css_framework. Seeds nowo_ui_kit.css_framework when the host has not set it (default none). Values: bootstrap (alias of bootstrap5), bootstrap4, bootstrap5, tabler, tailwind, foundation, custom, none.')
                         ->end()
                         ->scalarNode('icon_set')
                             ->defaultValue('bootstrap-icons')
                             ->cannotBeEmpty()
-                            ->info('Icon set seeded into nowo_ui_kit.icon_set when UiKit is installed and the host has not set it.')
+                            ->setDeprecated('nowo-tech/marketing-kit-bundle', '1.9', 'The "%node%" option at "%path%" is deprecated: set nowo_ui_kit.icon_set once for every bundle. It only seeds nowo_ui_kit.icon_set when the host leaves it unset.')
+                            ->info('Deprecated since 1.9: set nowo_ui_kit.icon_set. Seeds nowo_ui_kit.icon_set when the host has not set it.')
                         ->end()
                     ->end()
                 ->end()

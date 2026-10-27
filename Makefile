@@ -91,7 +91,7 @@ test-coverage: ensure-up
 
 coverage-check: ensure-up
 	$(COMPOSE) exec -T $(SERVICE_PHP) sh -lc 'composer test-coverage | tee coverage-php.txt'
-	@./.scripts/coverage-fail-under.sh coverage-php.txt 99
+	@./.scripts/coverage-fail-under.sh coverage-php.txt 100
 
 coverage-php-percent:
 	./.scripts/php-coverage-percent.sh coverage-php.txt
@@ -123,7 +123,7 @@ check-twig-extra:
 igor: ensure-up
 	$(COMPOSE) exec -T php composer igor
 
-# Pre-release (REQ-MAKE-002); coverage-check is the test-coverage step (99% gate)
+# Pre-release (REQ-MAKE-002); coverage-check is the test-coverage step (100% gate, as CI)
 release-check: ensure-up check-no-cursor-coauthor check-open-prs check-twig-extra check-no-raw-html-form composer-sync cs-fix cs-check rector-dry phpstan igor validate-translations coverage-check release-check-demos
 
 check-no-cursor-coauthor:

@@ -20,7 +20,7 @@ final class ProfileFilterTypeTest extends TestCase
         self::assertSame('profile', $view->children['profile']->vars['full_name']);
         self::assertSame('profile', $view->children['profile']->vars['id']);
         self::assertSame('shop', $view->children['profile']->vars['value']);
-        self::assertSame('this.form.submit()', $view->children['profile']->vars['attr']['onchange']);
+        self::assertArrayNotHasKey('onchange', $view->children['profile']->vars['attr']);
         self::assertCount(2, $view->children['profile']->vars['choices']);
         self::assertFalse($form->getConfig()->getOption('csrf_protection'));
     }

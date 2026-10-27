@@ -3,6 +3,10 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+  - [Template contract (REQ-UI-003)](#template-contract-req-ui-003)
+  - [Configuration (REQ-UI-003 vocabulary)](#configuration-req-ui-003-vocabulary)
+  - [FormKit profile](#formkit-profile)
+  - [Tests (REQ-SF-005)](#tests-req-sf-005)
 - [To 1.8.0](#to-180)
 - [To 1.7.1](#to-171)
 - [To 1.7.0](#to-170)
@@ -28,6 +32,67 @@
   - [From nothing to 1.0.0](#from-nothing-to-100)
 
 ## Unreleased
+
+From **1.8.0**:
+
+```bash
+composer update nowo-tech/marketing-kit-bundle nowo-tech/ui-kit-bundle nowo-tech/form-kit-bundle -W
+```
+
+Requires `nowo-tech/ui-kit-bundle` **^2.15** and `nowo-tech/form-kit-bundle` **^2.10**. Routes, route names, posted
+field names and CSRF token ids are unchanged.
+
+### Template contract (REQ-UI-003)
+
+The admin pages are UiKit page scaffolds; see [TEMPLATES.md](TEMPLATES.md) for every page → scaffold, view model and
+data block.
+
+1. **Layout.** Pages render in `nowo_ui_kit.layouts.admin` (default `@NowoUiKit/layout/admin.html.twig`). Set it once
+   for every Nowo bundle, or set `nowo_marketing_kit.web_ui.layout_template` for this bundle only. The layout renders
+   the UiKit canonical blocks (`nowo_ui_document_title`, `nowo_ui_head`, `nowo_ui_styles`, `nowo_ui_navigation`,
+   `nowo_ui_page_header`, `nowo_ui_flashes`, `nowo_ui_content`, `nowo_ui_modals`, `nowo_ui_scripts`); a one-file
+   bridge example is in [CONFIGURATION.md](CONFIGURATION.md#host-integration-examples).
+
+   A 1.x project layout set in `web_ui.layout_template` that renders `{% block body %}` (and optionally `title`,
+   `stylesheets`, `javascripts`) keeps working: the bundle detects that it does not mention `nowo_ui_content` and wraps
+   it in the deprecated bridge `@NowoMarketingKitBundle/admin/_legacy_layout.html.twig` (deprecation notice; removed in
+   2.0). The former default `@NowoMarketingKitBundle/admin/layout.html.twig` was removed: that value now means "UiKit
+   layout".
+2. **Removed templates.** `admin/base.html.twig` and `admin/layout.html.twig` no longer exist; application copies under
+   `templates/bundles/NowoMarketingKitBundle/admin/` are ignored. Move host chrome to the layout above and styling to
+   `nowo_ui_kit.theme`.
+3. **Page overrides.** `admin/index.html.twig` now fills `nowo_ui_list_row` (row cells) and `admin/form.html.twig`
+   `nowo_ui_form_body`; the page header, toolbar, filters, table, row actions, confirm dialog, empty state and
+   flashes come from the scaffolds. A full copy of a 1.x page keeps rendering (the 1.x variables are still passed)
+   but no longer matches the host theme: rebuild it as a `web_ui.templates.<page>` template that extends the bundle
+   page and overrides one data block (see [USAGE](USAGE.md#upgrade-safe-customisation-first)).
+4. **CSS.** The local `mk-*` classes and the inline `<style>` are gone; the markup carries `nowo-ui-*` classes and the
+   UiKit theme slots. Restyle through `nowo_ui_kit.theme` (`classes`, `tokens`, `theme.bundles.NowoMarketingKitBundle`).
+5. **No inline handlers.** Delete asks for confirmation in the UiKit `<dialog>` (UiKit scripts, loaded by
+   `nowo_ui_scripts`) instead of `onsubmit="return confirm()"`; the profile switcher submits with its Apply button
+   instead of `onchange`.
+
+### Configuration (REQ-UI-003 vocabulary)
+
+- New: `web_ui.enabled` (default `true`; `false` = the admin routes answer 404), `web_ui.path_prefix` (default
+  `/admin/marketing`; update your `access_control` rule if you change it), `web_ui.templates.index|form`,
+  `web_ui.form_themes`.
+- Deprecated: `web_ui.css_framework` and `web_ui.icon_set`. Set `nowo_ui_kit.css_framework` / `nowo_ui_kit.icon_set`
+  instead; until 2.0 the bundle keys still seed the UiKit ones when the host leaves them unset (default `none` /
+  `bootstrap-icons`, as before).
+
+### FormKit profile
+
+When the host defines no `nowo_form_kit.profiles.marketing_kit`, the seeded profile no longer adds Bootstrap classes
+(`form-control`, `form-select`, `mb-2`, `form-check`, …) and sets `convention_requires_translation: true`. The UiKit
+form theme (`web_ui.form_themes`) styles the fields through the theme slots. On a Bootstrap host set
+`web_ui.form_themes: ['bootstrap_5_layout.html.twig']` (or your own profile classes).
+
+### Tests (REQ-SF-005)
+
+Contributors only: `phpunit.xml.dist` fails the run on any deprecation triggered by `src/` or `tests/`
+(`failOnDeprecation`, `ignoreSuppressionOfDeprecations`). Assert intended deprecations with
+`#[IgnoreDeprecations]` + `expectUserDeprecationMessage*()`.
 
 ## To 1.8.0
 

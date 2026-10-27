@@ -9,7 +9,7 @@ COMPOSE ?= $(shell $(DOCKER_BIN) compose version >/dev/null 2>&1 && echo "$(DOCK
 endif
 SERVICE_PHP = php
 
-.PHONY: help up down restart build install shell update-bundle ensure-up ensure-env test verify
+.PHONY: help up down restart build install shell update-bundle ensure-up ensure-env test verify reset-demo test-e2e demo-screenshots
 
 help:
 	@echo "Symfony 8 Demo - Marketing Kit Bundle"
@@ -22,6 +22,9 @@ help:
 	@echo "  make restart        Restart the PHP container"
 	@echo "  make test           Demo checks: container lint + Twig lint (no PHPUnit suite in this demo)"
 	@echo "  make verify         HTTP check: / and /admin/marketing answer a final 200"
+	@echo "  make reset-demo     Empty the demo database (drop + create the schema)"
+	@echo "  make test-e2e       Playwright e2e of the admin (REQ-DEMO-013; resets the demo first)"
+	@echo "  make demo-screenshots  Refresh docs/images/demo/*.webp (Playwright PNG -> WebP via sharp)"
 
 up: ensure-env
 	@# Install vendor/ in a one-off container first: worker mode cannot boot a fresh checkout without it.
@@ -83,3 +86,36 @@ verify: ensure-up
 		echo "OK $$path (HTTP 200)"; \
 	done
 
+
+# REQ-DEMO-013: Playwright runs in the official image (no local Node needed); --network host reaches the demo PORT.
+PLAYWRIGHT_IMAGE ?= mcr.microsoft.com/playwright:v1.63.0-jammy
+DEMO_PORT = $$(grep "^PORT=" .env 2>/dev/null | cut -d= -f2 | tr -d '\r'); PORT=$${PORT:-8060}
+
+# Empties the marketing_tool table: every e2e / screenshot run starts from the same state and builds it through the UI.
+reset-demo: ensure-up
+	@$(COMPOSE) exec -T $(SERVICE_PHP) php bin/console doctrine:schema:drop --force --full-database --no-interaction
+	@$(COMPOSE) exec -T $(SERVICE_PHP) php bin/console doctrine:schema:create --no-interaction
+
+test-e2e: ensure-up reset-demo
+	@mkdir -p e2e/node_modules
+	@PORT=$(DEMO_PORT); \
+	docker run --rm --network host --user "$$(id -u):$$(id -g)" -e HOME=/tmp \
+		-v "$(CURDIR)/e2e:/e2e" -w /e2e \
+		-e DEMO_BASE_URL=http://127.0.0.1:$$PORT \
+		$(PLAYWRIGHT_IMAGE) \
+		bash -lc 'npm ci --no-fund --no-audit && npx playwright test --project=chromium --workers=1'
+
+# Resets the demo, captures PNGs with the screenshots project, converts them to WebP (sharp, quality 90) under
+# docs/images/demo/ and deletes the PNGs. One command to refresh the README images.
+demo-screenshots: ensure-up reset-demo
+	@mkdir -p ../../docs/images/demo e2e/node_modules
+	@PORT=$(DEMO_PORT); \
+	docker run --rm --network host --user "$$(id -u):$$(id -g)" -e HOME=/tmp \
+		-v "$(CURDIR)/e2e:/e2e" \
+		-v "$(CURDIR)/../../docs/images/demo:/screenshots" \
+		-w /e2e \
+		-e DEMO_BASE_URL=http://127.0.0.1:$$PORT \
+		-e SCREENSHOT_DIR=/screenshots \
+		$(PLAYWRIGHT_IMAGE) \
+		bash -lc 'npm ci --no-fund --no-audit && npx playwright test --project=screenshots --workers=1 && node scripts/to-webp.mjs /screenshots 90'
+	@echo "Screenshots written under docs/images/demo/ (WebP)"
