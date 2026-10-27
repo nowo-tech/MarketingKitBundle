@@ -1,7 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/11.5/phpunit.xsd" bootstrap="vendor/autoload.php" colors="true" cacheDirectory=".phpunit.cache" executionOrder="depends,defects" beStrictAboutOutputDuringTests="true" failOnRisky="true" failOnWarning="false" displayDetailsOnTestsThatTriggerWarnings="true">
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/11.5/phpunit.xsd" bootstrap="vendor/autoload.php" colors="true" cacheDirectory=".phpunit.cache" executionOrder="depends,defects" beStrictAboutOutputDuringTests="true" failOnRisky="true" failOnWarning="false" failOnDeprecation="true" displayDetailsOnTestsThatTriggerDeprecations="true" displayDetailsOnTestsThatTriggerWarnings="true">
   <php>
-    <!-- REQ-SF-005: fail on direct deprecations from this package -->
+    <!-- REQ-SF-005: the deprecation gate is PHPUnit's own (symfony/phpunit-bridge does not hook PHPUnit >= 10):
+         failOnDeprecation + ignoreSuppressionOfDeprecations on the source, self and direct deprecations not ignored,
+         so any deprecation triggered by src/ or tests/ (including Symfony's silenced trigger_deprecation() calls)
+         fails the run. Tests that assert an intended deprecation use expectUserDeprecationMessage*(). Indirect
+         deprecations (vendor code calling vendor code, e.g. the Twig deprecations raised inside UiKit's
+         PageContractTestCase) are ignored (ignoreIndirectDeprecations). The bridge setting is kept for runs that
+         load the bridge. -->
     <env name="SYMFONY_DEPRECATIONS_HELPER" value="max[direct]=0"/>
   </php>
   <testsuites>
@@ -9,7 +15,7 @@
       <directory>tests</directory>
     </testsuite>
   </testsuites>
-  <source restrictNotices="true" restrictWarnings="true" ignoreIndirectDeprecations="true">
+  <source ignoreSuppressionOfDeprecations="true" restrictNotices="true" restrictWarnings="true" ignoreIndirectDeprecations="true">
     <include>
       <directory>src</directory>
     </include>
