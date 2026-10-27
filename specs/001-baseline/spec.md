@@ -81,7 +81,7 @@ Install and configure marketing tools (GTM, GA4, Meta Pixel, LinkedIn, TikTok, H
 
 ## Success Criteria
 
-- **SC-001**: **51/51** production files under `src/` mapped in [`code-inventory.md`](code-inventory.md) (audited 2026-10-27; `git ls-files src | wc -l`).
+- **SC-001**: **54/54** production files under `src/` mapped in [`code-inventory.md`](code-inventory.md) (audited 2026-10-27; `git ls-files src | wc -l`).
 - **SC-002**: PHPUnit covers config merge, consent gate, renderers, admin services, DI extension, and FrankenPHP worker hygiene (resolver memo + closed EM).
 - **SC-003**: Config keys match [`docs/CONFIGURATION.md`](../../docs/CONFIGURATION.md).
 - **SC-004**: Bundle is viable under FrankenPHP worker with kernel not reset ([`docs/FRANKENPHP-WORKER-AUDIT.md`](../../docs/FRANKENPHP-WORKER-AUDIT.md)).

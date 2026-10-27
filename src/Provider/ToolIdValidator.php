@@ -37,7 +37,7 @@ final class ToolIdValidator
         'meta_pixel' => ['pixel_id', '/^\d+$/D'],
         'linkedin'   => ['partner_id', '/^\d+$/D'],
         'tiktok'     => ['pixel_id', '/^[A-Za-z0-9]+$/D'],
-        'hotjar'     => ['site_id', '/^\d+$/D'],
+        'hotjar'     => ['site_id', '/^[1-9]\d{0,15}$/D'],
         'clarity'    => ['project_id', '/^[A-Za-z0-9]+$/D'],
     ];
 

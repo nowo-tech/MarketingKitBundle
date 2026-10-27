@@ -25,6 +25,9 @@ nowo_marketing_kit:
         access_roles: ['ROLE_ADMIN']
         # access_checker: App\Security\MarketingKitAccessChecker
         allow_unauthenticated: false
+        allow_custom_html: false
+        allow_required_trackers: false
+        csp_nonce_attribute: null
     web_ui:
         enabled: true
         path_prefix: /admin/marketing
@@ -46,9 +49,12 @@ nowo_marketing_kit:
 |-----|------|---------|-------------|
 | `use_database_config` | bool | `false` | When `true`, Doctrine tools for the profile **replace** YAML tools if any rows exist |
 | `respect_cookie_consent` | bool | `true` | Require `Cookie_Category_{category}=true` before rendering |
-| `security.access_roles` | list<string> | `['ROLE_ADMIN']` | Roles allowed to open the admin CRUD at `/admin/marketing` |
+| `security.access_roles` | list<string> | `['ROLE_ADMIN']` | Roles allowed to open the admin CRUD (any of them). **An empty list denies everyone.** Prefer a dedicated role: the admin can publish site-wide JavaScript (see [SECURITY](SECURITY.md#threat-model)) |
 | `security.access_checker` | string\|null | `null` | Optional service id implementing `MarketingKitAccessCheckerInterface` |
 | `security.allow_unauthenticated` | bool | `false` | Demo/dev only bypass for admin access; never enable in production |
+| `security.allow_custom_html` | bool | `false` | Render `custom` snippets. While `false` the admin refuses to save custom HTML |
+| `security.allow_required_trackers` | bool | `false` | Allow built-in trackers (every type but `custom`) in the `required` category, which bypasses the consent gate. While `false` the config / admin reject it and such database rows are gated as `marketing` |
+| `security.csp_nonce_attribute` | string\|null | `null` | Request attribute holding the CSP script nonce; built-in `<script>` tags then get `nonce="…"` (see [SECURITY](SECURITY.md#content-security-policy)) |
 | `web_ui.enabled` | bool | `true` | Admin UI on/off. When `false` the admin routes answer 404 |
 | `web_ui.path_prefix` | string | `/admin/marketing` | URL prefix of the admin pages (must start with `/`, path segments only) |
 | `web_ui.layout_template` | string\|null | `null` | Layout the admin page scaffolds extend. `null` = UiKit `nowo_ui_kit.layouts.admin` (set it once for every Nowo bundle). A host layout must render the UiKit canonical blocks; see [Admin web UI](#admin-web-ui-req-ui-001--req-ui-003) |
@@ -73,7 +79,7 @@ Each entry under `profiles.<name>.tools` is keyed by a stable `code`:
 |-----|------|---------|-------------|
 | `type` | enum | required | `gtm`, `ga4`, `meta_pixel`, `linkedin`, `tiktok`, `hotjar`, `clarity`, `custom` |
 | `enabled` | bool | `true` | Skip when false |
-| `category` | string | `marketing` | Consent category (`analytics`, `marketing`, …) |
+| `category` | enum | `marketing` | Consent category: `required`, `preferences`, `analytics`, `marketing`. `required` (no consent needed) only for `custom`, or with `security.allow_required_trackers` |
 | `position` | enum | `head` | `head`, `body_start`, `body_end` |
 | `sort_order` | int | `0` | Ascending render order |
 | `options` | map | `{}` | Provider-specific options |
@@ -91,7 +97,7 @@ Each entry under `profiles.<name>.tools` is keyed by a stable `code`:
 | `clarity` | `project_id` | letters/digits |
 | `custom` | `html` (trusted snippet) | — |
 
-IDs are validated against these formats when the YAML config is compiled (invalid IDs fail container compile) and when saved from the admin form; at render time a tool whose stored ID does not match emits nothing, and IDs placed in JavaScript are emitted as JSON string literals.
+Hotjar site IDs are 1–16 digits without a leading zero. IDs are validated against these formats when the YAML config is compiled (`%env()%` values are checked at render time instead) (invalid IDs fail container compile) and when saved from the admin form; at render time a tool whose stored ID does not match emits nothing, and IDs placed in JavaScript are emitted as JSON string literals.
 
 ## Database configuration
 
@@ -128,7 +134,11 @@ nowo_marketing_kit:
         access_checker: App\Security\MarketingKitAccessChecker
 ```
 
-Host applications should still add an `access_control` rule for `/admin/marketing` (and set the relevant firewall/login flow). `allow_unauthenticated: true` exists only for demos or local dev and should never be used in production.
+The admin requires CSRF protection: with `web_ui.enabled: true` the container does not compile without
+`framework.csrf_protection` and `framework.form.csrf_protection`.
+
+Host applications should still add an `access_control` rule for the admin prefix (the Flex recipe's
+`security_nowo_marketing_kit.yaml` uses `^/admin/marketing`; change it with `web_ui.path_prefix`) (and set the relevant firewall/login flow). `allow_unauthenticated: true` exists only for demos or local dev and should never be used in production.
 
 ## Admin web UI (REQ-UI-001 / REQ-UI-003)
 

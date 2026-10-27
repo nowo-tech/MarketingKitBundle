@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nowo\MarketingKitBundle\Tests\Unit;
 
+use Nowo\MarketingKitBundle\DependencyInjection\Compiler\CsrfProtectionPass;
 use Nowo\MarketingKitBundle\DependencyInjection\Compiler\TwigPathsPass;
 use Nowo\MarketingKitBundle\NowoMarketingKitBundle;
 use PHPUnit\Framework\TestCase;
@@ -19,13 +20,18 @@ final class NowoMarketingKitBundleBuildTest extends TestCase
 
         $passes    = $container->getCompilerPassConfig()->getPasses();
         $foundTwig = false;
+        $foundCsrf = false;
         foreach ($passes as $pass) {
             if ($pass instanceof TwigPathsPass) {
                 $foundTwig = true;
             }
+            if ($pass instanceof CsrfProtectionPass) {
+                $foundCsrf = true;
+            }
         }
 
         self::assertTrue($foundTwig);
+        self::assertTrue($foundCsrf);
         self::assertSame('nowo_marketing_kit', $bundle->getContainerExtension()?->getAlias());
     }
 }

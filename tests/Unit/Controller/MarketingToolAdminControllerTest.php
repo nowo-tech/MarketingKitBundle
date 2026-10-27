@@ -15,6 +15,7 @@ use Nowo\MarketingKitBundle\Service\MarketingToolCatalog;
 use Nowo\MarketingKitBundle\Ui\MarketingKitPages;
 use Nowo\UiKitBundle\View\FormPage;
 use Nowo\UiKitBundle\View\ListPage;
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use ReflectionProperty;
 use Symfony\Component\DependencyInjection\Container;
@@ -136,7 +137,7 @@ final class MarketingToolAdminControllerTest extends TestCase
         $repo       = $this->createMock(MarketingToolRepository::class);
         $controller = $this->controller($repo, $em, $this->adminService($repo), $this->createMock(Environment::class), csrfValid: false);
 
-        self::assertSame(302, $controller->toggle($request, $tool)->getStatusCode());
+        self::assertSame(302, $controller->toggle($request, $this->stubFind($repo, $tool))->getStatusCode());
         self::assertFalse($tool->isEnabled());
     }
 
@@ -176,7 +177,7 @@ final class MarketingToolAdminControllerTest extends TestCase
         $repo       = $this->createMock(MarketingToolRepository::class);
         $controller = $this->controller($repo, $em, $this->adminService($repo), $this->createMock(Environment::class), csrfValid: true);
 
-        self::assertSame(302, $controller->toggle($request, $tool)->getStatusCode());
+        self::assertSame(302, $controller->toggle($request, $this->stubFind($repo, $tool))->getStatusCode());
         self::assertTrue($tool->isEnabled());
     }
 
@@ -195,7 +196,7 @@ final class MarketingToolAdminControllerTest extends TestCase
         $repo       = $this->createMock(MarketingToolRepository::class);
         $controller = $this->controller($repo, $em, $this->adminService($repo), $this->createMock(Environment::class), csrfValid: true);
 
-        self::assertSame(302, $controller->delete($request, $tool)->getStatusCode());
+        self::assertSame(302, $controller->delete($request, $this->stubFind($repo, $tool))->getStatusCode());
     }
 
     public function testNewPersistsOnValidSubmit(): void
@@ -310,7 +311,7 @@ final class MarketingToolAdminControllerTest extends TestCase
             formFactory: $factory,
         );
 
-        self::assertSame('FORM', $controller->edit(Request::create('/admin/marketing/1/edit'), $tool)->getContent());
+        self::assertSame('FORM', $controller->edit(Request::create('/admin/marketing/1/edit'), $this->stubFind($repo, $tool))->getContent());
     }
 
     public function testIndexRendersTheListPageThroughTheConfiguredTemplate(): void
@@ -364,7 +365,7 @@ final class MarketingToolAdminControllerTest extends TestCase
 
         $repo       = $this->createMock(MarketingToolRepository::class);
         $controller = $this->controller($repo, $this->createMock(EntityManagerInterface::class), $this->adminService($repo), $twig, formFactory: $factory);
-        $response   = $controller->edit(Request::create('/admin/marketing/1/edit', 'POST'), $tool);
+        $response   = $controller->edit(Request::create('/admin/marketing/1/edit', 'POST'), $this->stubFind($repo, $tool));
 
         self::assertSame(422, $response->getStatusCode());
         self::assertSame('@NowoMarketingKitBundle/admin/form.html.twig', $rendered[0]);
@@ -386,6 +387,69 @@ final class MarketingToolAdminControllerTest extends TestCase
 
         $this->expectException(NotFoundHttpException::class);
         $controller->index(Request::create('/admin/marketing'));
+    }
+
+    public function testUnknownToolIdAnswers404(): void
+    {
+        $repo = $this->createMock(MarketingToolRepository::class);
+        $repo->method('find')->willReturn(null);
+        $controller = $this->controller($repo, $this->createMock(EntityManagerInterface::class), $this->adminService($repo), $this->createMock(Environment::class));
+
+        $this->expectException(NotFoundHttpException::class);
+        $controller->edit(Request::create('/admin/marketing/99/edit'), 99);
+    }
+
+    /**
+     * SEC-004 I2: access is checked before the tool is loaded, so an unauthorised caller gets 403 for any id.
+     */
+    public function testAccessIsCheckedBeforeTheToolIsLoaded(): void
+    {
+        $repo = $this->createMock(MarketingToolRepository::class);
+        $repo->expects(self::never())->method('find');
+        $controller = $this->controller($repo, $this->createMock(EntityManagerInterface::class), $this->adminService($repo), $this->createMock(Environment::class), accessAllowed: false);
+
+        $this->expectException(AccessDeniedException::class);
+        $controller->delete(Request::create('/admin/marketing/99/delete', 'POST'), 99);
+    }
+
+    /**
+     * SEC-004 I5: seed / import refuse a posted profile that is not configured.
+     */
+    public function testSeedAndImportRejectUnknownProfile(): void
+    {
+        $repo = $this->createMock(MarketingToolRepository::class);
+        $em   = $this->createMock(EntityManagerInterface::class);
+        $em->expects(self::never())->method('persist');
+
+        foreach (['seed', 'importYaml'] as $action) {
+            $session = new Session(new MockArraySessionStorage());
+            $request = Request::create('/admin/marketing/x', 'POST', ['profile' => 'evil', '_token' => 'ok']);
+            $request->setSession($session);
+            $controller = $this->controller($repo, $em, $this->adminService($repo, $em), $this->createMock(Environment::class), request: $request);
+
+            $response = $controller->{$action}($request);
+            self::assertSame(302, $response->getStatusCode());
+            self::assertSame(['Unknown profile.'], $session->getFlashBag()->peek('error'));
+        }
+    }
+
+    public function testNewFallsBackToTheDefaultProfileForAnUnknownProfile(): void
+    {
+        $form = $this->createMock(FormInterface::class);
+        $form->method('handleRequest')->willReturnSelf();
+        $form->method('isSubmitted')->willReturn(false);
+        $form->method('createView')->willReturn(new FormView());
+        $factory = $this->createMock(FormFactoryInterface::class);
+        $factory->expects(self::once())->method('create')
+            ->with(MarketingToolType::class, self::callback(static fn (MarketingTool $tool): bool => $tool->getProfile() === 'default'), self::anything())
+            ->willReturn($form);
+        $twig = $this->createMock(Environment::class);
+        $twig->method('render')->willReturn('FORM');
+
+        $repo       = $this->createMock(MarketingToolRepository::class);
+        $controller = $this->controller($repo, $this->createMock(EntityManagerInterface::class), $this->adminService($repo), $twig, formFactory: $factory);
+
+        self::assertSame('FORM', $controller->new(Request::create('/admin/marketing/new', 'GET', ['profile' => 'evil']))->getContent());
     }
 
     public function testIndexThrowsAccessDeniedWhenCheckerRejectsAccess(): void
@@ -466,6 +530,16 @@ final class MarketingToolAdminControllerTest extends TestCase
         $controller->setContainer($container);
 
         return $controller;
+    }
+
+    /**
+     * The controller loads the tool itself after the access check (SEC-004 I2).
+     */
+    private function stubFind(MarketingToolRepository&MockObject $repo, MarketingTool $tool): int
+    {
+        $repo->method('find')->willReturn($tool);
+
+        return (int) $tool->getId();
     }
 
     private function setId(MarketingTool $tool, int $id): void

@@ -100,6 +100,11 @@ class MarketingToolAdminController extends AbstractController
         $this->denyUnlessGranted();
 
         $profile = (string) $request->request->get('profile', $this->adminService->defaultProfile());
+        if (!$this->isKnownProfile($profile)) {
+            $this->addFlash('error', 'Unknown profile.');
+
+            return $this->redirectToRoute('nowo_marketing_kit_admin_index');
+        }
         if (!$this->isCsrfActionValid($request, $this->csrfActionForm('seed_marketing_tools_' . $profile, '', $profile))) {
             $this->addFlash('error', 'Invalid CSRF token.');
 
@@ -123,6 +128,11 @@ class MarketingToolAdminController extends AbstractController
         $this->denyUnlessGranted();
 
         $profile = (string) $request->request->get('profile', $this->adminService->defaultProfile());
+        if (!$this->isKnownProfile($profile)) {
+            $this->addFlash('error', 'Unknown profile.');
+
+            return $this->redirectToRoute('nowo_marketing_kit_admin_index');
+        }
         if (!$this->isCsrfActionValid($request, $this->csrfActionForm('import_marketing_yaml_' . $profile, '', $profile))) {
             $this->addFlash('error', 'Invalid CSRF token.');
 
@@ -146,7 +156,10 @@ class MarketingToolAdminController extends AbstractController
         $this->denyUnlessGranted();
 
         $profile = (string) $request->query->get('profile', $this->adminService->defaultProfile());
-        $tool    = (new MarketingTool())
+        if (!$this->isKnownProfile($profile)) {
+            $profile = $this->adminService->defaultProfile();
+        }
+        $tool = (new MarketingTool())
             ->setProfile($profile)
             ->setCode('custom')
             ->setType('custom')
@@ -160,17 +173,19 @@ class MarketingToolAdminController extends AbstractController
     }
 
     #[Route(path: '/{id}/edit', name: 'edit', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]
-    public function edit(Request $request, MarketingTool $tool): Response
+    public function edit(Request $request, int $id): Response
     {
         $this->denyUnlessGranted();
+        $tool = $this->findTool($id);
 
         return $this->handleForm($request, $tool, false);
     }
 
     #[Route(path: '/{id}/toggle', name: 'toggle', requirements: ['id' => '\d+'], methods: ['POST'])]
-    public function toggle(Request $request, MarketingTool $tool): Response
+    public function toggle(Request $request, int $id): Response
     {
         $this->denyUnlessGranted();
+        $tool = $this->findTool($id);
 
         if ($this->isCsrfActionValid($request, $this->csrfActionForm('toggle_marketing_tool_' . $tool->getId(), ''))) {
             $tool->setEnabled(!$tool->isEnabled());
@@ -182,9 +197,10 @@ class MarketingToolAdminController extends AbstractController
     }
 
     #[Route(path: '/{id}/delete', name: 'delete', requirements: ['id' => '\d+'], methods: ['POST'])]
-    public function delete(Request $request, MarketingTool $tool): Response
+    public function delete(Request $request, int $id): Response
     {
         $this->denyUnlessGranted();
+        $tool = $this->findTool($id);
 
         $profile = $tool->getProfile();
         if ($this->isCsrfActionValid($request, $this->csrfActionForm('delete_marketing_tool_' . $tool->getId(), ''))) {
@@ -256,6 +272,24 @@ class MarketingToolAdminController extends AbstractController
         $factory = $this->container->get('form.factory');
 
         return $factory;
+    }
+
+    /**
+     * Loads a tool after the access check, so an unauthorised caller cannot probe ids (403 before 404; SEC-004 I2).
+     */
+    private function findTool(int $id): MarketingTool
+    {
+        $tool = $this->repository->find($id);
+        if (!$tool instanceof MarketingTool) {
+            throw new NotFoundHttpException('Marketing tool not found.');
+        }
+
+        return $tool;
+    }
+
+    private function isKnownProfile(string $profile): bool
+    {
+        return in_array($profile, $this->adminService->profileChoices(), true);
     }
 
     private function urls(): UrlGeneratorInterface

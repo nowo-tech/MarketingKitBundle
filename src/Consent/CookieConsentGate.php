@@ -15,6 +15,12 @@ use Symfony\Component\HttpFoundation\RequestStack;
  */
 final readonly class CookieConsentGate implements ConsentGateInterface
 {
+    /**
+     * Request attribute set when the response depends on the consent cookies: ConsentVaryCookieSubscriber then adds
+     * `Vary: Cookie`, so a shared cache never serves one visitor's tags to another (SEC-004 I3).
+     */
+    public const VARY_COOKIE_ATTRIBUTE = '_nowo_marketing_kit_vary_cookie';
+
     public function __construct(
         private RequestStack $requestStack,
         private bool $respectCookieConsent = true,
@@ -35,6 +41,8 @@ final readonly class CookieConsentGate implements ConsentGateInterface
         if (!$request instanceof Request) {
             return false;
         }
+        // @igor-ignore - per-request attribute on the current Request, not service state
+        $request->attributes->set(self::VARY_COOKIE_ATTRIBUTE, true);
 
         return $request->cookies->get(ConsentCookieNames::category($category)) === 'true';
     }

@@ -978,7 +978,9 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         access_roles?: list<scalar|Param|null>,
  *         access_checker?: scalar|Param|null, // Default: null
  *         allow_unauthenticated?: bool|Param, // Default: false
- *         allow_custom_html?: bool|Param, // When false (default), CustomScriptRenderer emits nothing. Enable only for trusted admin/YAML snippets. // Default: false
+ *         allow_custom_html?: bool|Param, // When false (default), CustomScriptRenderer emits nothing and the admin refuses to save custom HTML. Enable only for trusted admin/YAML snippets. // Default: false
+ *         allow_required_trackers?: bool|Param, // When false (default), built-in trackers (every type but custom) cannot use the "required" category, which bypasses the consent gate; such rows are gated as "marketing" at render time. // Default: false
+ *         csp_nonce_attribute?: scalar|Param|null, // Request attribute holding the CSP script nonce (e.g. set by your CSP listener). When set (or when a nonce is passed to the Twig functions), built-in <script> tags get nonce="…"; custom HTML is emitted as-is. // Default: null
  *     },
  *     web_ui?: array{
  *         enabled?: bool|Param, // Admin UI on/off (REQ-UI-003). When false the admin routes answer 404. // Default: true
@@ -1002,7 +1004,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         tools?: array<string, array{ // Default: []
  *             type?: "gtm"|"ga4"|"meta_pixel"|"linkedin"|"tiktok"|"hotjar"|"clarity"|"custom"|Param,
  *             enabled?: bool|Param, // Default: true
- *             category?: scalar|Param|null, // Default: "marketing"
+ *             category?: "required"|"preferences"|"analytics"|"marketing"|Param, // Default: "marketing"
  *             position?: "head"|"body_start"|"body_end"|Param, // Default: "head"
  *             sort_order?: int|Param, // Default: 0
  *             options?: list<mixed>,

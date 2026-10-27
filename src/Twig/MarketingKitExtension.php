@@ -44,18 +44,27 @@ final class MarketingKitExtension extends AbstractExtension implements GlobalsIn
         ];
     }
 
-    public function head(?string $profile = null): string
+    /**
+     * @param string|null $nonce CSP script nonce for the built-in tags (e.g. `csp_nonce('script')`)
+     */
+    public function head(?string $profile = null, ?string $nonce = null): string
     {
-        return $this->renderer->renderHead($profile);
+        return $this->renderer->renderHead($profile, $nonce);
     }
 
-    public function bodyStart(?string $profile = null): string
+    /**
+     * @param string|null $nonce CSP script nonce for the built-in tags (e.g. `csp_nonce('script')`)
+     */
+    public function bodyStart(?string $profile = null, ?string $nonce = null): string
     {
-        return $this->renderer->renderBodyStart($profile);
+        return $this->renderer->renderBodyStart($profile, $nonce);
     }
 
-    public function bodyEnd(?string $profile = null): string
+    /**
+     * @param string|null $nonce CSP script nonce for the built-in tags (e.g. `csp_nonce('script')`)
+     */
+    public function bodyEnd(?string $profile = null, ?string $nonce = null): string
     {
-        return $this->renderer->renderBodyEnd($profile);
+        return $this->renderer->renderBodyEnd($profile, $nonce);
     }
 }

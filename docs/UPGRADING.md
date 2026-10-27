@@ -7,6 +7,7 @@
   - [Configuration (REQ-UI-003 vocabulary)](#configuration-req-ui-003-vocabulary)
   - [FormKit profile](#formkit-profile)
   - [Tests (REQ-SF-005)](#tests-req-sf-005)
+  - [Security hardening (SEC-004 2026-10-27)](#security-hardening-sec-004-2026-10-27)
 - [To 1.8.0](#to-180)
 - [To 1.7.1](#to-171)
 - [To 1.7.0](#to-170)
@@ -87,6 +88,27 @@ When the host defines no `nowo_form_kit.profiles.marketing_kit`, the seeded prof
 (`form-control`, `form-select`, `mb-2`, `form-check`, …) and sets `convention_requires_translation: true`. The UiKit
 form theme (`web_ui.form_themes`) styles the fields through the theme slots. On a Bootstrap host set
 `web_ui.form_themes: ['bootstrap_5_layout.html.twig']` (or your own profile classes).
+
+### Security hardening (SEC-004 2026-10-27)
+
+- **Empty `security.access_roles` denies.** It used to allow everyone. If you relied on that (you should not), set
+  real roles, `security.access_checker`, or — demo only — `security.allow_unauthenticated: true`.
+- **CSRF is required.** With `web_ui.enabled: true` (the default) the container fails to compile unless
+  `framework.csrf_protection` and `framework.form.csrf_protection` are enabled (`composer require
+  symfony/security-csrf`). Hosts without the admin set `nowo_marketing_kit.web_ui.enabled: false`.
+- **Categories.** `category` accepts only `required`, `preferences`, `analytics`, `marketing`. Built-in trackers in
+  `required` (no consent needed) now fail the YAML compile and the admin form; move them to `analytics` / `marketing`
+  or set `security.allow_required_trackers: true` if your legal basis allows it. Database rows already saved with
+  `required` are gated as `marketing` at render time until you change them.
+- **CSP nonce (optional).** `{{ nowo_marketing_head(null, csp_nonce('script')) }}` or
+  `security.csp_nonce_attribute: '<request attribute>'` to add `nonce="…"` to the built-in scripts.
+- **Admin forms.** The tool form's CSRF token id is now `nowo_marketing_kit_tool` (open edit pages must be reloaded
+  once after the upgrade); unknown profiles are rejected; custom HTML cannot be saved while
+  `security.allow_custom_html` is false. Hotjar site IDs with a leading zero or more than 16 digits are rejected.
+- **Route arguments.** `MarketingToolAdminController::edit|toggle|delete()` take the `int $id` (they load the tool
+  after the access check). Only code calling these methods directly is affected.
+- **`Vary: Cookie`** is added to pages whose tags depend on the consent cookies.
+- **Recipe.** If you changed `web_ui.path_prefix`, update the path in `config/packages/security_nowo_marketing_kit.yaml`.
 
 ### Tests (REQ-SF-005)
 

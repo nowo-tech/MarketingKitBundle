@@ -36,6 +36,10 @@ final class ToolIdValidatorTest extends TestCase
         yield 'tiktok ok' => ['tiktok', 'C4ABCDEF123', 'C4ABCDEF123'];
         yield 'tiktok breakout' => ['tiktok', "C4'+alert(1)+'", null];
         yield 'hotjar ok' => ['hotjar', '42', '42'];
+        yield 'hotjar leading zero' => ['hotjar', '0042', null];
+        yield 'hotjar zero' => ['hotjar', '0', null];
+        yield 'hotjar too long' => ['hotjar', '12345678901234567', null];
+        yield 'hotjar 16 digits' => ['hotjar', '1234567890123456', '1234567890123456'];
         yield 'clarity ok' => ['clarity', 'abc123xyz', 'abc123xyz'];
         yield 'clarity breakout' => ['clarity', 'abc");alert(1);//', null];
         yield 'non scalar' => ['gtm', ['GTM-A'], null];

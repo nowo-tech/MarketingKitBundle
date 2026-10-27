@@ -31,7 +31,7 @@ This bundle is **FrankenPHP worker mode friendly**, including **kernel not reset
 - ✅ **Twig helpers** — `nowo_marketing_head()`, `nowo_marketing_body_start()`, `nowo_marketing_body_end()`
 - ✅ **CookieConsent-compatible** — reads `Cookie_Category_{analytics|marketing}` (soft dependency)
 - ✅ **Admin CRUD** — `/admin/marketing` (`web_ui.path_prefix`) to configure services (seed catalog, import YAML, toggle, typed option fields, confirm before delete)
-- ✅ **Admin security** — `security.access_roles` / custom `access_checker` (demo-only `allow_unauthenticated`)
+- ✅ **Admin security** — `security.access_roles` (empty list denies) / custom `access_checker`, CSRF required, consent allowlist, optional CSP nonce; see [Security](docs/SECURITY.md) (demo-only `allow_unauthenticated`)
 - ✅ **Embeddable admin UI** — UiKit page scaffolds (list + form): one host layout and theme (`nowo_ui_kit.layouts.admin`, `css_framework`, `theme`) for every Nowo bundle; see [Templates](docs/TEMPLATES.md)
 
 **FrankenPHP:** Demos use a **single PHP service** (FrankenPHP, no nginx). Runtime mode is controlled by **`FRANKENPHP_MODE`** in `.env` (`worker` default, or `classic`). The entrypoint selects `Caddyfile` (workers) or `Caddyfile.dev` (no workers) accordingly; see [docs/DEMO-FRANKENPHP.md](docs/DEMO-FRANKENPHP.md). Demo URL: `http://localhost:8060` (see `demo/README.md` and `.env.example`).

@@ -34,6 +34,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Security hardening after the SEC-004 audit of 2026-10-27. See [UPGRADING](UPGRADING.md#unreleased).
+
+### Security
+
+- **Admin access fails closed (M1):** an empty `security.access_roles` now denies everyone; it used to grant the
+  admin (and so site-wide script authority through any tag manager container) to every visitor, anonymous included.
+- **CSRF required (L1):** with `web_ui.enabled: true` the container refuses to compile without
+  `framework.csrf_protection` / `framework.form.csrf_protection` (`CsrfProtectionPass`); without the form CSRF
+  extension the admin's CSRF-only forms were valid with no token. The tool form uses the explicit token id
+  `nowo_marketing_kit_tool` (I6).
+- **No consent bypass for trackers (L2):** categories are an allowlist (`required`, `preferences`, `analytics`,
+  `marketing`); built-in trackers cannot use `required` (which skips the consent gate) unless
+  `security.allow_required_trackers: true` — rejected in YAML and in the admin form, and earlier database rows are
+  gated as `marketing` at render time.
+- **CSP nonce (L4):** `nowo_marketing_head|body_start|body_end(profile, nonce)` and `security.csp_nonce_attribute`
+  add `nonce="…"` to the built-in `<script>` tags; custom HTML stays as configured.
+- **Access before lookup (I2):** edit / toggle / delete check access before loading the tool (403 for any id instead
+  of a 404 / 403 oracle).
+- **`Vary: Cookie` (I3)** on responses whose tags were gated by the consent cookies.
+- **Hotjar IDs (I4)** must be 1–16 digits without a leading zero.
+- **Profiles (I5):** seed / import YAML refuse a posted profile that is not configured; new / the tool form only
+  accept configured profiles.
+- **Custom HTML (I7)** cannot be saved from the admin while `security.allow_custom_html` is false.
+- **Docs (L3, L5, L6):** `docs/SECURITY.md` threat model (the admin is site-wide script authority; dedicated role,
+  audit trail), recipe `access_control` path vs `web_ui.path_prefix`, `.github/SECURITY.md` supported versions.
+
+### Fixed
+
+- `%env()%` provider IDs (as in the Flex recipe and the README) no longer fail the compile-time ID check; they are
+  validated at render time (I1). The Flex recipe no longer sets the removed `admin/layout.html.twig` layout.
+
 Admin pages on the UiKit page contract (REQ-UI-001 / REQ-UI-003), Playwright e2e + README screenshots (REQ-DEMO-013),
 native PHPUnit deprecation gate (REQ-SF-005). See [UPGRADING](UPGRADING.md#unreleased).
 

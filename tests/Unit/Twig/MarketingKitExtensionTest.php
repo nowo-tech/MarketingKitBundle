@@ -6,6 +6,7 @@ namespace Nowo\MarketingKitBundle\Tests\Unit\Twig;
 
 use Nowo\MarketingKitBundle\Config\MarketingConfigResolver;
 use Nowo\MarketingKitBundle\Consent\CookieConsentGate;
+use Nowo\MarketingKitBundle\Provider\GtmRenderer;
 use Nowo\MarketingKitBundle\Provider\ToolRendererRegistry;
 use Nowo\MarketingKitBundle\Service\MarketingScriptRenderer;
 use Nowo\MarketingKitBundle\Twig\MarketingKitExtension;
@@ -36,6 +37,21 @@ final class MarketingKitExtensionTest extends TestCase
         self::assertSame('', $extension->head());
         self::assertSame('', $extension->bodyStart());
         self::assertSame('', $extension->bodyEnd());
+    }
+
+    public function testNonceIsPassedToTheRenderer(): void
+    {
+        $extension = new MarketingKitExtension(new MarketingScriptRenderer(
+            new MarketingConfigResolver(['default' => ['enabled' => true, 'tools' => [
+                'gtm' => ['type' => 'gtm', 'enabled' => true, 'category' => 'analytics', 'position' => 'head', 'options' => ['container_id' => 'GTM-N1']],
+            ]]], 'default', false),
+            new ToolRendererRegistry([new GtmRenderer()]),
+            new CookieConsentGate(new RequestStack(), false),
+        ));
+
+        self::assertStringContainsString('<script nonce="n0nce">', $extension->head(null, 'n0nce'));
+        self::assertSame('', $extension->bodyStart(null, 'n0nce'));
+        self::assertSame('', $extension->bodyEnd(null, 'n0nce'));
     }
 
     public function testGlobalsAreExposedToTwigEnvironment(): void
