@@ -1,6 +1,8 @@
 framework:
     secret: '%env(APP_SECRET)%'
     http_method_override: false
+    # The admin flashes (seed / import / toggle / delete) and the per-action CSRF tokens need a session.
+    session: true
     handle_all_throwables: true
     php_errors:
         log: true
