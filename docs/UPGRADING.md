@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 1.9.1](#to-191)
 - [To 1.9.0](#to-190)
   - [Template contract (REQ-UI-003)](#template-contract-req-ui-003)
   - [Configuration (REQ-UI-003 vocabulary)](#configuration-req-ui-003-vocabulary)
@@ -34,6 +35,14 @@
   - [From nothing to 1.0.0](#from-nothing-to-100)
 
 ## Unreleased
+
+## To 1.9.1
+
+From **1.9.0**:
+
+```bash
+composer update nowo-tech/marketing-kit-bundle
+```
 
 No action needed when you import `@NowoMarketingKitBundle/Resources/config/routing.yaml` (as documented). If the admin under `web_ui.path_prefix` only appeared through Symfony's default `controllers: { resource: routing.controllers }` (Symfony >= 7.3), add that import: the bundle controller is no longer registered there (REQ-SF-004 rule 7).
 

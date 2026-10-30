@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[1.9.1] - 2026-10-30](#191---2026-10-30)
 - [[1.9.0] - 2026-10-27](#190---2026-10-27)
 - [[1.8.0] - 2026-10-26](#180---2026-10-26)
 - [[1.7.1] - 2026-10-24](#171---2026-10-24)
@@ -34,6 +35,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [[1.0.0] - 2026-07-24](#100---2026-07-24)
 
 ## [Unreleased]
+
+## [1.9.1] - 2026-10-30
+
+Bundle routes are opt-in again: controllers are no longer autoconfigured, so a host's routing.controllers import does not expose them (REQ-SF-004 rule 7). See [UPGRADING](UPGRADING.md#to-191).
 
 ### Fixed
 
@@ -237,6 +242,7 @@ Allows nowo-tech/ui-kit-bundle 2.x (^1.4 || ^2.2) so hosts can move to UiKit 2.2
 
 - **Worker safety (Igor):** justified `// @igor-ignore` annotations and/or `ResetInterface` / request-scoped fixes so `make igor` passes on package `src/`.
 
+[1.9.1]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.9.1
 [1.9.0]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.9.0
 [1.8.0]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.8.0
 [1.7.1]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.7.1
