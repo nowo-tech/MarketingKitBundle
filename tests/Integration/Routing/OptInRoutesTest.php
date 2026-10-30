@@ -25,14 +25,13 @@ use function str_starts_with;
  */
 final class OptInRoutesTest extends TestCase
 {
-    protected function setUp(): void
+    /**
+     * Stale caches are removed once, before any kernel boots: deleting them while a booted container's lazy classes may
+     * still be autoloaded (later test, same process) would break that container.
+     */
+    public static function setUpBeforeClass(): void
     {
-        $this->removeKernelCaches();
-    }
-
-    protected function tearDown(): void
-    {
-        $this->removeKernelCaches();
+        self::removeKernelCaches();
     }
 
     public function testRoutingControllersResourceDoesNotRegisterBundleRoutes(): void
@@ -81,7 +80,7 @@ final class OptInRoutesTest extends TestCase
         }
     }
 
-    private function removeKernelCaches(): void
+    private static function removeKernelCaches(): void
     {
         $cache = dirname(__DIR__, 3) . '/var/cache/';
         (new Filesystem())->remove([$cache . 'opt-in-routes-default', $cache . 'opt-in-routes-imported']);
