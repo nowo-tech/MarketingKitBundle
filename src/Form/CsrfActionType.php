@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Nowo\MarketingKitBundle\Form;
 
+use Nowo\FormKitBundle\Attribute\FormKitConfig;
+use Nowo\FormKitBundle\Form\FormOptionsTrait;
 use Override;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\HiddenType;
@@ -17,12 +19,16 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
  *
  * Created with an empty name so the posted fields keep their historical flat names:
  * `_token` and, with `with_profile`, a hidden `profile`. `id_suffix` keeps HTML ids unique when
- * several of these forms share one page.
+ * several of these forms share one page. FormKit Type bound to the `marketing_kit` profile (REQ-TWIG-005 rule 11);
+ * the hidden `profile` child is added without profile defaults.
  *
  * @extends AbstractType<array{profile?: string|null}|null>
  */
+#[FormKitConfig('marketing_kit')]
 final class CsrfActionType extends AbstractType
 {
+    use FormOptionsTrait;
+
     /**
      * @param FormBuilderInterface<mixed> $builder
      * @param array<string, mixed> $options

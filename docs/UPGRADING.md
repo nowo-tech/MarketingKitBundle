@@ -36,6 +36,10 @@
 
 ## Unreleased
 
+The profile switcher and the CSRF-only admin actions are FormKit Types bound to the `marketing_kit` profile, like the
+service editor. No change for hosts (same field names, CSRF ids and markup); customise their field classes through
+`nowo_form_kit.profiles.marketing_kit`, not with a `form_theme` in an overridden template.
+
 ## To 1.9.1
 
 From **1.9.0**:
