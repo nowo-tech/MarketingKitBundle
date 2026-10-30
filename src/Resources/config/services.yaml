@@ -12,9 +12,13 @@ services:
             - '../../NowoMarketingKitBundle.php'
             - '../../Resources/'
 
+    # Controllers are not autoconfigured (REQ-SF-004 rule 7): on Symfony >= 7.3 a #[Route] class is autoconfigured with
+    # the routing.controller tag, and the host's default `routing.controllers` resource would then expose the admin
+    # without the host importing routing.yaml. Routes are opt-in only; the AbstractController tags are explicit.
     Nowo\MarketingKitBundle\Controller\:
         resource: '../../Controller/'
-        tags: ['controller.service_arguments']
+        autoconfigure: false
+        tags: ['controller.service_arguments', 'container.service_subscriber']
 
     Nowo\MarketingKitBundle\Config\MarketingConfigResolver:
         arguments:
@@ -28,8 +32,10 @@ services:
             $defaultProfile: '%nowo_marketing_kit.default_profile%'
 
     Nowo\MarketingKitBundle\Controller\MarketingToolAdminController:
+        autoconfigure: false
         arguments:
             $useDatabaseConfig: '%nowo_marketing_kit.use_database_config%'
+        tags: ['controller.service_arguments', 'container.service_subscriber']
 
     # REQ-UI-003 page plumbing: layout, per-page templates, form themes and view models of the admin pages.
     Nowo\MarketingKitBundle\Ui\MarketingKitPages:

@@ -35,6 +35,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Admin routes registered without being imported (REQ-SF-004 rule 7):** on Symfony >= 7.3 the `#[Route]` on `MarketingToolAdminController` made the autoconfigured service carry the `routing.controller` tag, so a host with the default `controllers: { resource: routing.controllers }` got the `nowo_marketing_kit_admin_*` routes without importing `@NowoMarketingKitBundle/Resources/config/routing.yaml` (still behind the admin access checker). The controller service is no longer autoconfigured (explicit `controller.service_arguments` + `container.service_subscriber` tags); the routes exist only where the host imports them. Regression test with a kernel that only loads `routing.controllers`.
+
 ## [1.9.0] - 2026-10-27
 
 UiKit page contract admin, Playwright e2e + screenshots, SEC-004 hardening: empty roles deny, CSRF fail-closed, consent category allowlist, CSP nonce See [UPGRADING](UPGRADING.md#to-190).
