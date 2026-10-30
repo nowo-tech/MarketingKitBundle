@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[1.9.2] - 2026-10-30](#192---2026-10-30)
 - [[1.9.1] - 2026-10-30](#191---2026-10-30)
 - [[1.9.0] - 2026-10-27](#190---2026-10-27)
 - [[1.8.0] - 2026-10-26](#180---2026-10-26)
@@ -35,6 +36,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [[1.0.0] - 2026-07-24](#100---2026-07-24)
 
 ## [Unreleased]
+
+## [1.9.2] - 2026-10-30
+
+Profile filter and CSRF action types are FormKit types (REQ-TWIG-005 rule 11, no markup change). See [UPGRADING](UPGRADING.md#to-192).
 
 ### Changed
 
@@ -246,6 +251,7 @@ Allows nowo-tech/ui-kit-bundle 2.x (^1.4 || ^2.2) so hosts can move to UiKit 2.2
 
 - **Worker safety (Igor):** justified `// @igor-ignore` annotations and/or `ResetInterface` / request-scoped fixes so `make igor` passes on package `src/`.
 
+[1.9.2]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.9.2
 [1.9.1]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.9.1
 [1.9.0]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.9.0
 [1.8.0]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.8.0

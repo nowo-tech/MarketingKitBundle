@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 1.9.2](#to-192)
 - [To 1.9.1](#to-191)
 - [To 1.9.0](#to-190)
   - [Template contract (REQ-UI-003)](#template-contract-req-ui-003)
@@ -35,6 +36,14 @@
   - [From nothing to 1.0.0](#from-nothing-to-100)
 
 ## Unreleased
+
+## To 1.9.2
+
+From **1.9.1**:
+
+```bash
+composer update nowo-tech/marketing-kit-bundle
+```
 
 The profile switcher and the CSRF-only admin actions are FormKit Types bound to the `marketing_kit` profile, like the
 service editor. No change for hosts (same field names, CSRF ids and markup); customise their field classes through
