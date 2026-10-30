@@ -147,8 +147,8 @@ vendor changes for that path until you remove or merge it**: that file is frozen
 
 ### Forms in the admin views (REQ-TWIG-005)
 
-Every control in the admin UI is a Symfony Form (types under `Nowo\MarketingKitBundle\Form`, FormKit options on the
-editor): the service editor (`MarketingToolType`), the GET profile switcher (`ProfileFilterType`, query `?profile=`,
+Every control in the admin UI is a Symfony Form built as a FormKit Type (types under `Nowo\MarketingKitBundle\Form`,
+all bound to the `marketing_kit` FormKit profile, REQ-TWIG-005 rule 11): the service editor (`MarketingToolType`), the GET profile switcher (`ProfileFilterType`, query `?profile=`,
 rendered in the list filters region) and the CSRF-only actions seed / import YAML / toggle / delete
 (`CsrfActionType`, flat `_token` and hidden `profile`, same CSRF ids as before). The page view model carries them as
 UiKit `Action`s (`Action::$form`), which the UiKit `action` partial renders with `form_start` / `form_end`; overrides

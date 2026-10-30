@@ -164,7 +164,21 @@ icons and / or text follow `row_actions_display`; Delete opens the UiKit confirm
 
 The FormKit profile `marketing_kit` (seeded when the host defines none) adds no framework classes and applies the
 convention help / placeholder keys only when they are translated (`convention_requires_translation`); the UiKit form
-theme of `web_ui.form_themes` maps the fields to the theme slots (`input`, `check`, `form_row`, …).
+theme of `web_ui.form_themes` maps the fields to the theme slots (`input`, `check`, `form_row`, …). Every admin form
+type — `MarketingToolType`, `ProfileFilterType` and `CsrfActionType` — carries `#[FormKitConfig('marketing_kit')]` +
+`FormOptionsTrait` (REQ-TWIG-005 rule 11). To change field classes or row attributes, define
+`nowo_form_kit.profiles.marketing_kit` in the host (then nothing is seeded, so set every key you need):
+
+```yaml
+# config/packages/nowo_form_kit.yaml
+nowo_form_kit:
+    profiles:
+        marketing_kit:
+            alias: marketing_kit
+            translation_domain: NowoMarketingKitBundle
+            convention_requires_translation: true
+            defaults: { attr: {}, row_attr: {} }
+```
 
 ### Host integration examples
 

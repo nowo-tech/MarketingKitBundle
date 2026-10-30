@@ -36,6 +36,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **FormKit Types (REQ-TWIG-005 rule 11):** `ProfileFilterType` (GET profile switcher) and `CsrfActionType` (seed / import YAML / toggle / delete) now carry `#[FormKitConfig('marketing_kit')]` + `FormOptionsTrait`, like `MarketingToolType`. Field names (`profile`, flat `_token`), CSRF token ids and markup are unchanged. The `marketing_kit` profile override is documented in [CONFIGURATION](CONFIGURATION.md).
+
 ## [1.9.1] - 2026-10-30
 
 Bundle routes are opt-in again: controllers are no longer autoconfigured, so a host's routing.controllers import does not expose them (REQ-SF-004 rule 7). See [UPGRADING](UPGRADING.md#to-191).
