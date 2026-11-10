@@ -24,14 +24,14 @@ use function str_starts_with;
  * - Detaches managed {@see MarketingTool} instances so admin list/edit pages see database state
  *   instead of a stale identity map from an earlier request.
  *
- * Only the bundle's manager is touched (1.9.3): any other manager of the registry, closed or open, belongs to the host.
+ * Only the bundle's manager is touched (1.10.0): any other manager of the registry, closed or open, belongs to the host.
  */
 final readonly class ClosedEntityManagerSubscriber implements EventSubscriberInterface
 {
     private const ROUTE_PREFIX = 'nowo_marketing_kit_';
 
     /**
-     * @param string|null $entityManagerName `nowo_marketing_kit.doctrine.entity_manager` (null: the manager of MarketingTool)
+     * @param string|null $entityManagerName `nowo_marketing_kit.doctrine.entity_manager` (null: the manager of MarketingTool, the default one)
      */
     public function __construct(
         private ManagerRegistry $registry,

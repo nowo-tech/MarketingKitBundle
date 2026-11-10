@@ -106,7 +106,7 @@ services:
             $allowRequiredTrackers: '%nowo_marketing_kit.security.allow_required_trackers%'
         tags: ['form.type']
 
-    # 1.9.3: resets only the bundle's own entity manager (rule 6), never a host one.
+    # 1.10.0: resets only the bundle's own entity manager (rule 6), never a host one.
     Nowo\MarketingKitBundle\EventSubscriber\ClosedEntityManagerSubscriber:
         arguments:
             $entityManagerName: '%nowo_marketing_kit.doctrine.entity_manager%'

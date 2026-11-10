@@ -37,7 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Target 1.9.3.
+Target 1.10.0 (minor: a new public configuration key and a behaviour change on hosts with several entity managers).
 
 ### Fixed
 
@@ -48,7 +48,10 @@ Target 1.9.3.
 
 ### Added
 
-- `nowo_marketing_kit.doctrine.entity_manager` (default `null`: resolved with `getManagerForClass(MarketingTool)`).
+- `nowo_marketing_kit.doctrine.entity_manager` (default `null` = the default manager): a dedicated entity manager for
+  `MarketingTool`. The entity is mapped on that manager only (removed from the others, including `auto_mapping`), the
+  admin service and controller read and write through it, and the closed-manager recovery resets it. The build fails
+  when the manager does not exist. Audit LD-MK-M1.
 
 ## [1.9.2] - 2026-10-30
 

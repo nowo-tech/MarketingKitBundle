@@ -3,7 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
-  - [To 1.9.3](#to-193)
+  - [To 1.10.0](#to-1100)
 - [To 1.9.2](#to-192)
 - [To 1.9.1](#to-191)
 - [To 1.9.0](#to-190)
@@ -38,14 +38,17 @@
 
 ## Unreleased
 
-### To 1.9.3
+### To 1.10.0
 
 From **1.9.2**: `composer update nowo-tech/marketing-kit-bundle`. No configuration change is needed.
 
 - Before an admin route, the bundle now resets (when closed) and clears stale tools only in the manager of
   `MarketingTool`; a closed host manager is left to the host.
-- Optional: `nowo_marketing_kit.doctrine.entity_manager: <name>` pins that manager (default `null`: resolved with
-  `ManagerRegistry::getManagerForClass()`).
+- Optional: `nowo_marketing_kit.doctrine.entity_manager: <name>` moves `MarketingTool` to a dedicated manager (it must
+  exist under `doctrine.orm.entity_managers`, with its own connection; create the `marketing_tool` table there). The
+  entity is then mapped on that manager only, also when the default manager uses `auto_mapping`, and the admin writes
+  through it. The host's own flushes no longer include marketing tools, and the bundle's flushes no longer include
+  host changes. Default `null`: the default manager, as before.
 
 ## To 1.9.2
 
