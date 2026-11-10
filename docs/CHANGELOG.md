@@ -37,6 +37,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Target 1.9.3.
+
+### Fixed
+
+- `ClosedEntityManagerSubscriber` reset **every** closed entity manager of the registry before a bundle admin route
+  (and detached `MarketingTool` from all of them), host managers included. It now resets and detaches only the
+  manager of `MarketingTool` (rule 6 of the bundle architecture bar). Standard hosts with one default manager see no
+  change.
+
+### Added
+
+- `nowo_marketing_kit.doctrine.entity_manager` (default `null`: resolved with `getManagerForClass(MarketingTool)`).
+
 ## [1.9.2] - 2026-10-30
 
 Profile filter and CSRF action types are FormKit types (REQ-TWIG-005 rule 11, no markup change). See [UPGRADING](UPGRADING.md#to-192).

@@ -140,6 +140,7 @@ final class NowoMarketingKitExtension extends Extension implements PrependExtens
         $container->setParameter('nowo_marketing_kit.profiles', $config['profiles']);
         $container->setParameter('nowo_marketing_kit.doctrine.table_prefix', $config['doctrine']['table_prefix']);
         $container->setParameter('nowo_marketing_kit.doctrine.connection', $config['doctrine']['connection']);
+        $container->setParameter('nowo_marketing_kit.doctrine.entity_manager', $config['doctrine']['entity_manager']);
         $container->setParameter('nowo_marketing_kit.security.access_roles', $config['security']['access_roles']);
         $container->setParameter('nowo_marketing_kit.security.access_checker', $config['security']['access_checker']);
         $container->setParameter('nowo_marketing_kit.security.allow_unauthenticated', $config['security']['allow_unauthenticated']);
