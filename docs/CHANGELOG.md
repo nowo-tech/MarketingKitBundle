@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[1.10.0] - 2026-11-11](#1100---2026-11-11)
 - [[1.9.2] - 2026-10-30](#192---2026-10-30)
 - [[1.9.1] - 2026-10-30](#191---2026-10-30)
 - [[1.9.0] - 2026-10-27](#190---2026-10-27)
@@ -37,7 +38,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Target 1.10.0 (minor: a new public configuration key and a behaviour change on hosts with several entity managers).
+## [1.10.0] - 2026-11-11
+
+New doctrine.entity_manager maps MarketingKit on a dedicated entity manager; recovery never touches host managers. See [UPGRADING](https://github.com/nowo-tech/MarketingKitBundle/blob/v1.10.0/docs/UPGRADING.md#to-1100).
+
 
 ### Fixed
 
@@ -267,6 +271,7 @@ Allows nowo-tech/ui-kit-bundle 2.x (^1.4 || ^2.2) so hosts can move to UiKit 2.2
 
 - **Worker safety (Igor):** justified `// @igor-ignore` annotations and/or `ResetInterface` / request-scoped fixes so `make igor` passes on package `src/`.
 
+[1.10.0]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.10.0
 [1.9.2]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.9.2
 [1.9.1]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.9.1
 [1.9.0]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.9.0

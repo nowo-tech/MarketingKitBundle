@@ -3,7 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
-  - [To 1.10.0](#to-1100)
+- [To 1.10.0](#to-1100)
 - [To 1.9.2](#to-192)
 - [To 1.9.1](#to-191)
 - [To 1.9.0](#to-190)
@@ -38,7 +38,7 @@
 
 ## Unreleased
 
-### To 1.10.0
+## To 1.10.0
 
 From **1.9.2**: `composer update nowo-tech/marketing-kit-bundle`. No configuration change is needed.
 
