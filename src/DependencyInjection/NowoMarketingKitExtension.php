@@ -7,12 +7,15 @@ namespace Nowo\MarketingKitBundle\DependencyInjection;
 use LogicException;
 use Nowo\MarketingKitBundle\Controller\MarketingToolAdminController;
 use Nowo\MarketingKitBundle\DependencyInjection\Configuration as BundleConfiguration;
+use Nowo\MarketingKitBundle\EventSubscriber\MarketingKitEntityManagerClearSubscriber;
 use Nowo\MarketingKitBundle\Security\AllowAllMarketingKitAccessChecker;
 use Nowo\MarketingKitBundle\Security\ConfigurableMarketingKitAccessChecker;
 use Nowo\MarketingKitBundle\Security\MarketingKitAccessCheckerInterface;
 use Nowo\MarketingKitBundle\Service\MarketingToolAdminService;
 use Symfony\Component\Config\FileLocator;
+use Symfony\Component\DependencyInjection\Argument\IteratorArgument;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Extension\Extension;
 use Symfony\Component\DependencyInjection\Extension\PrependExtensionInterface;
@@ -150,6 +153,10 @@ final class NowoMarketingKitExtension extends Extension implements PrependExtens
             $reference = new Reference(sprintf('doctrine.orm.%s_entity_manager', $entityManager));
             $container->getDefinition(MarketingToolAdminService::class)->setArgument('$entityManager', $reference);
             $container->getDefinition(MarketingToolAdminController::class)->setArgument('$entityManager', $reference);
+            // REQ-RUNTIME-002 rule 4: the bundle's own manager, cleared at every boundary; never built by a boundary.
+            $container->getDefinition(MarketingKitEntityManagerClearSubscriber::class)->setArgument('$entityManagers', new IteratorArgument([
+                new Reference(sprintf('doctrine.orm.%s_entity_manager', $entityManager), ContainerInterface::IGNORE_ON_UNINITIALIZED_REFERENCE),
+            ]));
         }
         $container->setParameter('nowo_marketing_kit.security.access_roles', $config['security']['access_roles']);
         $container->setParameter('nowo_marketing_kit.security.access_checker', $config['security']['access_checker']);

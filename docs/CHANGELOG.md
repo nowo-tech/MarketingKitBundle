@@ -38,6 +38,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Worker state (REQ-RUNTIME-002 rule 4).** With `doctrine.entity_manager` set (1.10.0), the bundle never cleared its
+  own manager per request; `ClosedEntityManagerSubscriber` only detached the tools before admin routes. Where the
+  services resetter does not run between units of work (a host that removes, replaces or bypasses `services_resetter`,
+  or drives `http_kernel` directly; Messenger consumers started with `--no-reset` and without DoctrineBundle's
+  `DoctrineClearEntityManagerWorkerSubscriber`; long-running console commands), tools loaded by the admin, a command or
+  a message handler stayed managed. A later `importFromYaml()` in the same process then compared the YAML values with
+  stale data and could write nothing, leaving another worker's edits in the database (lost update).
+  With the stock Symfony kernel, `FRANKENPHP_RESET_KERNEL=false` alone is not affected: `Kernel::handle()` still runs
+  the resetter before every request. Affected: 1.10.0 with `doctrine.entity_manager` set. No cross-user data is
+  involved.
+  The new internal `MarketingKitEntityManagerClearSubscriber` clears that manager at the start of every main request
+  and at `kernel.terminate`, when a Messenger message is received, handled or failed, and when the outermost console
+  command starts and terminates. It never clears a manager with changes waiting to be written, recreates a closed
+  manager by name, and never touches any other manager. A command run in-process from another command or from a
+  message handler (`Application::doRun()`) does not clear the outer unit's manager (console depth counter plus an
+  in-flight message flag, cleared on handled, failed and `WorkerStoppedEvent`). The manager and the registry arrive as
+  `IGNORE_ON_UNINITIALIZED_REFERENCE` references, so a boundary never builds them. Without `doctrine.entity_manager`
+  the tools live on the application's manager, which the bundle still never clears (host rule, see
+  [FRANKENPHP-WORKER-AUDIT.md](FRANKENPHP-WORKER-AUDIT.md#usage-recommendations-in-worker-mode)).
+
+### Tests
+
+- `tests/Integration/Worker/DddEntityManagerKernelTest.php` now alternates two tenants (profiles) over 500 admin pages
+  through `http_kernel`, 500 messages through a Messenger `Worker` without `ResetServicesListener` and without
+  `DoctrineClearEntityManagerWorkerSubscriber` (every 7th handler fails) and 500 console runs, with another worker
+  rewriting the tenant's tool before every unit; empty bundle identity map after every unit and a 2 MiB memory bound
+  after a 50-unit warm-up. Nested `doRun()` tests from a command and from a message handler, a pending-changes /
+  closed-manager test, unit tests of the subscriber and an extension wiring test.
+- `symfony/messenger` and `symfony/console` added to `require-dev` (tests only).
+
 ## [1.10.0] - 2026-11-11
 
 New doctrine.entity_manager maps MarketingKit on a dedicated entity manager; recovery never touches host managers. See [UPGRADING](https://github.com/nowo-tech/MarketingKitBundle/blob/v1.10.0/docs/UPGRADING.md#to-1100).

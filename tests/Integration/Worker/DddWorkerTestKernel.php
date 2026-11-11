@@ -87,6 +87,12 @@ final class DddWorkerTestKernel extends Kernel
             'use_database_config' => true,
             'security'            => ['allow_unauthenticated' => true],
             'doctrine'            => ['entity_manager' => 'bundle'],
+            // Two tenants for the boundary tests (REQ-RUNTIME-002): one GA4 tool each.
+            'profiles' => [
+                'default' => [],
+                'alpha'   => ['tools' => ['alpha_ga4' => ['type' => 'ga4', 'options' => ['measurement_id' => 'G-ALPHA']]]],
+                'beta'    => ['tools' => ['beta_ga4' => ['type' => 'ga4', 'options' => ['measurement_id' => 'G-BETA']]]],
+            ],
         ]);
         $container->services()->alias('test.ddd.admin_service', MarketingToolAdminService::class)->public();
         $container->services()->set('logger', NullLogger::class);

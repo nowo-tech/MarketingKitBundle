@@ -106,6 +106,18 @@ services:
             $allowRequiredTrackers: '%nowo_marketing_kit.security.allow_required_trackers%'
         tags: ['form.type']
 
+    # REQ-RUNTIME-002 rule 4: clears the doctrine.entity_manager manager at the request / Messenger / console
+    # boundaries. Lazy iterators of IGNORE_ON_UNINITIALIZED references ('@!'): a boundary never builds a service. The
+    # extension fills $entityManagers when doctrine.entity_manager is set (empty: the bundle owns no manager).
+    Nowo\MarketingKitBundle\EventSubscriber\MarketingKitEntityManagerClearSubscriber:
+        autowire: false
+        arguments:
+            $entityManagers: !iterator []
+            $registries: !iterator ['@!doctrine']
+            $managerName: '%nowo_marketing_kit.doctrine.entity_manager%'
+        tags:
+            - { name: kernel.event_subscriber }
+
     # 1.10.0: resets only the bundle's own entity manager (rule 6), never a host one.
     Nowo\MarketingKitBundle\EventSubscriber\ClosedEntityManagerSubscriber:
         arguments:

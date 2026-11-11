@@ -7,13 +7,16 @@ namespace Nowo\MarketingKitBundle\Tests\Integration\DependencyInjection;
 use LogicException;
 use Nowo\MarketingKitBundle\DependencyInjection\NowoMarketingKitExtension;
 use Nowo\MarketingKitBundle\DependencyInjection\TablePrefixListener;
+use Nowo\MarketingKitBundle\EventSubscriber\MarketingKitEntityManagerClearSubscriber;
 use Nowo\MarketingKitBundle\Security\ConfigurableMarketingKitAccessChecker;
 use Nowo\MarketingKitBundle\Security\MarketingKitAccessCheckerInterface;
 use Nowo\MarketingKitBundle\Service\MarketingScriptRenderer;
 use Nowo\MarketingKitBundle\Twig\MarketingKitExtension;
 use PHPUnit\Framework\Attributes\IgnoreDeprecations;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\DependencyInjection\Argument\IteratorArgument;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Extension\ExtensionInterface;
 use Symfony\Component\DependencyInjection\Reference;
@@ -55,6 +58,32 @@ final class NowoMarketingKitExtensionTest extends TestCase
         self::assertTrue($container->hasDefinition(MarketingScriptRenderer::class));
         self::assertTrue($container->hasDefinition(MarketingKitExtension::class));
         self::assertTrue($container->hasAlias(MarketingKitAccessCheckerInterface::class));
+    }
+
+    /**
+     * REQ-RUNTIME-002 rule 4: with doctrine.entity_manager the boundary subscriber gets that manager as an
+     * IGNORE_ON_UNINITIALIZED reference; without it, nothing to clear.
+     */
+    public function testBoundarySubscriberGetsOnlyTheBundlesOwnManager(): void
+    {
+        $container = new ContainerBuilder();
+        $container->setParameter('kernel.bundles', ['SecurityBundle' => 'Symfony\\Bundle\\SecurityBundle\\SecurityBundle']);
+        (new NowoMarketingKitExtension())->load([['doctrine' => ['entity_manager' => 'bundle']]], $container);
+
+        $arguments = $container->getDefinition(MarketingKitEntityManagerClearSubscriber::class)->getArguments();
+        self::assertInstanceOf(IteratorArgument::class, $arguments['$entityManagers']);
+        $references = $arguments['$entityManagers']->getValues();
+        self::assertCount(1, $references);
+        self::assertInstanceOf(Reference::class, $references[0]);
+        self::assertSame('doctrine.orm.bundle_entity_manager', (string) $references[0]);
+        self::assertSame(ContainerInterface::IGNORE_ON_UNINITIALIZED_REFERENCE, $references[0]->getInvalidBehavior());
+
+        $default = new ContainerBuilder();
+        $default->setParameter('kernel.bundles', ['SecurityBundle' => 'Symfony\\Bundle\\SecurityBundle\\SecurityBundle']);
+        (new NowoMarketingKitExtension())->load([[]], $default);
+        $entityManagers = $default->getDefinition(MarketingKitEntityManagerClearSubscriber::class)->getArguments()['$entityManagers'];
+        self::assertInstanceOf(IteratorArgument::class, $entityManagers);
+        self::assertSame([], $entityManagers->getValues());
     }
 
     public function testLoadWithoutTablePrefixSkipsListener(): void
