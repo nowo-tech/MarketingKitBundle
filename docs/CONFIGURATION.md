@@ -38,6 +38,7 @@ nowo_marketing_kit:
         form_themes: ['@NowoUiKit/form/nowo_ui_layout.html.twig']
     doctrine:
         table_prefix: ''
+        entity_manager: null   # 1.10.0+: dedicated manager for MarketingTool; null = the default manager
     default_profile: default
     profiles:
         default:
@@ -63,6 +64,7 @@ nowo_marketing_kit:
 | `web_ui.css_framework` | enum | `none` | **Deprecated since 1.9**: set `nowo_ui_kit.css_framework`. Only seeds `nowo_ui_kit.css_framework` when the host leaves it unset. Values: `bootstrap` (→`bootstrap5`), `bootstrap4`, `bootstrap5`, `tabler`, `tailwind`, `foundation`, `custom`, `none` |
 | `web_ui.icon_set` | string | `bootstrap-icons` | **Deprecated since 1.9**: set `nowo_ui_kit.icon_set`. Only seeds `nowo_ui_kit.icon_set` when the host leaves it unset |
 | `doctrine.table_prefix` | string | `''` | Prefixed onto `marketing_tool` |
+| `doctrine.entity_manager` | ?string | `null` | Since 1.10.0. Dedicated entity manager for `MarketingTool`. The entity is mapped on that manager only (removed from every other one, including `auto_mapping`), the admin reads and writes through it, and before an admin route the bundle resets it when a failed flush of an earlier request left it closed (FrankenPHP worker mode without kernel reset). Other managers of the host, closed or open, are never touched. The build fails when the manager does not exist. `null`: the default manager, as before. |
 | `doctrine.connection` | string | `default` | **Deprecated since 1.6, no effect.** The bundle always reads and writes `MarketingTool` through the default Doctrine entity manager and its connection; the `marketing_tool` table must live there. Setting the key triggers a deprecation; remove it. |
 | `default_profile` | string | `default` | Must exist under `profiles` |
 | `profiles` | map | `{default: …}` | Named profiles (REQ-CFG-001) |

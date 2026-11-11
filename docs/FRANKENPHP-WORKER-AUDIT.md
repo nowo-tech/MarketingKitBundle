@@ -7,7 +7,7 @@
 | Audit date | 2026-09-24 |
 | Method | Manual review of every file under `src/` (config resolver, renderers, consent gate, admin controller and service, Doctrine repository and listener, form type, Twig extension, DI extension, compiler pass, EventSubscriber, `Resources/config`) |
 | **Verdict** | ✅ **100% viable under scenario B** (kernel not reset, `services_resetter` off) — and therefore under scenario A and classic / PHP-FPM |
-| Remediation | W-01/W-03: per-main-request `WeakMap` memo + `findToolRowsByProfile()` array hydration. W-02: `ClosedEntityManagerSubscriber` resets closed managers **and** detaches stale `MarketingTool` from open managers before admin routes. |
+| Remediation | W-01/W-03: per-main-request `WeakMap` memo + `findToolRowsByProfile()` array hydration. W-02: `ClosedEntityManagerSubscriber` resets the bundle's manager when closed **and** detaches stale `MarketingTool` from it before admin routes; since 1.10.0 only the manager of `MarketingTool` (optionally a dedicated one, `doctrine.entity_manager`), never a host manager. Kept-alive kernel tests without `kernel.reset`: `tests/Integration/Worker/WorkerClosedManagerRecoveryTest.php`, `tests/Integration/Worker/DddEntityManagerKernelTest.php`. |
 
 ## Table of contents
 

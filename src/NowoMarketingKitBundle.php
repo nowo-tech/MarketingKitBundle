@@ -6,6 +6,7 @@ namespace Nowo\MarketingKitBundle;
 
 use Doctrine\Bundle\DoctrineBundle\DependencyInjection\Compiler\DoctrineOrmMappingsPass;
 use Nowo\MarketingKitBundle\DependencyInjection\Compiler\CsrfProtectionPass;
+use Nowo\MarketingKitBundle\DependencyInjection\Compiler\EntityManagerOptionPass;
 use Nowo\MarketingKitBundle\DependencyInjection\Compiler\TwigPathsPass;
 use Nowo\MarketingKitBundle\DependencyInjection\NowoMarketingKitExtension;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -24,10 +25,14 @@ class NowoMarketingKitBundle extends Bundle
 
         $entityDir = __DIR__ . '/Entity';
         if (is_dir($entityDir)) {
+            // 1.10.0: mapped on nowo_marketing_kit.doctrine.entity_manager when set (else the default manager), and
+            // removed from every other manager (EntityManagerOptionPass, audit LD-MK-M1).
             $container->addCompilerPass(DoctrineOrmMappingsPass::createAttributeMappingDriver(
                 ['Nowo\\MarketingKitBundle\\Entity'],
                 [$entityDir],
+                [EntityManagerOptionPass::PARAMETER],
             ));
+            $container->addCompilerPass(new EntityManagerOptionPass());
         }
     }
 
