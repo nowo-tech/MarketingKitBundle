@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 1.10.2](#to-1102)
 - [To 1.10.1](#to-1101)
 - [To 1.10.0](#to-1100)
 - [To 1.9.2](#to-192)
@@ -38,6 +39,20 @@
   - [From nothing to 1.0.0](#from-nothing-to-100)
 
 ## Unreleased
+
+## To 1.10.2
+
+From **1.10.1**: patch release, no migration, no configuration change.
+
+```bash
+composer update nowo-tech/marketing-kit-bundle
+```
+
+`MarketingKitEntityManagerClearSubscriber` (internal) now tracks each console run as a frame (Command + input) at
+`console.command` / `console.error` / `console.terminate` priority `PHP_INT_MAX` and also listens to `console.error`
+and Messenger `WorkerMessageSkipEvent`, so a host listener that throws or stops the propagation can no longer stop the
+clears of the bundle's entity manager in a long-lived process (audits NM and NL2-v). Its public `on*()` methods now take
+the event object; they are not a public API.
 
 ## To 1.10.1
 
