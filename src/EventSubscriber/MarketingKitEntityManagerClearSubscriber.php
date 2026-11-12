@@ -58,9 +58,10 @@ use const PHP_INT_MAX;
  *   blind decrement). The clear at the end of the outermost command still runs at `console.terminate` -4096, for the
  *   verdict computed by the early listener for that very event;
  * - `console.error` (priority PHP_INT_MAX) marks the frame as failing and nothing unmarks it: when an error listener
- *   throws, Symfony never dispatches the command's `console.terminate`, so a frame still marked when the next main
- *   request, Messenger message, command or worker stop starts is dropped (with the frames above it) and its saved
- *   state restored. `console.error` without a command (unknown command) changes nothing;
+ *   throws, Symfony never dispatches the command's `console.terminate`, so a frame still marked at the next boundary
+ *   (main request start or end, Messenger message received / finished, command, worker stop) is dropped (with the
+ *   frames above it) and its saved state restored. Every handler drops such frames FIRST and only then writes its own
+ *   state. `console.error` without a command (unknown command) changes nothing;
  * - the end of a main request (`kernel.finish_request` / `kernel.terminate`) and of a Messenger message (handled,
  *   failed, worker stopped) also restores the frames to what they were at its start;
  * - main requests in flight are counted per `Request` object, so a nested main request (an in-process
@@ -184,6 +185,7 @@ final class MarketingKitEntityManagerClearSubscriber implements EventSubscriberI
     public function onFinishRequest(FinishRequestEvent $event): void
     {
         if ($event->isMainRequest()) {
+            $this->dropFailingFrames();
             $this->endRequest($event->getRequest());
         }
     }
@@ -193,6 +195,7 @@ final class MarketingKitEntityManagerClearSubscriber implements EventSubscriberI
      */
     public function onTerminate(TerminateEvent $event): void
     {
+        $this->dropFailingFrames();
         $this->endRequest($event->getRequest());
         if ($this->isOutsideMessageAndCommand()) {
             $this->clearState();
@@ -217,6 +220,7 @@ final class MarketingKitEntityManagerClearSubscriber implements EventSubscriberI
      */
     public function onMessageFinished(): void
     {
+        $this->dropFailingFrames();
         $this->endMessage();
         $this->clearState();
     }
@@ -227,8 +231,9 @@ final class MarketingKitEntityManagerClearSubscriber implements EventSubscriberI
      */
     public function onWorkerStopped(): void
     {
-        $this->endMessage();
+        // Failing frames first (they restore the state they saved), then this handler's own state.
         $this->dropFailingFrames();
+        $this->endMessage();
     }
 
     /**
