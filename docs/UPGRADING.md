@@ -38,6 +38,13 @@
 
 ## Unreleased
 
+No configuration change is needed. With `doctrine.entity_manager` set, the bundle now clears that manager at the
+outermost request, Messenger and console boundaries, and unflushed changes on it are discarded there: flush tool
+changes inside the unit of work that makes them. Code that keeps a `MarketingTool` from one request, message or command
+to the next must load it again. Nothing is cleared when `doctrine.entity_manager` names the host's default manager. Hosts that bypass the services
+resetter must still clear their own entity managers at those boundaries (see
+[FRANKENPHP-WORKER-AUDIT.md](FRANKENPHP-WORKER-AUDIT.md#usage-recommendations-in-worker-mode)).
+
 ## To 1.10.0
 
 From **1.9.2**: `composer update nowo-tech/marketing-kit-bundle`. No configuration change is needed.
