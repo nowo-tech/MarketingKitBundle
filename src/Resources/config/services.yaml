@@ -115,6 +115,7 @@ services:
             $entityManagers: !iterator []
             $registries: !iterator ['@!doctrine']
             $managerName: '%nowo_marketing_kit.doctrine.entity_manager%'
+            $requestStack: '@?request_stack'
         tags:
             - { name: kernel.event_subscriber }
 
