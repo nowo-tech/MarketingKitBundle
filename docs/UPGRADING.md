@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 1.10.1](#to-1101)
 - [To 1.10.0](#to-1100)
 - [To 1.9.2](#to-192)
 - [To 1.9.1](#to-191)
@@ -37,6 +38,14 @@
   - [From nothing to 1.0.0](#from-nothing-to-100)
 
 ## Unreleased
+
+## To 1.10.1
+
+From **1.10.0**:
+
+```bash
+composer update nowo-tech/marketing-kit-bundle
+```
 
 No configuration change is needed. With `doctrine.entity_manager` set, the bundle now clears that manager at the
 outermost request, Messenger and console boundaries, and unflushed changes on it are discarded there: flush tool
