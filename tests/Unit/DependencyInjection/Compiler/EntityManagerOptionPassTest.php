@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\MarketingKitBundle\Tests\Unit\DependencyInjection\Compiler;
 
 use Nowo\MarketingKitBundle\DependencyInjection\Compiler\EntityManagerOptionPass;
+use Nowo\MarketingKitBundle\Doctrine\ExcludedEntityNamespaceDriver;
 use Nowo\MarketingKitBundle\EventSubscriber\MarketingKitEntityManagerClearSubscriber;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
@@ -63,7 +64,30 @@ final class EntityManagerOptionPassTest extends TestCase
         (new EntityManagerOptionPass())->process($container);
 
         self::assertCount(1, $container->getDefinition('doctrine.orm.bundle_metadata_driver')->getMethodCalls());
-        self::assertCount(1, $container->getDefinition('doctrine.orm.default_metadata_driver')->getMethodCalls());
+        self::assertSame([['addDriver', self::ENTITIES], ['addDriver', 'App\\Entity']], $this->calls($container, 'default'));
+    }
+
+    /**
+     * DoctrineBundle 3.4 `auto_discover_entities` gives a manager without mappings a default driver that claims every
+     * entity class: every other manager gets a driver that maps nothing for the bundle namespace, first in its chain.
+     */
+    public function testOtherManagersExcludeTheEntitiesBeforeTheirDefaultDriver(): void
+    {
+        $container = $this->container('bundle', ['default' => ['App\\Entity', self::ENTITIES], 'bundle' => [self::ENTITIES]]);
+        $container->getDefinition('doctrine.orm.default_metadata_driver')->addMethodCall('setDefaultDriver', [new Reference('auto_discover')]);
+
+        (new EntityManagerOptionPass())->process($container);
+
+        $expected = [['addDriver', self::ENTITIES], ['addDriver', 'App\\Entity'], ['setDefaultDriver', null]];
+        self::assertSame($expected, $this->calls($container, 'default'));
+        $excluded = $container->getDefinition('doctrine.orm.default_metadata_driver')->getMethodCalls()[0][1][0];
+        self::assertInstanceOf(Definition::class, $excluded);
+        self::assertSame(ExcludedEntityNamespaceDriver::class, $excluded->getClass());
+        self::assertSame([['addDriver', self::ENTITIES]], $this->calls($container, 'bundle'), 'The configured manager keeps its own driver only.');
+
+        (new EntityManagerOptionPass())->process($container);
+        self::assertSame($expected, $this->calls($container, 'default'), 'idempotent');
+        self::assertSame([['addDriver', self::ENTITIES]], $this->calls($container, 'bundle'), 'idempotent');
     }
 
     public function testOtherDriverCallsAreKept(): void
@@ -104,6 +128,19 @@ final class EntityManagerOptionPassTest extends TestCase
         $managers = $default->getDefinition(MarketingKitEntityManagerClearSubscriber::class)->getArgument('$entityManagers');
         self::assertInstanceOf(IteratorArgument::class, $managers);
         self::assertSame([], $managers->getValues(), 'The host\'s default manager is never cleared by the bundle.');
+    }
+
+    /**
+     * @return list<array{string, mixed}> method name and namespace argument of each call of the manager's chain
+     */
+    private function calls(ContainerBuilder $container, string $manager): array
+    {
+        $calls = [];
+        foreach ($container->getDefinition('doctrine.orm.' . $manager . '_metadata_driver')->getMethodCalls() as $call) {
+            $calls[] = [$call[0], $call[1][1] ?? null];
+        }
+
+        return $calls;
     }
 
     /**
