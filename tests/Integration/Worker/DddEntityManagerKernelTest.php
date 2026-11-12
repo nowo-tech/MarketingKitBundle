@@ -23,7 +23,10 @@ use Symfony\Component\Console\Output\NullOutput;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Event\ControllerEvent;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
+use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\HttpKernel\TerminableInterface;
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\Event\WorkerMessageFailedEvent;
@@ -272,25 +275,38 @@ final class DddEntityManagerKernelTest extends KernelTestCase
     }
 
     /**
-     * Lesson of LegalKit 1.12: a manager with changes waiting to be written is never cleared (they would be lost); a
-     * closed manager is recreated at the boundary.
+     * MT-M-L1: an unflushed change of a finished (or abandoned) unit is discarded at the boundary and never written by
+     * a later, unrelated flush; a closed manager is recreated at the boundary.
      */
-    public function testPendingChangesAreKeptAndAClosedManagerIsRecreated(): void
+    public function testUnflushedChangesAreDiscardedAndAClosedManagerIsRecreated(): void
     {
         [$host, $bundle] = $this->bootTenants();
+        $admin           = $this->admin();
+        $repository      = $this->repository();
         $application     = $this->application();
-        $noop            = (new Command('app:noop'))->setCode(static fn (): int => Command::SUCCESS);
-        $application->setCommandLoader(new FactoryCommandLoader(['app:noop' => static fn (): Command => $noop]));
+        $edit            = (new Command('app:abandoned-edit'))->setCode(static function () use ($repository): int {
+            $tools = $repository->findByProfileOrdered('alpha');
+            self::assertNotSame([], $tools);
+            $tools[0]->setSortOrder(42);
 
-        $tools = $this->repository()->findByProfileOrdered('alpha');
-        self::assertNotSame([], $tools);
-        $tools[0]->setSortOrder(42);
-        $application->run(new ArrayInput(['command' => 'app:noop']), new NullOutput());
-        self::assertTrue($bundle->contains($tools[0]), 'A pending update must survive the boundary.');
-        $bundle->flush();
-        $application->run(new ArrayInput(['command' => 'app:noop']), new NullOutput());
-        self::assertSame([], $bundle->getUnitOfWork()->getIdentityMap());
-        self::assertSame(42, (int) $bundle->getConnection()->fetchOne("SELECT sortOrder FROM marketing_tool WHERE profile = 'alpha'"));
+            return Command::SUCCESS;
+        });
+        $import = (new Command('app:import-beta'))->setCode(static function () use ($admin): int {
+            $admin->importFromYaml('beta');
+
+            return Command::SUCCESS;
+        });
+        $noop = (new Command('app:noop'))->setCode(static fn (): int => Command::SUCCESS);
+        $application->setCommandLoader(new FactoryCommandLoader([
+            'app:abandoned-edit' => static fn (): Command => $edit,
+            'app:import-beta'    => static fn (): Command => $import,
+            'app:noop'           => static fn (): Command => $noop,
+        ]));
+
+        $application->run(new ArrayInput(['command' => 'app:abandoned-edit']), new NullOutput());
+        self::assertSame([], $bundle->getUnitOfWork()->getIdentityMap(), 'The boundary discards the unflushed edit.');
+        $application->run(new ArrayInput(['command' => 'app:import-beta']), new NullOutput());
+        self::assertSame(0, (int) $bundle->getConnection()->fetchOne("SELECT sortOrder FROM marketing_tool WHERE profile = 'alpha'"), 'A later flush must never write the abandoned edit.');
 
         $bundle->close();
         $application->run(new ArrayInput(['command' => 'app:noop']), new NullOutput());
@@ -298,6 +314,79 @@ final class DddEntityManagerKernelTest extends KernelTestCase
         self::assertInstanceOf(ManagerRegistry::class, $doctrine);
         self::assertTrue($this->manager($doctrine, 'bundle')->isOpen(), 'The boundary recreates a closed bundle manager.');
         self::assertFalse($host->isOpen(), 'The host manager is never reset.');
+    }
+
+    /**
+     * MT-M-L2: a command run in-process from a controller does not clear the request's manager; the request's own
+     * terminate does.
+     */
+    public function testCommandRunFromAControllerKeepsTheRequestsTools(): void
+    {
+        [, $bundle]  = $this->bootTenants();
+        $repository  = $this->repository();
+        $application = $this->application();
+        $inner       = (new Command('app:inner'))->setCode(static fn (): int => Command::SUCCESS);
+        $application->setCommandLoader(new FactoryCommandLoader(['app:inner' => static fn (): Command => $inner]));
+        $http = self::getContainer()->get('http_kernel');
+        self::assertInstanceOf(HttpKernelInterface::class, $http);
+        self::assertInstanceOf(TerminableInterface::class, $http);
+        $router = self::getContainer()->get('router');
+        self::assertInstanceOf(UrlGeneratorInterface::class, $router);
+
+        $kept       = [];
+        $controller = static function () use ($application, $bundle, $repository, &$kept): Response {
+            $tools = $repository->findByProfileOrdered('alpha');
+            $application->doRun(new ArrayInput(['command' => 'app:inner']), new NullOutput());
+            $kept[] = $tools !== [] && $bundle->contains($tools[0]);
+
+            return new Response('ok');
+        };
+        $replace = static function (ControllerEvent $event) use ($controller): void {
+            $event->setController($controller);
+        };
+        $dispatcher = $this->dispatcher();
+        $dispatcher->addListener(KernelEvents::CONTROLLER, $replace, -1024);
+
+        try {
+            $request  = Request::create($router->generate('nowo_marketing_kit_admin_index', ['profile' => 'alpha']));
+            $response = $http->handle($request);
+            self::assertSame('ok', $response->getContent());
+            self::assertSame([true], $kept, 'A command run from a controller cleared the request\'s manager.');
+            $http->terminate($request, $response);
+        } finally {
+            $dispatcher->removeListener(KernelEvents::CONTROLLER, $replace);
+        }
+
+        self::assertSame([], $bundle->getUnitOfWork()->getIdentityMap(), 'kernel.terminate clears the manager.');
+    }
+
+    /**
+     * MT-T-I1: an in-process HttpKernel::handle() from a command does not clear the command's manager.
+     */
+    public function testRequestHandledInsideACommandKeepsTheCommandsTools(): void
+    {
+        [, $bundle] = $this->bootTenants();
+        $repository = $this->repository();
+        $http       = self::getContainer()->get('http_kernel');
+        self::assertInstanceOf(HttpKernelInterface::class, $http);
+        self::assertInstanceOf(TerminableInterface::class, $http);
+        $application = $this->application();
+        $kept        = [];
+        $outer       = (new Command('app:render'))->setCode(static function () use ($http, $bundle, $repository, &$kept): int {
+            $tools = $repository->findByProfileOrdered('beta');
+            // Not a bundle route: ClosedEntityManagerSubscriber (admin routes only) stays out of the way.
+            $request  = Request::create('/not-a-bundle-page');
+            $response = $http->handle($request);
+            $http->terminate($request, $response);
+            $kept[] = [$response->getStatusCode(), $tools !== [] && $bundle->contains($tools[0])];
+
+            return Command::SUCCESS;
+        });
+        $application->setCommandLoader(new FactoryCommandLoader(['app:render' => static fn (): Command => $outer]));
+
+        self::assertSame(Command::SUCCESS, $application->run(new ArrayInput(['command' => 'app:render']), new NullOutput()));
+        self::assertSame([[404, true]], $kept, 'A request handled inside a command cleared the command\'s manager.');
+        self::assertSame([], $bundle->getUnitOfWork()->getIdentityMap(), 'The outermost console.terminate clears the manager.');
     }
 
     /**

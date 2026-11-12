@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace Nowo\MarketingKitBundle\DependencyInjection\Compiler;
 
+use Nowo\MarketingKitBundle\EventSubscriber\MarketingKitEntityManagerClearSubscriber;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
+use Symfony\Component\DependencyInjection\Argument\IteratorArgument;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\DependencyInjection\Reference;
 
 use function array_keys;
 use function implode;
@@ -22,7 +26,8 @@ use function str_starts_with;
  *
  * DoctrineBundle's `auto_mapping` (the Flex default on the default manager) maps every bundle's `Entity` directory;
  * the bundle namespace is removed from the mapping driver chain of every other manager, so the entities live on the
- * configured manager only and getManagerForClass() returns it.
+ * configured manager only and getManagerForClass() returns it. Since 1.10.1 the pass also hands that manager to
+ * {@see MarketingKitEntityManagerClearSubscriber}, unless it is the host's default manager.
  */
 final class EntityManagerOptionPass implements CompilerPassInterface
 {
@@ -67,6 +72,15 @@ final class EntityManagerOptionPass implements CompilerPassInterface
             if ($manager === $name && !$maps) {
                 throw new InvalidConfigurationException(sprintf('The Doctrine entity manager "%s" (nowo_marketing_kit.doctrine.entity_manager) does not map %s.', $name, implode(', ', self::ENTITY_NAMESPACES)));
             }
+        }
+
+        // 1.10.1 (REQ-RUNTIME-002 rule 4): the boundary subscriber clears the bundle-owned manager, never the host's
+        // default one (doctrine.entity_manager may name it explicitly).
+        $default = $container->hasParameter('doctrine.default_entity_manager') ? $container->getParameter('doctrine.default_entity_manager') : null;
+        if ($name !== $default && $container->hasDefinition(MarketingKitEntityManagerClearSubscriber::class)) {
+            $container->getDefinition(MarketingKitEntityManagerClearSubscriber::class)->setArgument('$entityManagers', new IteratorArgument([
+                new Reference(sprintf('doctrine.orm.%s_entity_manager', $name), ContainerInterface::IGNORE_ON_UNINITIALIZED_REFERENCE),
+            ]));
         }
     }
 

@@ -39,8 +39,9 @@
 ## Unreleased
 
 No configuration change is needed. With `doctrine.entity_manager` set, the bundle now clears that manager at the
-request, Messenger and console boundaries; it keeps a manager with changes waiting to be written. Code that keeps a
-`MarketingTool` from one request, message or command to the next must load it again. Hosts that bypass the services
+outermost request, Messenger and console boundaries, and unflushed changes on it are discarded there: flush tool
+changes inside the unit of work that makes them. Code that keeps a `MarketingTool` from one request, message or command
+to the next must load it again. Nothing is cleared when `doctrine.entity_manager` names the host's default manager. Hosts that bypass the services
 resetter must still clear their own entity managers at those boundaries (see
 [FRANKENPHP-WORKER-AUDIT.md](FRANKENPHP-WORKER-AUDIT.md#usage-recommendations-in-worker-mode)).
 

@@ -50,14 +50,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   With the stock Symfony kernel, `FRANKENPHP_RESET_KERNEL=false` alone is not affected: `Kernel::handle()` still runs
   the resetter before every request. Affected: 1.10.0 with `doctrine.entity_manager` set. No cross-user data is
   involved.
-  The new internal `MarketingKitEntityManagerClearSubscriber` clears that manager at the start of every main request
-  and at `kernel.terminate`, when a Messenger message is received, handled or failed, and when the outermost console
-  command starts and terminates. It never clears a manager with changes waiting to be written, recreates a closed
-  manager by name, and never touches any other manager. A command run in-process from another command or from a
-  message handler (`Application::doRun()`) does not clear the outer unit's manager (console depth counter plus an
-  in-flight message flag, cleared on handled, failed and `WorkerStoppedEvent`). The manager and the registry arrive as
-  `IGNORE_ON_UNINITIALIZED_REFERENCE` references, so a boundary never builds them. Without `doctrine.entity_manager`
-  the tools live on the application's manager, which the bundle still never clears (host rule, see
+  The new internal `MarketingKitEntityManagerClearSubscriber` (same policy as ApiStudioBundle 1.12.1
+  `EntityManagerBoundarySubscriber`) works at every OUTERMOST unit-of-work boundary:
+  - the main `kernel.request` and `kernel.terminate`, only outside a console command and a Messenger message (an
+    in-process `HttpKernel::handle()` from a command or a handler does not clear the unit that runs it);
+  - a Messenger message received, handled or failed;
+  - the outermost console command's start and end, only outside a message and outside a main request. A command run
+    in-process from another command, a message handler or a controller (`Application::doRun()`) does not clear the
+    outer unit's manager.
+
+  State is a console depth counter, a message flag (unset on handled, failed and `WorkerStoppedEvent`) and a request
+  flag (set on the main `kernel.request`, unset on its `kernel.finish_request`). At each of these boundaries an open
+  manager is always cleared, so an unflushed change of a finished or abandoned unit, such as an invalid admin POST, is
+  discarded and never written by a later, unrelated flush. A closed manager is recreated by name. No other manager is
+  touched, and nothing is wired when `doctrine.entity_manager` names the host's default manager
+  (`EntityManagerOptionPass` guard). The manager and the registry arrive as `IGNORE_ON_UNINITIALIZED_REFERENCE`
+  references, so a boundary never builds them. Without `doctrine.entity_manager` the tools live on the application's
+  manager, which the bundle still never clears (host rule, see
   [FRANKENPHP-WORKER-AUDIT.md](FRANKENPHP-WORKER-AUDIT.md#usage-recommendations-in-worker-mode)).
 
 ### Tests
@@ -66,8 +75,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   through `http_kernel`, 500 messages through a Messenger `Worker` without `ResetServicesListener` and without
   `DoctrineClearEntityManagerWorkerSubscriber` (every 7th handler fails) and 500 console runs, with another worker
   rewriting the tenant's tool before every unit; empty bundle identity map after every unit and a 2 MiB memory bound
-  after a 50-unit warm-up. Nested `doRun()` tests from a command and from a message handler, a pending-changes /
-  closed-manager test, unit tests of the subscriber and an extension wiring test.
+  after a 50-unit warm-up. The suite also covers:
+  - nested `doRun()` from a command, from a message handler and from a controller;
+  - an `HttpKernel::handle()` inside a command;
+  - an abandoned unflushed edit that a later import flush must not write, and a closed manager;
+  - unit tests of the subscriber and of the compiler-pass wiring (default-manager guard).
 - `symfony/messenger` and `symfony/console` added to `require-dev` (tests only).
 
 ## [1.10.0] - 2026-11-11

@@ -5,9 +5,13 @@ declare(strict_types=1);
 namespace Nowo\MarketingKitBundle\Tests\Unit\DependencyInjection\Compiler;
 
 use Nowo\MarketingKitBundle\DependencyInjection\Compiler\EntityManagerOptionPass;
+use Nowo\MarketingKitBundle\EventSubscriber\MarketingKitEntityManagerClearSubscriber;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
+use Symfony\Component\DependencyInjection\Argument\IteratorArgument;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Reference;
 
 /**
@@ -72,6 +76,34 @@ final class EntityManagerOptionPassTest extends TestCase
         (new EntityManagerOptionPass())->process($container);
 
         self::assertCount(2, $container->getDefinition('doctrine.orm.bundle_metadata_driver')->getMethodCalls());
+    }
+
+    /**
+     * REQ-RUNTIME-002 rule 4 (MT-M-L3): the boundary subscriber gets the bundle-owned manager as an
+     * IGNORE_ON_UNINITIALIZED reference, and nothing when doctrine.entity_manager names the host's default manager.
+     */
+    public function testWiresTheBoundarySubscriberOnlyForANonDefaultManager(): void
+    {
+        $container = $this->container('bundle', ['default' => ['App\\Entity'], 'bundle' => [self::ENTITIES]]);
+        $container->setParameter('doctrine.default_entity_manager', 'default');
+        $container->setDefinition(MarketingKitEntityManagerClearSubscriber::class, (new Definition())->setArgument('$entityManagers', new IteratorArgument([])));
+        (new EntityManagerOptionPass())->process($container);
+
+        $managers = $container->getDefinition(MarketingKitEntityManagerClearSubscriber::class)->getArgument('$entityManagers');
+        self::assertInstanceOf(IteratorArgument::class, $managers);
+        $references = $managers->getValues();
+        self::assertCount(1, $references);
+        self::assertInstanceOf(Reference::class, $references[0]);
+        self::assertSame('doctrine.orm.bundle_entity_manager', (string) $references[0]);
+        self::assertSame(ContainerInterface::IGNORE_ON_UNINITIALIZED_REFERENCE, $references[0]->getInvalidBehavior());
+
+        $default = $this->container('default', ['default' => [self::ENTITIES]]);
+        $default->setParameter('doctrine.default_entity_manager', 'default');
+        $default->setDefinition(MarketingKitEntityManagerClearSubscriber::class, (new Definition())->setArgument('$entityManagers', new IteratorArgument([])));
+        (new EntityManagerOptionPass())->process($default);
+        $managers = $default->getDefinition(MarketingKitEntityManagerClearSubscriber::class)->getArgument('$entityManagers');
+        self::assertInstanceOf(IteratorArgument::class, $managers);
+        self::assertSame([], $managers->getValues(), 'The host\'s default manager is never cleared by the bundle.');
     }
 
     /**
