@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[1.11.0] - 2026-11-13](#1110---2026-11-13)
 - [[1.10.3] - 2026-11-13](#1103---2026-11-13)
 - [[1.10.2] - 2026-11-12](#1102---2026-11-12)
 - [[1.10.1] - 2026-11-12](#1101---2026-11-12)
@@ -50,7 +51,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Deprecated
 
-- The `$toolRepository` argument of `MarketingConfigResolver::__construct()`: pass `$toolSource` (a `DoctrineMarketingToolSource`) instead. It is still honoured when `$toolSource` is null; removed in 2.0.
+- The `$toolRepository` argument of `MarketingConfigResolver::__construct()`: pass `$toolSource` (a `DoctrineMarketingToolSource`) instead. It is still honoured when `$toolSource` is null; removed in 2.0. A non-null value now triggers `trigger_deprecation()`; a host that overrode this argument on the service definition must alias `MarketingToolSourceInterface` instead (see UPGRADING).
+
+## [1.11.0] - 2026-11-13
+
+Published from the 1.10.3 commit (`b8b0210`) during the 2026-11-13 tagging incident; it carries no changes of its own. The changes first announced for 1.11.0 ship in 1.12.0.
 
 ## [1.10.3] - 2026-11-13
 
@@ -392,6 +397,7 @@ Allows nowo-tech/ui-kit-bundle 2.x (^1.4 || ^2.2) so hosts can move to UiKit 2.2
 
 - **Worker safety (Igor):** justified `// @igor-ignore` annotations and/or `ResetInterface` / request-scoped fixes so `make igor` passes on package `src/`.
 
+[1.11.0]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.11.0
 [1.10.3]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.10.3
 [1.10.2]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.10.2
 [1.10.1]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.10.1

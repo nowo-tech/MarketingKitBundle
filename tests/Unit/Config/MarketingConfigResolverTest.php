@@ -6,6 +6,7 @@ namespace Nowo\MarketingKitBundle\Tests\Unit\Config;
 
 use Nowo\MarketingKitBundle\Config\MarketingConfigResolver;
 use Nowo\MarketingKitBundle\Repository\MarketingToolRepository;
+use PHPUnit\Framework\Attributes\IgnoreDeprecations;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -39,6 +40,7 @@ final class MarketingConfigResolverTest extends TestCase
         self::assertSame('yaml', $resolved->tools[0]->source);
     }
 
+    #[IgnoreDeprecations]
     public function testDatabaseReplaceWhenRowsExist(): void
     {
         $repo = $this->createMock(MarketingToolRepository::class);
@@ -63,6 +65,7 @@ final class MarketingConfigResolverTest extends TestCase
         self::assertSame('database', $resolved->tools[0]->source);
     }
 
+    #[IgnoreDeprecations]
     public function testFallsBackToYamlWhenDbEmpty(): void
     {
         $repo = $this->createMock(MarketingToolRepository::class);
@@ -126,6 +129,7 @@ final class MarketingConfigResolverTest extends TestCase
         self::assertSame('gtm', $third->tools[0]->code);
     }
 
+    #[IgnoreDeprecations]
     public function testConsecutiveRequestsWithoutResetSeeDatabaseChanges(): void
     {
         $repo = $this->createMock(MarketingToolRepository::class);

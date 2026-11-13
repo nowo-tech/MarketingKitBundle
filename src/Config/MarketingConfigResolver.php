@@ -11,6 +11,7 @@ use Symfony\Contracts\Service\ResetInterface;
 use WeakMap;
 
 use function is_array;
+use function trigger_deprecation;
 
 /**
  * Resolves the active marketing profile from YAML and the optional tool source (database by default).
@@ -45,6 +46,10 @@ final class MarketingConfigResolver implements MarketingConfigResolverInterface,
         private readonly ?RequestStack $requestStack = null,
         ?MarketingToolSourceInterface $toolSource = null,
     ) {
+        if ($toolRepository !== null) {
+            trigger_deprecation('nowo-tech/marketing-kit-bundle', '1.12', 'Passing $toolRepository to "%s" is deprecated and removed in 2.0; when $toolSource is also set (the bundle always sets it) $toolRepository is ignored. Alias "%s" to your own service instead.', self::class, MarketingToolSourceInterface::class);
+        }
+
         $this->resolvedByRequest = new WeakMap();
         $this->toolSource        = $toolSource ?? new DoctrineMarketingToolSource($useDatabaseConfig, $toolRepository);
     }
