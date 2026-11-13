@@ -53,6 +53,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The `$toolRepository` argument of `MarketingConfigResolver::__construct()`: pass `$toolSource` (a `DoctrineMarketingToolSource`) instead. It is still honoured when `$toolSource` is null; removed in 2.0. A non-null value now triggers `trigger_deprecation()`; a host that overrode this argument on the service definition must alias `MarketingToolSourceInterface` instead (see UPGRADING).
 
+### Fixed
+
+- `symfony/deprecation-contracts` is now declared in `require` (`^2.5 || ^3.0`). The bundle already called `trigger_deprecation()` in shipped code and only got the package transitively, so a host whose dependency tree dropped it would have hit an undefined-function fatal.
+
 ## [1.11.0] - 2026-11-13
 
 Published from the 1.10.3 commit (`b8b0210`) during the 2026-11-13 tagging incident; it carries no changes of its own. The changes first announced for 1.11.0 ship in 1.12.0.
