@@ -16,7 +16,7 @@ use Symfony\Component\Filesystem\Filesystem;
 use Twig\Environment;
 
 /**
- * REQ-ARCH-001 rules 1 and 8 (1.11.0): the ports are aliased by default and a host replaces them with one
+ * REQ-ARCH-001 rules 1 and 8 (1.12.0): the ports are aliased by default and a host replaces them with one
  * `services` alias each.
  */
 final class HostPortsTest extends TestCase

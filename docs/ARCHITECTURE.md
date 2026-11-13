@@ -25,9 +25,9 @@ Symfony, Doctrine or HTTP type. Each single-binding port is an alias a host repl
 
 | Port | Default | Purpose |
 |------|---------|---------|
-| `Service\MarketingScriptRendererInterface` (1.11.0) | `MarketingScriptRenderer` | HTML of a document position; the Twig functions call it |
-| `Config\MarketingConfigResolverInterface` (1.11.0) | `MarketingConfigResolver` | Resolves a profile to `ResolvedMarketingConfig` |
-| `Config\MarketingToolSourceInterface` (1.11.0) | `DoctrineMarketingToolSource` | Tools that replace the YAML ones (rule 8) |
+| `Service\MarketingScriptRendererInterface` (1.12.0) | `MarketingScriptRenderer` | HTML of a document position; the Twig functions call it |
+| `Config\MarketingConfigResolverInterface` (1.12.0) | `MarketingConfigResolver` | Resolves a profile to `ResolvedMarketingConfig` |
+| `Config\MarketingToolSourceInterface` (1.12.0) | `DoctrineMarketingToolSource` | Tools that replace the YAML ones (rule 8) |
 | `Consent\ConsentGateInterface` | `CookieConsentGate` | Whether a category (`analytics`, `marketing`, …) may render |
 | `Security\MarketingKitAccessCheckerInterface` | from `security.*` config | Admin access |
 | `Provider\ToolRendererInterface` (tag `nowo_marketing_kit.tool_renderer`) | built-in renderers | HTML of one tool type |
@@ -39,7 +39,7 @@ services:
     Nowo\MarketingKitBundle\Consent\ConsentGateInterface: '@App\Privacy\ConsentGate'
 ```
 
-The class ids (`MarketingScriptRenderer`, `MarketingConfigResolver`) keep working. Since 1.11.0 the bundle's own
+The class ids (`MarketingScriptRenderer`, `MarketingConfigResolver`) keep working. Since 1.12.0 the bundle's own
 services are typed against the interfaces (the Twig extension takes `MarketingScriptRendererInterface`, the renderer takes
 `MarketingConfigResolverInterface`), so replacing an alias changes what the Twig functions render. A kernel test covers
 each override (`tests/Integration/HostPorts/HostPortsTest.php`).

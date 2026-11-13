@@ -41,7 +41,7 @@
 
 ## Unreleased
 
-To the next minor (1.11.0): no action needed; rendering and the database override are unchanged.
+To the next minor (1.12.0): no action needed; rendering and the database override are unchanged. 1.11.0 was published by mistake with the 1.10.3 code; this release contains the features first announced for 1.11.0.
 
 - Type against `Nowo\MarketingKitBundle\Service\MarketingScriptRendererInterface` and `Nowo\MarketingKitBundle\Config\MarketingConfigResolverInterface` instead of the classes (the class ids keep working).
 - To keep the tools outside the bundle table, alias `Nowo\MarketingKitBundle\Config\MarketingToolSourceInterface` to your service (see [ARCHITECTURE](ARCHITECTURE.md#tool-source-port-rule-8)).

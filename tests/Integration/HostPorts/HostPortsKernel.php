@@ -22,7 +22,7 @@ use Twig\Extra\TwigExtraBundle\TwigExtraBundle;
 use function dirname;
 
 /**
- * Host kernel for the REQ-ARCH-001 ports (1.11.0). Mode "default" keeps the bundle wiring; "source" aliases
+ * Host kernel for the REQ-ARCH-001 ports (1.12.0). Mode "default" keeps the bundle wiring; "source" aliases
  * {@see MarketingToolSourceInterface} to a host source (the `marketing_tool` table is never created, so a database
  * read would fail); "renderer" aliases {@see MarketingScriptRendererInterface} to a host renderer. All aliases are
  * the plain `services` lines a host writes in config/services.yaml.

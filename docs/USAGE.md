@@ -42,7 +42,7 @@ Pages that render consent-gated tags get `Vary: Cookie` (do not cache them in a 
 
 ## PHP API
 
-Inject `Nowo\MarketingKitBundle\Service\MarketingScriptRendererInterface` (since 1.11.0; the `MarketingScriptRenderer` class id keeps working). Ports, the tool source and the DDD host path are in [ARCHITECTURE](ARCHITECTURE.md):
+Inject `Nowo\MarketingKitBundle\Service\MarketingScriptRendererInterface` (since 1.12.0; the `MarketingScriptRenderer` class id keeps working). Ports, the tool source and the DDD host path are in [ARCHITECTURE](ARCHITECTURE.md):
 
 ```php
 $html = $renderer->renderHead();

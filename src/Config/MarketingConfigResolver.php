@@ -34,8 +34,8 @@ final class MarketingConfigResolver implements MarketingConfigResolverInterface,
 
     /**
      * @param array<string, array{enabled?: bool, tools?: array<string, array<string, mixed>>}> $profiles
-     * @param MarketingToolRepository|null $toolRepository Deprecated since 1.11.0 (removed in 2.0): pass $toolSource; used only when $toolSource is null
-     * @param MarketingToolSourceInterface|null $toolSource Since 1.11.0; null keeps the 1.x database override ({@see DoctrineMarketingToolSource} over $toolRepository)
+     * @param MarketingToolRepository|null $toolRepository Deprecated since 1.12.0 (removed in 2.0): pass $toolSource; used only when $toolSource is null
+     * @param MarketingToolSourceInterface|null $toolSource Since 1.12.0; null keeps the 1.x database override ({@see DoctrineMarketingToolSource} over $toolRepository)
      */
     public function __construct(
         private array $profiles,

@@ -13,7 +13,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The 1.11.0 tool source port keeps the 1.10.x database override exactly (equivalence with the deprecated
+ * The 1.12.0 tool source port keeps the 1.10.x database override exactly (equivalence with the deprecated
  * `$toolRepository` path).
  */
 final class DoctrineMarketingToolSourceTest extends TestCase
