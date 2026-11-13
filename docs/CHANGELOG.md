@@ -41,6 +41,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `MarketingScriptRendererInterface` and `MarketingConfigResolverInterface`, aliased to `MarketingScriptRenderer` / `MarketingConfigResolver`; the Twig extension and the renderer now depend on the interfaces, so a host alias replaces them (REQ-ARCH-001 rule 1). The class ids keep working.
+- `MarketingToolSourceInterface` provider port (`toolsFor(string $profile): ?list<ResolvedTool>`) with the default `DoctrineMarketingToolSource` (the `marketing_tool` rows when `use_database_config` is on, unchanged). A host aliases the interface to keep its tools elsewhere; Doctrine is then not queried for configuration (REQ-ARCH-001 rule 8). `MarketingConfigResolver` gained an optional trailing `?MarketingToolSourceInterface $toolSource` argument.
+- Kernel tests for the host aliases (tool source, renderer behind the Twig functions) and equivalence tests between the source and the previous repository path.
+- `docs/ARCHITECTURE.md`: ports, tool source, the `doctrine.entity_manager` opt-in (rule 6) and a "Standard Symfony and DDD hosts" section.
+
+### Deprecated
+
+- The `$toolRepository` argument of `MarketingConfigResolver::__construct()`: pass `$toolSource` (a `DoctrineMarketingToolSource`) instead. It is still honoured when `$toolSource` is null; removed in 2.0.
+
 ## [1.10.3] - 2026-11-13
 
 ### Fixed

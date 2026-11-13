@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Nowo\MarketingKitBundle\Twig;
 
-use Nowo\MarketingKitBundle\Service\MarketingScriptRenderer;
+use Nowo\MarketingKitBundle\Service\MarketingScriptRendererInterface;
 use Twig\Extension\AbstractExtension;
 use Twig\Extension\GlobalsInterface;
 use Twig\TwigFunction;
@@ -18,7 +18,7 @@ use Twig\TwigFunction;
 final class MarketingKitExtension extends AbstractExtension implements GlobalsInterface
 {
     public function __construct(
-        private readonly MarketingScriptRenderer $renderer,
+        private readonly MarketingScriptRendererInterface $renderer,
         private readonly ?string $layoutTemplate = null,
         private readonly string $cssFramework = 'none',
     ) {

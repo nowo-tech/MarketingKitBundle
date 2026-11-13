@@ -41,6 +41,13 @@
 
 ## Unreleased
 
+To the next minor (1.11.0): no action needed; rendering and the database override are unchanged.
+
+- Type against `Nowo\MarketingKitBundle\Service\MarketingScriptRendererInterface` and `Nowo\MarketingKitBundle\Config\MarketingConfigResolverInterface` instead of the classes (the class ids keep working).
+- To keep the tools outside the bundle table, alias `Nowo\MarketingKitBundle\Config\MarketingToolSourceInterface` to your service (see [ARCHITECTURE](ARCHITECTURE.md#tool-source-port-rule-8)).
+- If you build `MarketingConfigResolver` yourself with a `MarketingToolRepository` (4th argument), that argument is deprecated and removed in 2.0: pass `toolSource: new DoctrineMarketingToolSource($useDatabaseConfig, $repository)` instead.
+- Rule 6: the admin still flushes the default manager unless `doctrine.entity_manager` names a dedicated one; 2.0 changes that default.
+
 ## To 1.10.3
 
 From **1.10.2**:
