@@ -71,6 +71,8 @@ Worker demo: `demo/symfony8/docker/frankenphp/Caddyfile` declares a `worker` blo
 | `Twig\MarketingKitExtension` | yes | none; globals are compile-time strings | ✅ | ✅ |
 | `Form\MarketingToolType` | yes | FormKit trait properties, set once by DI | ✅ | ✅ |
 
+Note (audit OB2): with a custom asynchronous Messenger `MessageExecutionStrategyInterface` the tracker loses its nested-worker protection (a worker run inside a handler may clear the outer message's unit); the boundary clears still happen.
+
 ## Findings (all resolved)
 
 | ID | Severity | Status |
