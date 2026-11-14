@@ -30,7 +30,7 @@ Symfony, Doctrine or HTTP type. Each single-binding port is an alias a host repl
 | `Config\MarketingToolSourceInterface` (1.12.0) | `DoctrineMarketingToolSource` | Tools that replace the YAML ones (rule 8) |
 | `Consent\ConsentGateInterface` | `CookieConsentGate` | Whether a category (`analytics`, `marketing`, …) may render |
 | `Security\MarketingKitAccessCheckerInterface` | from `security.*` config | Admin access |
-| `Provider\ToolRendererInterface` (tag `nowo_marketing_kit.tool_renderer`) | built-in renderers | HTML of one tool type |
+| `Provider\ToolRendererInterface` (tag `nowo_marketing_kit.tool_renderer`) | built-in renderers | HTML of one tool type. Since 1.12.0 a class implementing it is tagged by autoconfiguration; no `tags:` line needed (rule 5) |
 
 ```yaml
 # config/services.yaml

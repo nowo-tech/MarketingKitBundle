@@ -49,6 +49,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Kernel tests for the host aliases (tool source, renderer behind the Twig functions) and equivalence tests between the source and the previous repository path.
 - `docs/ARCHITECTURE.md`: ports, tool source, the `doctrine.entity_manager` opt-in (rule 6) and a "Standard Symfony and DDD hosts" section.
 
+- `ToolRendererInterface` implementations are tagged `nowo_marketing_kit.tool_renderer` by autoconfiguration, so a host renderer needs no explicit tag (REQ-ARCH-001 rule 5). Explicit tags keep working and do not register a renderer twice.
+
 ### Deprecated
 
 - The `$toolRepository` argument of `MarketingConfigResolver::__construct()`: pass `$toolSource` (a `DoctrineMarketingToolSource`) instead. It is still honoured when `$toolSource` is null; removed in 2.0. A non-null value now triggers `trigger_deprecation()`; a host that overrode this argument on the service definition must alias `MarketingToolSourceInterface` instead (see UPGRADING).

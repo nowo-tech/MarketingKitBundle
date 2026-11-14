@@ -9,6 +9,7 @@ use Nowo\FormKitBundle\NowoFormKitBundle;
 use Nowo\MarketingKitBundle\Config\MarketingConfigResolverInterface;
 use Nowo\MarketingKitBundle\Config\MarketingToolSourceInterface;
 use Nowo\MarketingKitBundle\NowoMarketingKitBundle;
+use Nowo\MarketingKitBundle\Provider\ToolRendererRegistry;
 use Nowo\MarketingKitBundle\Service\MarketingScriptRendererInterface;
 use Nowo\UiKitBundle\NowoUiKitBundle;
 use Psr\Log\NullLogger;
@@ -95,11 +96,15 @@ final class HostPortsKernel extends Kernel
         $services->alias('test.marketing_resolver', MarketingConfigResolverInterface::class)->public();
         $services->alias('test.marketing_renderer', MarketingScriptRendererInterface::class)->public();
         $services->alias('test.marketing_source', MarketingToolSourceInterface::class)->public();
+        $services->alias('test.tool_registry', ToolRendererRegistry::class)->public();
         $services->alias('test.twig', 'twig')->public();
 
         if ($this->mode === 'source') {
             $services->set(HostToolSource::class);
             $services->alias(MarketingToolSourceInterface::class, HostToolSource::class);
+        }
+        if ($this->mode === 'tool-renderer') {
+            $services->set(HostToolRenderer::class)->autoconfigure();
         }
         if ($this->mode === 'renderer') {
             $services->set(HostScriptRenderer::class);
