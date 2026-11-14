@@ -11,35 +11,47 @@ use Symfony\Contracts\Service\ResetInterface;
 use WeakMap;
 
 use function is_array;
+use function trigger_deprecation;
 
 /**
- * Resolves the active marketing profile from YAML and optional Doctrine overrides.
+ * Resolves the active marketing profile from YAML and the optional tool source (database by default).
  *
  * Merge rules (CookieConsent-style):
  * - YAML is the baseline for profile enabled flag and tools.
- * - When use_database_config is true and the profile has DB rows, tools are a full replace from DB.
- * - When DB has no rows for the profile, YAML tools are used.
+ * - When the {@see MarketingToolSourceInterface} returns tools for the profile, they are a full replace. The default
+ *   {@see DoctrineMarketingToolSource} returns the DB rows when use_database_config is true and the profile has rows.
+ * - Otherwise (null or an empty list), YAML tools are used.
  *
  * Resolved profiles are memoized per main request only: the service may live for many requests
  * (long-running workers without `kernel.reset`), and database edits made by any worker must be
  * visible on the next request. Without a main request (CLI, no RequestStack) nothing is memoized.
  */
-final class MarketingConfigResolver implements ResetInterface
+final class MarketingConfigResolver implements MarketingConfigResolverInterface, ResetInterface
 {
     /** @var WeakMap<Request, array<string, ResolvedMarketingConfig>> */
     private WeakMap $resolvedByRequest;
 
+    private readonly MarketingToolSourceInterface $toolSource;
+
     /**
      * @param array<string, array{enabled?: bool, tools?: array<string, array<string, mixed>>}> $profiles
+     * @param MarketingToolRepository|null $toolRepository Deprecated since 1.12.0 (removed in 2.0): pass $toolSource; used only when $toolSource is null
+     * @param MarketingToolSourceInterface|null $toolSource Since 1.12.0; null keeps the 1.x database override ({@see DoctrineMarketingToolSource} over $toolRepository)
      */
     public function __construct(
         private array $profiles,
         private readonly string $defaultProfile,
-        private readonly bool $useDatabaseConfig,
-        private readonly ?MarketingToolRepository $toolRepository = null,
+        bool $useDatabaseConfig,
+        ?MarketingToolRepository $toolRepository = null,
         private readonly ?RequestStack $requestStack = null,
+        ?MarketingToolSourceInterface $toolSource = null,
     ) {
+        if ($toolRepository instanceof MarketingToolRepository) {
+            trigger_deprecation('nowo-tech/marketing-kit-bundle', '1.12', 'Passing $toolRepository to "%s" is deprecated and removed in 2.0; when $toolSource is also set (the bundle always sets it) $toolRepository is ignored. Alias "%s" to your own service instead.', self::class, MarketingToolSourceInterface::class);
+        }
+
         $this->resolvedByRequest = new WeakMap();
+        $this->toolSource        = $toolSource ?? new DoctrineMarketingToolSource($useDatabaseConfig, $toolRepository);
     }
 
     public function reset(): void
@@ -76,16 +88,9 @@ final class MarketingConfigResolver implements ResetInterface
             return new ResolvedMarketingConfig($name, false, [], false);
         }
 
-        if ($this->useDatabaseConfig && $this->toolRepository instanceof MarketingToolRepository) {
-            $dbRows = $this->toolRepository->findToolRowsByProfile($name);
-            if ($dbRows !== []) {
-                return new ResolvedMarketingConfig(
-                    $name,
-                    true,
-                    array_map($this->fromRow(...), $dbRows),
-                    true,
-                );
-            }
+        $sourced = $this->toolSource->toolsFor($name);
+        if ($sourced !== null && $sourced !== []) {
+            return new ResolvedMarketingConfig($name, true, $sourced, true);
         }
 
         /** @var array<string, array<string, mixed>> $yamlTools */
@@ -126,22 +131,5 @@ final class MarketingConfigResolver implements ResetInterface
         );
 
         return $resolved;
-    }
-
-    /**
-     * @param array{code: string, type: string, enabled: bool, category: string, position: string, sortOrder: int, options: array<string, mixed>} $row
-     */
-    private function fromRow(array $row): ResolvedTool
-    {
-        return new ResolvedTool(
-            code: $row['code'],
-            type: $row['type'],
-            enabled: $row['enabled'],
-            category: $row['category'],
-            position: $row['position'],
-            sortOrder: $row['sortOrder'],
-            options: $row['options'],
-            source: 'database',
-        );
     }
 }

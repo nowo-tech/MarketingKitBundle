@@ -20,11 +20,24 @@ services:
         autoconfigure: false
         tags: ['controller.service_arguments', 'container.service_subscriber']
 
+    # 1.12.0 (REQ-ARCH-001 rule 8): tools that replace the YAML ones come from this provider port. Default: the
+    # bundle table when use_database_config is on. Hosts alias MarketingToolSourceInterface to their own source.
+    Nowo\MarketingKitBundle\Config\DoctrineMarketingToolSource:
+        arguments:
+            $useDatabaseConfig: '%nowo_marketing_kit.use_database_config%'
+
+    Nowo\MarketingKitBundle\Config\MarketingToolSourceInterface: '@Nowo\MarketingKitBundle\Config\DoctrineMarketingToolSource'
+
     Nowo\MarketingKitBundle\Config\MarketingConfigResolver:
         arguments:
             $profiles: '%nowo_marketing_kit.profiles%'
             $defaultProfile: '%nowo_marketing_kit.default_profile%'
             $useDatabaseConfig: '%nowo_marketing_kit.use_database_config%'
+            $toolRepository: null
+            $toolSource: '@Nowo\MarketingKitBundle\Config\MarketingToolSourceInterface'
+
+    # 1.12.0 (REQ-ARCH-001 rule 1): hosts may alias these ports to their own services.
+    Nowo\MarketingKitBundle\Config\MarketingConfigResolverInterface: '@Nowo\MarketingKitBundle\Config\MarketingConfigResolver'
 
     Nowo\MarketingKitBundle\Service\MarketingToolAdminService:
         arguments:
@@ -87,6 +100,8 @@ services:
             $requestStack: '@request_stack'
             $allowRequiredTrackers: '%nowo_marketing_kit.security.allow_required_trackers%'
             $cspNonceAttribute: '%nowo_marketing_kit.security.csp_nonce_attribute%'
+
+    Nowo\MarketingKitBundle\Service\MarketingScriptRendererInterface: '@Nowo\MarketingKitBundle\Service\MarketingScriptRenderer'
 
     Nowo\MarketingKitBundle\Twig\MarketingKitExtension:
         arguments:

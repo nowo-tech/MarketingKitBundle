@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace Nowo\MarketingKitBundle\Config;
 
 /**
- * Resolved marketing profile (YAML defaults, optionally replaced by Doctrine tools).
+ * Resolved marketing profile (YAML defaults, optionally replaced by the tool source: Doctrine tools by default).
  */
 final readonly class ResolvedMarketingConfig
 {
     /**
      * @param list<ResolvedTool> $tools
+     * @param bool $fromDatabase True when the tools come from the {@see MarketingToolSourceInterface}
+     *                           (the database by default, or a host source) instead of YAML
      */
     public function __construct(
         public string $profile,

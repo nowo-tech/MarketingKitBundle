@@ -7,6 +7,7 @@ namespace Nowo\MarketingKitBundle\DependencyInjection;
 use LogicException;
 use Nowo\MarketingKitBundle\Controller\MarketingToolAdminController;
 use Nowo\MarketingKitBundle\DependencyInjection\Configuration as BundleConfiguration;
+use Nowo\MarketingKitBundle\Provider\ToolRendererInterface;
 use Nowo\MarketingKitBundle\Security\AllowAllMarketingKitAccessChecker;
 use Nowo\MarketingKitBundle\Security\ConfigurableMarketingKitAccessChecker;
 use Nowo\MarketingKitBundle\Security\MarketingKitAccessCheckerInterface;
@@ -136,6 +137,9 @@ final class NowoMarketingKitExtension extends Extension implements PrependExtens
 
         $loader = new YamlFileLoader($container, new FileLocator(__DIR__ . '/../Resources/config'));
         $loader->load('services.yaml');
+
+        // A host renderer only implements the interface (REQ-ARCH-001 rule 5); the tag is added by autoconfiguration.
+        $container->registerForAutoconfiguration(ToolRendererInterface::class)->addTag('nowo_marketing_kit.tool_renderer');
 
         $container->setParameter('nowo_marketing_kit.use_database_config', $config['use_database_config']);
         $container->setParameter('nowo_marketing_kit.respect_cookie_consent', $config['respect_cookie_consent']);

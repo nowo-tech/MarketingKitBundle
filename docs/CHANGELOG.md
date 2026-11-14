@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[1.11.0] - 2026-11-13](#1110---2026-11-13)
 - [[1.10.3] - 2026-11-13](#1103---2026-11-13)
 - [[1.10.2] - 2026-11-12](#1102---2026-11-12)
 - [[1.10.1] - 2026-11-12](#1101---2026-11-12)
@@ -40,6 +41,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [[1.0.0] - 2026-07-24](#100---2026-07-24)
 
 ## [Unreleased]
+
+### Added
+
+- `MarketingScriptRendererInterface` and `MarketingConfigResolverInterface`, aliased to `MarketingScriptRenderer` / `MarketingConfigResolver`; the Twig extension and the renderer now depend on the interfaces, so a host alias replaces them (REQ-ARCH-001 rule 1). The class ids keep working.
+- `MarketingToolSourceInterface` provider port (`toolsFor(string $profile): ?list<ResolvedTool>`) with the default `DoctrineMarketingToolSource` (the `marketing_tool` rows when `use_database_config` is on, unchanged). A host aliases the interface to keep its tools elsewhere; Doctrine is then not queried for configuration (REQ-ARCH-001 rule 8). `MarketingConfigResolver` gained an optional trailing `?MarketingToolSourceInterface $toolSource` argument.
+- Kernel tests for the host aliases (tool source, renderer behind the Twig functions) and equivalence tests between the source and the previous repository path.
+- `docs/ARCHITECTURE.md`: ports, tool source, the `doctrine.entity_manager` opt-in (rule 6) and a "Standard Symfony and DDD hosts" section.
+
+- `ToolRendererInterface` implementations are tagged `nowo_marketing_kit.tool_renderer` by autoconfiguration, so a host renderer needs no explicit tag (REQ-ARCH-001 rule 5). Explicit tags keep working and do not register a renderer twice.
+
+### Deprecated
+
+- The `$toolRepository` argument of `MarketingConfigResolver::__construct()`: pass `$toolSource` (a `DoctrineMarketingToolSource`) instead. It is still honoured when `$toolSource` is null; removed in 2.0. A non-null value now triggers `trigger_deprecation()`; a host that overrode this argument on the service definition must alias `MarketingToolSourceInterface` instead (see UPGRADING).
+
+### Fixed
+
+- `symfony/deprecation-contracts` is now declared in `require` (`^2.5 || ^3.0`). The bundle already called `trigger_deprecation()` in shipped code and only got the package transitively, so a host whose dependency tree dropped it would have hit an undefined-function fatal.
+
+## [1.11.0] - 2026-11-13
+
+Published from the 1.10.3 commit (`b8b0210`) during the 2026-11-13 tagging incident; it carries no changes of its own. The changes first announced for 1.11.0 ship in 1.12.0.
 
 ## [1.10.3] - 2026-11-13
 
@@ -381,6 +403,7 @@ Allows nowo-tech/ui-kit-bundle 2.x (^1.4 || ^2.2) so hosts can move to UiKit 2.2
 
 - **Worker safety (Igor):** justified `// @igor-ignore` annotations and/or `ResetInterface` / request-scoped fixes so `make igor` passes on package `src/`.
 
+[1.11.0]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.11.0
 [1.10.3]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.10.3
 [1.10.2]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.10.2
 [1.10.1]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.10.1

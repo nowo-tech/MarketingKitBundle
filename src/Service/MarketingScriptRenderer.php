@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Nowo\MarketingKitBundle\Service;
 
-use Nowo\MarketingKitBundle\Config\MarketingConfigResolver;
+use Nowo\MarketingKitBundle\Config\MarketingConfigResolverInterface;
 use Nowo\MarketingKitBundle\Config\ResolvedTool;
 use Nowo\MarketingKitBundle\Consent\ConsentGateInterface;
 use Nowo\MarketingKitBundle\Enum\ToolCategory;
@@ -28,13 +28,13 @@ use function preg_replace;
  * - CSP: the `<script>` tags of built-in providers get `nonce="…"` when a nonce is passed to the Twig function or
  *   found in the request attribute security.csp_nonce_attribute (SEC-004 L4). Custom HTML is emitted as configured.
  */
-final readonly class MarketingScriptRenderer
+final readonly class MarketingScriptRenderer implements MarketingScriptRendererInterface
 {
     /** Accepted nonce characters (base64 / base64url); anything else is ignored. */
     private const NONCE_PATTERN = '/^[A-Za-z0-9+\/_=-]{1,256}$/D';
 
     public function __construct(
-        private MarketingConfigResolver $configResolver,
+        private MarketingConfigResolverInterface $configResolver,
         private ToolRendererRegistry $rendererRegistry,
         private ConsentGateInterface $consentGate,
         private ?RequestStack $requestStack = null,

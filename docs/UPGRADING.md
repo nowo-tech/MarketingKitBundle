@@ -41,6 +41,15 @@
 
 ## Unreleased
 
+To the next minor (1.12.0): no action needed; rendering and the database override are unchanged. 1.11.0 was published by mistake with the 1.10.3 code; this release contains the features first announced for 1.11.0.
+
+- Type against `Nowo\MarketingKitBundle\Service\MarketingScriptRendererInterface` and `Nowo\MarketingKitBundle\Config\MarketingConfigResolverInterface` instead of the classes (the class ids keep working).
+- To keep the tools outside the bundle table, alias `Nowo\MarketingKitBundle\Config\MarketingToolSourceInterface` to your service (see [ARCHITECTURE](ARCHITECTURE.md#tool-source-port-rule-8)).
+- **Autoconfigured renderers:** a class implementing `Nowo\MarketingKitBundle\Provider\ToolRendererInterface` that you left untagged is now tagged `nowo_marketing_kit.tool_renderer` by autoconfiguration, and its `supports()` can win over a built-in renderer for the same type. If you do not want that, set `autoconfigure: false` on its service definition (or make `supports()` return false for built-in types).
+- **Silent behaviour change (`toolRepository` override):** if your `config/services.yaml` overrides the `MarketingConfigResolver` definition with `arguments: { $toolRepository: '@App\Marketing\MyToolRepository' }`, that override is now ignored. The bundle always wires `$toolSource` (default `DoctrineMarketingToolSource`), and `$toolSource` wins over `$toolRepository`. The container stays green and nothing fails; the visible symptom is that your repository's rows stop appearing in the marketing tags and the bundle's `marketing_tool` table (or, when that table is empty, the YAML tools) render in their place. Fix: remove the `$toolRepository` override and alias `Nowo\MarketingKitBundle\Config\MarketingToolSourceInterface` to a service that implements it over your repository. A non-null `$toolRepository` now also raises a deprecation (`trigger_deprecation`, since 1.12), so look for it in your logs after upgrading.
+- If you build `MarketingConfigResolver` yourself with a `MarketingToolRepository` (4th argument), that argument is deprecated and removed in 2.0: pass `toolSource: new DoctrineMarketingToolSource($useDatabaseConfig, $repository)` instead.
+- Rule 6: the admin still flushes the default manager unless `doctrine.entity_manager` names a dedicated one; 2.0 changes that default.
+
 ## To 1.10.3
 
 From **1.10.2**:
