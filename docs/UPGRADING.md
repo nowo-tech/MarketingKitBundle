@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 1.12.0](#to-1120)
 - [To 1.10.3](#to-1103)
 - [To 1.10.2](#to-1102)
 - [To 1.10.1](#to-1101)
@@ -40,6 +41,14 @@
   - [From nothing to 1.0.0](#from-nothing-to-100)
 
 ## Unreleased
+
+## To 1.12.0
+
+From **1.11.0**:
+
+```bash
+composer update nowo-tech/marketing-kit-bundle
+```
 
 To the next minor (1.12.0): no action needed; rendering and the database override are unchanged. 1.11.0 was published by mistake with the 1.10.3 code; this release contains the features first announced for 1.11.0.
 

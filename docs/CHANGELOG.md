@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[1.12.0] - 2026-11-14](#1120---2026-11-14)
 - [[1.11.0] - 2026-11-13](#1110---2026-11-13)
 - [[1.10.3] - 2026-11-13](#1103---2026-11-13)
 - [[1.10.2] - 2026-11-12](#1102---2026-11-12)
@@ -41,6 +42,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [[1.0.0] - 2026-07-24](#100---2026-07-24)
 
 ## [Unreleased]
+
+## [1.12.0] - 2026-11-14
 
 ### Added
 
@@ -403,6 +406,7 @@ Allows nowo-tech/ui-kit-bundle 2.x (^1.4 || ^2.2) so hosts can move to UiKit 2.2
 
 - **Worker safety (Igor):** justified `// @igor-ignore` annotations and/or `ResetInterface` / request-scoped fixes so `make igor` passes on package `src/`.
 
+[1.12.0]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.12.0
 [1.11.0]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.11.0
 [1.10.3]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.10.3
 [1.10.2]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.10.2
