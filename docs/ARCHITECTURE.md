@@ -59,6 +59,7 @@ interface MarketingToolSourceInterface
 - The default `DoctrineMarketingToolSource` returns the `marketing_tool` rows of the profile when `use_database_config`
   is true and the profile has rows: the 1.x behaviour, unchanged (equivalence tests against the deprecated
   `$toolRepository` path of `MarketingConfigResolver`).
+- **Admin CRUD with a host source:** when you alias `MarketingToolSourceInterface`, the admin CRUD still edits the `marketing_tool` table, which no longer feeds rendering. Disable the admin (`web_ui`) or accept that edits have no visible effect. Tools coming from a host source report `fromDatabase = true` on `ResolvedMarketingConfig` (the flag means "not YAML"), and their `source` is whatever the host sets.
 - A host source is consulted for every profile that is enabled in YAML, whatever `use_database_config` says. When it
   returns tools, `ResolvedMarketingConfig::$fromDatabase` is true (the tools did not come from YAML).
 - The resolver memoizes per main request; a source reads per call and must not cache across requests (FrankenPHP worker
