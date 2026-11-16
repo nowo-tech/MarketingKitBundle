@@ -2,11 +2,11 @@
 
 **Baseline spec**: [`spec.md`](spec.md)  
 **Package**: `nowo-tech/marketing-kit-bundle`  
-**Last audited**: 2026-10-27
+**Last audited**: 2026-11-16
 
 Every production file tracked under `src/` is listed once below with the spec section and requirement IDs it implements. Tests (`tests/`) and the demo (`demo/`) are out of scope.
 
-Audit command (production count): `git ls-files src | wc -l` → **54** (2026-10-27).
+Audit command (production count): `git ls-files src | wc -l` → **61** (2026-11-16).
 
 ## Bundle & DI (`src/`, `src/DependencyInjection/`)
 
@@ -18,6 +18,7 @@ Audit command (production count): `git ls-files src | wc -l` → **54** (2026-10
 | `src/DependencyInjection/TablePrefixListener.php` | Configurable table prefix on MarketingKit entity metadata | FR-MK-004 |
 | `src/DependencyInjection/Compiler/TwigPathsPass.php` | `@NowoMarketingKitBundle` namespace with app override precedence | FR-MK-008 |
 | `src/DependencyInjection/Compiler/CsrfProtectionPass.php` | Compile error when the admin runs without form CSRF protection | FR-MK-009 |
+| `src/DependencyInjection/Compiler/EntityManagerOptionPass.php` | Build fails when `doctrine.entity_manager` names an unknown manager (1.10, audit LD) | FR-MK-004, FR-MK-012 |
 
 ## Config resolution (`src/Config/`)
 
@@ -26,6 +27,9 @@ Audit command (production count): `git ls-files src | wc -l` → **54** (2026-10
 | `src/Config/MarketingConfigResolver.php` | Profile resolution, YAML vs database replace, per-request memo | FR-MK-001, FR-MK-004, FR-MK-010 |
 | `src/Config/ResolvedMarketingConfig.php` | Immutable resolved profile | FR-MK-001 |
 | `src/Config/ResolvedTool.php` | Immutable resolved tool ready for rendering | FR-MK-001 |
+| `src/Config/MarketingConfigResolverInterface.php` | Port: resolve the tools of a profile (REQ-ARCH-001 rule 1) | FR-MK-001, FR-MK-013 |
+| `src/Config/MarketingToolSourceInterface.php` | Provider port for database tools replacing the YAML ones (rule 8) | FR-MK-004, FR-MK-013 |
+| `src/Config/DoctrineMarketingToolSource.php` | Default tool source: `marketing_tool` rows when `use_database_config` is on | FR-MK-004, FR-MK-013 |
 
 ## Consent (`src/Consent/`)
 
@@ -51,6 +55,8 @@ Audit command (production count): `git ls-files src | wc -l` → **54** (2026-10
 | `src/Repository/MarketingToolRepository.php` | Profile queries, array hydration for public tools | FR-MK-004, FR-MK-006, FR-MK-010 |
 | `src/EventSubscriber/ClosedEntityManagerSubscriber.php` | Closed EntityManager recovery + stale entity detach on admin routes | FR-MK-006, FR-MK-010 |
 | `src/EventSubscriber/ConsentVaryCookieSubscriber.php` | `Vary: Cookie` on responses whose tags were gated by consent cookies | FR-MK-005 |
+| `src/Doctrine/ExcludedEntityNamespaceDriver.php` | Maps nothing for the bundle namespace on every other entity manager | FR-MK-012 |
+| `src/EventSubscriber/MarketingKitEntityManagerClearSubscriber.php` | Clears the bundle's own entity manager at the outermost unit-of-work boundary | FR-MK-010, FR-MK-012 |
 
 ## Providers (`src/Provider/`)
 
@@ -76,6 +82,7 @@ Audit command (production count): `git ls-files src | wc -l` → **54** (2026-10
 | `src/Service/MarketingToolCatalog.php` | Built-in catalog exposed in the admin CRUD | FR-MK-006 |
 | `src/Service/MarketingToolAdminService.php` | Seed catalog and import YAML into the database | FR-MK-006 |
 | `src/Twig/MarketingKitExtension.php` | `nowo_marketing_head` / `_body_start` / `_body_end` functions | FR-MK-003 |
+| `src/Service/MarketingScriptRendererInterface.php` | Port: render the consent-gated tags of a document position | FR-MK-003, FR-MK-013 |
 
 ## Admin UI (`src/Controller/`, `src/Form/`, `src/Ui/`)
 
@@ -128,16 +135,16 @@ Domain **`NowoMarketingKitBundle`** (REQ-I18N-003).
 
 | Category | Files | Mapped |
 | --- | ---: | ---: |
-| Bundle & DI | 6 | 6 |
-| Config resolution | 3 | 3 |
+| Bundle & DI | 7 | 7 |
+| Config resolution | 6 | 6 |
 | Consent | 2 | 2 |
 | Enums | 4 | 4 |
-| Persistence | 4 | 4 |
+| Persistence | 6 | 6 |
 | Providers | 11 | 11 |
-| Services & Twig | 4 | 4 |
+| Services & Twig | 5 | 5 |
 | Admin UI | 5 | 5 |
 | Security | 3 | 3 |
 | Config YAML | 2 | 2 |
 | Twig views | 3 | 3 |
 | Translations | 7 | 7 |
-| **Total production sources** | **54** | **54** |
+| **Total production sources** | **61** | **61** |

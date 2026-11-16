@@ -43,6 +43,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Documentation
+
+- Spec Kit baseline: `code-inventory.md` maps all 61 `src/` files again (the 1.10–1.11 ports and entity-manager isolation classes were missing) and `spec.md` gains `FR-MK-012` and `FR-MK-013` (REQ-SPECKIT-001/003).
+
 ## [1.12.0] - 2026-11-14
 
 ### Added
