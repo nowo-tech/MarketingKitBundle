@@ -43,6 +43,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Demo
+
+- The demo shell is UiKit's admin layout with its default theme and masthead: no hand-written `<style>` shell, no Bootstrap Icons CDN, the demo requires `nowo-tech/ui-kit-bundle` ^2.53 (REQ-DEMO-014). Row actions show text labels; README screenshots re-captured. No bundle runtime change.
+
 ### Documentation
 
 - Spec Kit baseline: `code-inventory.md` maps all 61 `src/` files again (the 1.10–1.11 ports and entity-manager isolation classes were missing) and `spec.md` gains `FR-MK-012` and `FR-MK-013` (REQ-SPECKIT-001/003).
