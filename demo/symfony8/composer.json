@@ -19,6 +19,7 @@
         "doctrine/orm": "^2.19 || ^3.0",
         "nowo-tech/form-kit-bundle": "^2.0",
         "nowo-tech/marketing-kit-bundle": "*",
+        "nowo-tech/ui-kit-bundle": "^2.53",
         "php": ">=8.2,<8.6",
         "symfony/console": "^8.0",
         "symfony/dotenv": "^8.0",
