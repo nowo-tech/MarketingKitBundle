@@ -88,7 +88,9 @@ verify: ensure-up
 
 
 # REQ-DEMO-013: Playwright runs in the official image (no local Node needed); --network host reaches the demo PORT.
-PLAYWRIGHT_IMAGE ?= mcr.microsoft.com/playwright:v1.63.0-jammy
+# The image tag always follows the exact @playwright/test version pinned in e2e/package.json (browsers ship with the image).
+PLAYWRIGHT_VERSION := $(shell sed -n 's/.*"@playwright\/test": "\([0-9.]*\)".*/\1/p' e2e/package.json)
+PLAYWRIGHT_IMAGE ?= mcr.microsoft.com/playwright:v$(PLAYWRIGHT_VERSION)-jammy
 DEMO_PORT = $$(grep "^PORT=" .env 2>/dev/null | cut -d= -f2 | tr -d '\r'); PORT=$${PORT:-8060}
 
 # Empties the marketing_tool table: every e2e / screenshot run starts from the same state and builds it through the UI.
