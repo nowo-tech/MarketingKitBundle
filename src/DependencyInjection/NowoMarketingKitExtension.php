@@ -6,19 +6,27 @@ namespace Nowo\MarketingKitBundle\DependencyInjection;
 
 use LogicException;
 use Nowo\MarketingKitBundle\Controller\MarketingToolAdminController;
+use Nowo\MarketingKitBundle\DependencyInjection\Compiler\CommitTrackingPass;
 use Nowo\MarketingKitBundle\DependencyInjection\Configuration as BundleConfiguration;
+use Nowo\MarketingKitBundle\EventListener\MarketingToolConflictListener;
+use Nowo\MarketingKitBundle\Persistence\MarketingToolWriteUnit;
 use Nowo\MarketingKitBundle\Provider\ToolRendererInterface;
 use Nowo\MarketingKitBundle\Security\AllowAllMarketingKitAccessChecker;
 use Nowo\MarketingKitBundle\Security\ConfigurableMarketingKitAccessChecker;
 use Nowo\MarketingKitBundle\Security\MarketingKitAccessCheckerInterface;
 use Nowo\MarketingKitBundle\Service\MarketingToolAdminService;
+use Nowo\TransactionDoctrine\Symfony\Conflict\ConflictResponsePolicy;
+use Nowo\TransactionDoctrine\WriteUnit\CommitLedger;
+use Nowo\TransactionDoctrine\WriteUnit\Dbal\CommitTrackingMiddleware;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Extension\Extension;
 use Symfony\Component\DependencyInjection\Extension\PrependExtensionInterface;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
 use Symfony\Component\DependencyInjection\Reference;
+use Symfony\Component\HttpKernel\KernelEvents;
 
 use function array_key_exists;
 use function is_array;
@@ -31,6 +39,15 @@ use function sprintf;
  */
 final class NowoMarketingKitExtension extends Extension implements PrependExtensionInterface
 {
+    /** 1.13: real commits counted by {@see self::COMMIT_TRACKING_MIDDLEWARE}, read by the conflict answer. */
+    public const COMMIT_LEDGER_SERVICE = 'nowo_marketing_kit.commit_ledger';
+
+    /** 1.13: transaction-doctrine's commit-tracking DBAL middleware (scoped by {@see CommitTrackingPass}). */
+    public const COMMIT_TRACKING_MIDDLEWARE = 'nowo_marketing_kit.commit_tracking_middleware';
+
+    /** 1.13: container parameter holding `conflict_response.commit_tracking` (bundle, all or off). */
+    public const COMMIT_TRACKING_PARAMETER = 'nowo_marketing_kit.conflict_response.commit_tracking';
+
     /**
      * Seeds UiKit defaults from web_ui when the host has not set nowo_ui_kit (REQ-UI-001-kit).
      */
@@ -154,7 +171,9 @@ final class NowoMarketingKitExtension extends Extension implements PrependExtens
             $reference = new Reference(sprintf('doctrine.orm.%s_entity_manager', $entityManager));
             $container->getDefinition(MarketingToolAdminService::class)->setArgument('$entityManager', $reference);
             $container->getDefinition(MarketingToolAdminController::class)->setArgument('$entityManager', $reference);
+            $container->getDefinition(MarketingToolWriteUnit::class)->setArgument('$entityManager', $reference);
         }
+        $this->registerConflictAnswer($container, $config['conflict_response']);
         $container->setParameter('nowo_marketing_kit.security.access_roles', $config['security']['access_roles']);
         $container->setParameter('nowo_marketing_kit.security.access_checker', $config['security']['access_checker']);
         $container->setParameter('nowo_marketing_kit.security.allow_unauthenticated', $config['security']['allow_unauthenticated']);
@@ -184,6 +203,43 @@ final class NowoMarketingKitExtension extends Extension implements PrependExtens
             $definition->addTag('doctrine.event_listener', ['event' => 'loadClassMetadata']);
             $container->setDefinition(TablePrefixListener::class, $definition);
         }
+    }
+
+    /**
+     * 1.13 (REQ-RUNTIME-003 rule 6): 409 (or 503) + CONFLICT_001 / CONFLICT_002 instead of a 500 for lock conflicts on
+     * the marketing tool admin. Unset options follow transaction-doctrine's policy service when its bundle is registered.
+     *
+     * Commit tracking (`conflict_response.commit_tracking`): `bundle` (default) and `all` register transaction-doctrine's
+     * commit-tracking middleware; {@see CommitTrackingPass} scopes it to the bundle's connection (`bundle`), or drops it
+     * and reuses transaction-doctrine's own ledger when that bundle's `commit_detection` is on. `off` registers neither
+     * the ledger nor the middleware.
+     *
+     * @param array{status: int|null, retry_after: int|null, commit_tracking: string} $conflictResponse
+     */
+    private function registerConflictAnswer(ContainerBuilder $container, array $conflictResponse): void
+    {
+        $container->setParameter(self::COMMIT_TRACKING_PARAMETER, $conflictResponse['commit_tracking']);
+        $tracking = $conflictResponse['commit_tracking'] !== 'off';
+        if ($tracking) {
+            $container->setDefinition(self::COMMIT_LEDGER_SERVICE, new Definition(CommitLedger::class));
+            $container->setDefinition(self::COMMIT_TRACKING_MIDDLEWARE, (new Definition(CommitTrackingMiddleware::class, [new Reference(self::COMMIT_LEDGER_SERVICE)]))
+                ->addTag('doctrine.middleware'));
+        }
+
+        $policy = $conflictResponse['status'] === null && $conflictResponse['retry_after'] === null
+            ? new Reference(ConflictResponsePolicy::class, ContainerInterface::NULL_ON_INVALID_REFERENCE)
+            : new Definition(ConflictResponsePolicy::class, [
+                $conflictResponse['status'] ?? ConflictResponsePolicy::STATUS_CONFLICT,
+                $conflictResponse['retry_after'] ?? ConflictResponsePolicy::DEFAULT_RETRY_AFTER,
+            ]);
+
+        $container->setDefinition(MarketingToolConflictListener::class, (new Definition(MarketingToolConflictListener::class, [
+            $policy,
+            $tracking ? new Reference(self::COMMIT_LEDGER_SERVICE) : null,
+            new Reference('request_stack', ContainerInterface::NULL_ON_INVALID_REFERENCE),
+        ]))
+            ->addTag('kernel.event_listener', ['event' => KernelEvents::REQUEST, 'method' => 'onRequest', 'priority' => MarketingToolConflictListener::REQUEST_PRIORITY])
+            ->addTag('kernel.event_listener', ['event' => KernelEvents::EXCEPTION, 'method' => 'onException', 'priority' => MarketingToolConflictListener::PRIORITY]));
     }
 
     public function getAlias(): string

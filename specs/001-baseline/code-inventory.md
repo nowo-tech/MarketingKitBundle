@@ -6,7 +6,7 @@
 
 Every production file tracked under `src/` is listed once below with the spec section and requirement IDs it implements. Tests (`tests/`) and the demo (`demo/`) are out of scope.
 
-Audit command (production count): `git ls-files src | wc -l` → **61** (2026-11-16).
+Audit command (production count): `git ls-files src | wc -l` → **64** (2026-11-19).
 
 ## Bundle & DI (`src/`, `src/DependencyInjection/`)
 
@@ -18,7 +18,8 @@ Audit command (production count): `git ls-files src | wc -l` → **61** (2026-11
 | `src/DependencyInjection/TablePrefixListener.php` | Configurable table prefix on MarketingKit entity metadata | FR-MK-004 |
 | `src/DependencyInjection/Compiler/TwigPathsPass.php` | `@NowoMarketingKitBundle` namespace with app override precedence | FR-MK-008 |
 | `src/DependencyInjection/Compiler/CsrfProtectionPass.php` | Compile error when the admin runs without form CSRF protection | FR-MK-009 |
-| `src/DependencyInjection/Compiler/EntityManagerOptionPass.php` | Build fails when `doctrine.entity_manager` names an unknown manager (1.10, audit LD) | FR-MK-004, FR-MK-012 |
+| `src/DependencyInjection/Compiler/EntityManagerOptionPass.php` | Build fails when `doctrine.entity_manager` names an unknown manager (1.10, audit LD); marks a dedicated manager as the bundle's own for the write unit (1.13) | FR-MK-004, FR-MK-012, FR-MK-014 |
+| `src/DependencyInjection/Compiler/CommitTrackingPass.php` | Scopes the commit-tracking middleware to the bundle's connection, reuses transaction-doctrine's ledger (1.13) | FR-MK-015 |
 
 ## Config resolution (`src/Config/`)
 
@@ -47,7 +48,7 @@ Audit command (production count): `git ls-files src | wc -l` → **61** (2026-11
 | `src/Enum/ToolCategory.php` | Consent category allowlist; `required` only for custom or with allow_required_trackers | FR-MK-005 |
 | `src/Enum/ConsentCookieNames.php` | CookieConsent category cookie names | FR-MK-005 |
 
-## Persistence (`src/Entity/`, `src/Repository/`, `src/EventSubscriber/`)
+## Persistence (`src/Entity/`, `src/Repository/`, `src/EventSubscriber/`, `src/Persistence/`, `src/EventListener/`)
 
 | Source file | Spec section | Requirement IDs |
 | --- | --- | --- |
@@ -57,6 +58,8 @@ Audit command (production count): `git ls-files src | wc -l` → **61** (2026-11
 | `src/EventSubscriber/ConsentVaryCookieSubscriber.php` | `Vary: Cookie` on responses whose tags were gated by consent cookies | FR-MK-005 |
 | `src/Doctrine/ExcludedEntityNamespaceDriver.php` | Maps nothing for the bundle namespace on every other entity manager | FR-MK-012 |
 | `src/EventSubscriber/MarketingKitEntityManagerClearSubscriber.php` | Clears the bundle's own entity manager at the outermost unit-of-work boundary | FR-MK-010, FR-MK-012 |
+| `src/Persistence/MarketingToolWriteUnit.php` | One transaction per admin write (REQ-RUNTIME-003, 1.13) | FR-MK-014 |
+| `src/EventListener/MarketingToolConflictListener.php` | 409 + CONFLICT_001 / CONFLICT_002, domain 409 codes (REQ-RUNTIME-003, 1.13) | FR-MK-015 |
 
 ## Providers (`src/Provider/`)
 
@@ -135,11 +138,11 @@ Domain **`NowoMarketingKitBundle`** (REQ-I18N-003).
 
 | Category | Files | Mapped |
 | --- | ---: | ---: |
-| Bundle & DI | 7 | 7 |
+| Bundle & DI | 8 | 8 |
 | Config resolution | 6 | 6 |
 | Consent | 2 | 2 |
 | Enums | 4 | 4 |
-| Persistence | 6 | 6 |
+| Persistence | 8 | 8 |
 | Providers | 11 | 11 |
 | Services & Twig | 5 | 5 |
 | Admin UI | 5 | 5 |
@@ -147,4 +150,4 @@ Domain **`NowoMarketingKitBundle`** (REQ-I18N-003).
 | Config YAML | 2 | 2 |
 | Twig views | 3 | 3 |
 | Translations | 7 | 7 |
-| **Total production sources** | **61** | **61** |
+| **Total production sources** | **64** | **64** |

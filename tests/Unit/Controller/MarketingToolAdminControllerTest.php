@@ -4,9 +4,14 @@ declare(strict_types=1);
 
 namespace Nowo\MarketingKitBundle\Tests\Unit\Controller;
 
+use Doctrine\DBAL\Driver\AbstractException;
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
+use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\OptimisticLockException;
 use Nowo\MarketingKitBundle\Controller\MarketingToolAdminController;
 use Nowo\MarketingKitBundle\Entity\MarketingTool;
+use Nowo\MarketingKitBundle\EventListener\MarketingToolConflictListener;
 use Nowo\MarketingKitBundle\Form\MarketingToolType;
 use Nowo\MarketingKitBundle\Repository\MarketingToolRepository;
 use Nowo\MarketingKitBundle\Security\MarketingKitAccessCheckerInterface;
@@ -179,6 +184,92 @@ final class MarketingToolAdminControllerTest extends TestCase
 
         self::assertSame(302, $controller->toggle($request, $this->stubFind($repo, $tool))->getStatusCode());
         self::assertTrue($tool->isEnabled());
+    }
+
+    /**
+     * 1.13 (REQ-RUNTIME-003 rule 4): the toggle carries the version its list row was rendered for; the write checks it.
+     */
+    public function testToggleChecksTheVersionItWasRenderedFor(): void
+    {
+        $tool = (new MarketingTool())->setProfile('default')->setCode('gtm')->setEnabled(true);
+        $this->setId($tool, 7);
+
+        $em = $this->createMock(EntityManagerInterface::class);
+        $em->expects(self::once())->method('lock')->with($tool, LockMode::OPTIMISTIC, 1);
+        $em->expects(self::once())->method('flush');
+
+        $request = Request::create('/admin/marketing/7/toggle', 'POST', ['_token' => 't', 'version' => '1']);
+        $request->setSession(new Session(new MockArraySessionStorage()));
+
+        $repo       = $this->createMock(MarketingToolRepository::class);
+        $controller = $this->controller($repo, $em, $this->adminService($repo), $this->createMock(Environment::class), csrfValid: true);
+
+        self::assertSame(302, $controller->toggle($request, $this->stubFind($repo, $tool))->getStatusCode());
+        self::assertFalse($tool->isEnabled());
+    }
+
+    /**
+     * A toggle rendered for an older version leaves the OptimisticLockException to the conflict listener (409 +
+     * X-Error-Code MARKETING_TOOL_STALE); nothing is flushed.
+     */
+    public function testAStaleToggleIsRefused(): void
+    {
+        $tool = (new MarketingTool())->setProfile('default')->setCode('gtm')->setEnabled(true);
+        $this->setId($tool, 7);
+
+        $em = $this->createMock(EntityManagerInterface::class);
+        $em->method('lock')->willThrowException(OptimisticLockException::lockFailedVersionMismatch($tool, 1, 2));
+        $em->expects(self::never())->method('flush');
+
+        $request = Request::create('/admin/marketing/7/toggle', 'POST', ['_token' => 't', 'version' => '1']);
+        $request->setSession(new Session(new MockArraySessionStorage()));
+
+        $repo       = $this->createMock(MarketingToolRepository::class);
+        $controller = $this->controller($repo, $em, $this->adminService($repo), $this->createMock(Environment::class), csrfValid: true);
+
+        $this->expectException(OptimisticLockException::class);
+        $controller->toggle($request, $this->stubFind($repo, $tool));
+    }
+
+    public function testASaveThatLosesTheUniqueRaceAnswersTheForm409WithTheDomainCode(): void
+    {
+        $em = $this->createMock(EntityManagerInterface::class);
+        $em->method('flush')->willThrowException(new UniqueConstraintViolationException(new class('Duplicate entry', '23000', 1062) extends AbstractException {
+        }, null));
+
+        $form = $this->submittedForm();
+        $form->expects(self::once())->method('addError');
+
+        $response = $this->formController($em, $form)->new($this->postRequest('/admin/marketing/new'));
+
+        self::assertSame(409, $response->getStatusCode());
+        self::assertSame(MarketingToolConflictListener::DUPLICATE_CODE, $response->headers->get(MarketingToolConflictListener::ERROR_CODE_HEADER));
+        self::assertNull($response->headers->get('X-Conflict-Code'), 'a domain refusal is never a conflict code');
+    }
+
+    public function testAnEditOpenedOnAnOlderVersionAnswersTheForm409WithTheStaleCode(): void
+    {
+        $tool = (new MarketingTool())->setProfile('default')->setCode('ga4')->setType('ga4');
+        $this->setId($tool, 1);
+
+        $em = $this->createMock(EntityManagerInterface::class);
+        $em->expects(self::once())->method('lock')->with($tool, LockMode::OPTIMISTIC, 3)
+            ->willThrowException(OptimisticLockException::lockFailedVersionMismatch($tool, 3, 4));
+        $em->expects(self::never())->method('flush');
+
+        $version = $this->createMock(FormInterface::class);
+        $version->method('getData')->willReturn('3');
+        $form = $this->submittedForm();
+        $form->method('has')->with('version')->willReturn(true);
+        $form->method('get')->with('version')->willReturn($version);
+        $form->expects(self::once())->method('addError');
+
+        $repo       = $this->createMock(MarketingToolRepository::class);
+        $controller = $this->formController($em, $form, $repo);
+        $response   = $controller->edit($this->postRequest('/admin/marketing/1/edit'), $this->stubFind($repo, $tool));
+
+        self::assertSame(409, $response->getStatusCode());
+        self::assertSame(MarketingToolConflictListener::STALE_TOOL, $response->headers->get(MarketingToolConflictListener::ERROR_CODE_HEADER));
     }
 
     public function testDeleteRemovesTool(): void
@@ -464,6 +555,42 @@ final class MarketingToolAdminControllerTest extends TestCase
 
         $this->expectException(AccessDeniedException::class);
         $controller->index(Request::create('/admin/marketing'));
+    }
+
+    /**
+     * @return FormInterface<mixed>&MockObject
+     */
+    private function submittedForm(): FormInterface&MockObject
+    {
+        $form = $this->createMock(FormInterface::class);
+        $form->method('handleRequest')->willReturnSelf();
+        $form->method('isSubmitted')->willReturn(true);
+        $form->method('isValid')->willReturn(true);
+        $form->method('createView')->willReturn(new FormView());
+
+        return $form;
+    }
+
+    /**
+     * @param FormInterface<mixed> $form
+     */
+    private function formController(EntityManagerInterface $em, FormInterface $form, ?MarketingToolRepository $repo = null): MarketingToolAdminController
+    {
+        $factory = $this->createMock(FormFactoryInterface::class);
+        $factory->method('create')->willReturn($form);
+        $twig = $this->createMock(Environment::class);
+        $twig->method('render')->willReturn('FORM');
+        $repo ??= $this->createMock(MarketingToolRepository::class);
+
+        return $this->controller($repo, $em, $this->adminService($repo), $twig, formFactory: $factory);
+    }
+
+    private function postRequest(string $uri): Request
+    {
+        $request = Request::create($uri, 'POST');
+        $request->setSession(new Session(new MockArraySessionStorage()));
+
+        return $request;
     }
 
     private function adminService(

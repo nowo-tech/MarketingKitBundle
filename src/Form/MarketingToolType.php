@@ -13,6 +13,7 @@ use Nowo\MarketingKitBundle\Enum\ToolType;
 use Nowo\MarketingKitBundle\Provider\ToolIdValidator;
 use Nowo\MarketingKitBundle\Service\MarketingToolCatalog;
 use Symfony\Component\Form\AbstractType;
+use Symfony\Component\Form\Extension\Core\Type\HiddenType;
 use Symfony\Component\Form\Extension\Core\Type\TextareaType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
@@ -92,6 +93,14 @@ final class MarketingToolType extends AbstractType
         ]);
         $this->addInteger($builder, 'sortOrder', [
             'label' => 'Sort order',
+        ]);
+
+        // 1.13 (REQ-RUNTIME-003 rule 4): the version the form was opened with; the controller refuses a save of an older
+        // one (optimistic lock). Not mapped: the client never sets the stored version.
+        $tool = $options['data'] ?? null;
+        $builder->add('version', HiddenType::class, [
+            'mapped' => false,
+            'data'   => $tool instanceof MarketingTool && $tool->getId() !== null ? (string) $tool->getVersion() : null,
         ]);
 
         $builder->addEventListener(FormEvents::PRE_SET_DATA, function (FormEvent $event): void {

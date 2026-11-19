@@ -43,6 +43,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Concurrency (REQ-RUNTIME-003):** every admin write (create, edit, toggle, delete, catalog seed, YAML import) runs in one `Persistence\MarketingToolWriteUnit`: one transaction on the manager of `MarketingTool`, through nowo-tech/transaction-doctrine's runner (now required: `nowo-tech/transaction-contract` ^1.0, `nowo-tech/transaction-doctrine` ^1.6). On the host's manager an open manager is never cleared or reset, and pending host changes refuse the write (`LogicException`); a dedicated `doctrine.entity_manager` is reset after a storage failure.
+- **Optimistic lock:** `MarketingTool::$version` (`#[ORM\Version]`, column `version INT DEFAULT 1 NOT NULL`); the edit form and the toggle form carry the version they were rendered with in a hidden, unmapped `version` field (`CsrfActionType` options `with_version` / `version`).
+- **Conflict answer:** `EventListener\MarketingToolConflictListener` answers a deadlock, lock wait timeout or serialization failure on the admin routes with 409 + `X-Conflict-Code: CONFLICT_001` + `Retry-After` (nothing committed) or 409 + `CONFLICT_002` without `Retry-After` (part of the request committed, from transaction-doctrine's request watermark and the bundle's own commit mark). New options `conflict_response.status` (409 or 503), `retry_after` and `commit_tracking` (`bundle` default: only the bundle's connection is wrapped; transaction-doctrine's `CommitLedger` is reused when its `commit_detection` is on).
+- `docs/CONCURRENCY.md` (write paths, codes, host options, residual risks); CI job "Real databases (MySQL 8.4, MariaDB 11.4, PostgreSQL 16)" on DBAL 3 and 4 with two-connection race tests (`make test-with-db`), and the "Dependency floor (nowo-tech/transaction-* lowest, demo lock)" job with `.scripts/check-demo-lock.py`.
+
+### Changed
+
+- With zero config (no `doctrine.entity_manager`) the admin no longer flushes the host's default entity manager blindly: its writes run in their own transaction and refuse to start while that manager holds unflushed changes of the host's entities (see UPGRADING).
+
+### Fixed
+
+- Two admins toggling the same marketing service at once no longer lose one toggle (read-modify-write without a version): the second answers 409 with `X-Error-Code: MARKETING_TOOL_STALE`. Admin edits of a service changed since its form was opened no longer silently overwrite the newer row: the form answers again with 409 and `X-Error-Code: MARKETING_TOOL_STALE`. Admin-only, contention only.
+- Two admins creating the same code in one profile (or a catalog seed / YAML import racing a create) no longer answer a 500: the form answers 409 with `X-Error-Code: MARKETING_TOOL_DUPLICATE_CODE` (the seed and import get the same code on the error page). The unique (profile, code) key always kept one row.
+- The catalog seed and the YAML import read the rows inside their transaction and write all tools or none.
+- Profile lookups compare the profile byte for byte after the read (REQ-RUNTIME-003 rule 5): on a case-insensitive MySQL / MariaDB collation, `Default` no longer lists the tools of `default`.
+
 ### Demo
 
 - The demo shell is UiKit's admin layout with its default theme and masthead: no hand-written `<style>` shell, no Bootstrap Icons CDN, the demo requires `nowo-tech/ui-kit-bundle` ^2.53 (REQ-DEMO-014). Row actions show text labels; README screenshots re-captured. No bundle runtime change.

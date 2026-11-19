@@ -6,12 +6,18 @@ namespace Nowo\MarketingKitBundle\Service;
 
 use Doctrine\ORM\EntityManagerInterface;
 use Nowo\MarketingKitBundle\Entity\MarketingTool;
+use Nowo\MarketingKitBundle\Persistence\MarketingToolWriteUnit;
 use Nowo\MarketingKitBundle\Repository\MarketingToolRepository;
 
 use function is_array;
 
 /**
  * Seeds and imports marketing tools for the admin CRUD.
+ *
+ * Since 1.13 (REQ-RUNTIME-003 rule 1) each seed and each import is one {@see MarketingToolWriteUnit}: the rows are read
+ * inside the transaction, and all tools are written or none. A code created or a tool edited by another admin at the
+ * same time makes the action fail whole (unique (profile, code) key, optimistic `version`); it can be run again and
+ * writes nothing twice (the seed skips existing codes, the import upserts by code).
  */
 final readonly class MarketingToolAdminService
 {
@@ -24,6 +30,7 @@ final readonly class MarketingToolAdminService
         private EntityManagerInterface $entityManager,
         private array $profiles,
         private string $defaultProfile,
+        private ?MarketingToolWriteUnit $writeUnit = null,
     ) {
     }
 
@@ -54,41 +61,39 @@ final readonly class MarketingToolAdminService
      */
     public function seedCatalog(string $profile): int
     {
-        $existing = [];
-        foreach ($this->repository->findByProfileOrdered($profile) as $tool) {
-            $existing[$tool->getCode()] = true;
-        }
-
-        $created = 0;
-        foreach ($this->catalog->all() as $entry) {
-            if (isset($existing[$entry['code']])) {
-                continue;
+        return $this->writeUnit()->run(function (EntityManagerInterface $manager) use ($profile): int {
+            $existing = [];
+            foreach ($this->repository->findByProfileOrdered($profile) as $tool) {
+                $existing[$tool->getCode()] = true;
             }
 
-            $options = [];
-            foreach ($entry['option_keys'] as $key) {
-                $options[$key] = '';
+            $created = 0;
+            foreach ($this->catalog->all() as $entry) {
+                if (isset($existing[$entry['code']])) {
+                    continue;
+                }
+
+                $options = [];
+                foreach ($entry['option_keys'] as $key) {
+                    $options[$key] = '';
+                }
+
+                $tool = (new MarketingTool())
+                    ->setProfile($profile)
+                    ->setCode($entry['code'])
+                    ->setType($entry['type'])
+                    ->setEnabled(false)
+                    ->setCategory($entry['category'])
+                    ->setPosition($entry['position'])
+                    ->setSortOrder($entry['sort_order'])
+                    ->setOptions($options);
+
+                $manager->persist($tool);
+                ++$created;
             }
 
-            $tool = (new MarketingTool())
-                ->setProfile($profile)
-                ->setCode($entry['code'])
-                ->setType($entry['type'])
-                ->setEnabled(false)
-                ->setCategory($entry['category'])
-                ->setPosition($entry['position'])
-                ->setSortOrder($entry['sort_order'])
-                ->setOptions($options);
-
-            $this->entityManager->persist($tool);
-            ++$created;
-        }
-
-        if ($created > 0) {
-            $this->entityManager->flush();
-        }
-
-        return $created;
+            return $created;
+        });
     }
 
     /**
@@ -109,28 +114,36 @@ final readonly class MarketingToolAdminService
             return 0;
         }
 
-        $byCode = [];
-        foreach ($this->repository->findByProfileOrdered($profile) as $tool) {
-            $byCode[$tool->getCode()] = $tool;
-        }
+        return $this->writeUnit()->run(function (EntityManagerInterface $manager) use ($profile, $tools): int {
+            $byCode = [];
+            foreach ($this->repository->findByProfileOrdered($profile) as $tool) {
+                $byCode[$tool->getCode()] = $tool;
+            }
 
-        $touched = 0;
-        foreach ($tools as $code => $definition) {
-            $tool = $byCode[$code] ?? (new MarketingTool())->setProfile($profile)->setCode((string) $code);
-            $tool
-                ->setType((string) ($definition['type'] ?? 'custom'))
-                ->setEnabled((bool) ($definition['enabled'] ?? true))
-                ->setCategory((string) ($definition['category'] ?? 'marketing'))
-                ->setPosition((string) ($definition['position'] ?? 'head'))
-                ->setSortOrder((int) ($definition['sort_order'] ?? 0))
-                ->setOptions(is_array($definition['options'] ?? null) ? $definition['options'] : []);
+            $touched = 0;
+            foreach ($tools as $code => $definition) {
+                $tool = $byCode[$code] ?? (new MarketingTool())->setProfile($profile)->setCode((string) $code);
+                $tool
+                    ->setType((string) ($definition['type'] ?? 'custom'))
+                    ->setEnabled((bool) ($definition['enabled'] ?? true))
+                    ->setCategory((string) ($definition['category'] ?? 'marketing'))
+                    ->setPosition((string) ($definition['position'] ?? 'head'))
+                    ->setSortOrder((int) ($definition['sort_order'] ?? 0))
+                    ->setOptions(is_array($definition['options'] ?? null) ? $definition['options'] : []);
 
-            $this->entityManager->persist($tool);
-            ++$touched;
-        }
+                $manager->persist($tool);
+                ++$touched;
+            }
 
-        $this->entityManager->flush();
+            return $touched;
+        });
+    }
 
-        return $touched;
+    /**
+     * The injected write unit, else one on the injected manager (the host's: never cleared or reset while open).
+     */
+    private function writeUnit(): MarketingToolWriteUnit
+    {
+        return $this->writeUnit ?? new MarketingToolWriteUnit($this->entityManager);
     }
 }

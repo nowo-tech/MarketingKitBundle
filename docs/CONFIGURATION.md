@@ -39,6 +39,10 @@ nowo_marketing_kit:
     doctrine:
         table_prefix: ''
         entity_manager: null   # 1.10.0+: dedicated manager for MarketingTool; null = the default manager
+    conflict_response:         # 1.13+: lock conflicts on the admin (REQ-RUNTIME-003, docs/CONCURRENCY.md)
+        status: null           # 409 (default) or 503
+        retry_after: null      # seconds of a CONFLICT_001 answer (default 1)
+        commit_tracking: bundle   # bundle | all | off
     default_profile: default
     profiles:
         default:
@@ -66,6 +70,9 @@ nowo_marketing_kit:
 | `doctrine.table_prefix` | string | `''` | Prefixed onto `marketing_tool` |
 | `doctrine.entity_manager` | ?string | `null` | Since 1.10.0. Dedicated entity manager for `MarketingTool`. The entity is mapped on that manager only (removed from every other one, including `auto_mapping` and a default metadata driver such as DoctrineBundle 3.4 `auto_discover_entities`; fixed in Unreleased), the admin reads and writes through it, and before an admin route the bundle resets it when a failed flush of an earlier request left it closed (FrankenPHP worker mode without kernel reset). Other managers of the host, closed or open, are never touched. The build fails when the manager does not exist. `null`: the default manager, as before. |
 | `doctrine.connection` | string | `default` | **Deprecated since 1.6, no effect.** The bundle always reads and writes `MarketingTool` through the default Doctrine entity manager and its connection; the `marketing_tool` table must live there. Setting the key triggers a deprecation; remove it. |
+| `conflict_response.status` | ?int | `null` | Since 1.13. Status of a lock conflict on the admin routes: `409` (default) or `503`. `null` follows `nowo_transaction_doctrine.conflict_response`, else 409. See [CONCURRENCY](CONCURRENCY.md). |
+| `conflict_response.retry_after` | ?int | `null` | Since 1.13. `Retry-After` seconds of a `CONFLICT_001` answer. `null` follows transaction-doctrine, else 1. |
+| `conflict_response.commit_tracking` | enum | `bundle` | Since 1.13. Commits counted for `CONFLICT_002`: `bundle` (the connection of the bundle's entity manager only), `all` (every Doctrine connection) or `off`. Ignored when transaction-doctrine's `commit_detection` is on (its ledger is reused). |
 | `default_profile` | string | `default` | Must exist under `profiles` |
 | `profiles` | map | `{default: …}` | Named profiles (REQ-CFG-001) |
 

@@ -72,6 +72,8 @@ Install and configure marketing tools (GTM, GA4, Meta Pixel, LinkedIn, TikTok, H
 | FR-MK-009 | Admin access control: `security.access_roles`, custom `access_checker`, demo-only `allow_unauthenticated` (REQ-UI-002) |
 | FR-MK-012 | Optional dedicated entity manager (`doctrine.entity_manager`): validated at build time, bundle entities mapped on that manager only, cleared at the outermost unit-of-work boundary |
 | FR-MK-013 | Ports for DDD hosts (REQ-ARCH-001): `MarketingConfigResolverInterface`, `MarketingToolSourceInterface` (default `DoctrineMarketingToolSource`) and `MarketingScriptRendererInterface` |
+| FR-MK-014 | Every admin write (create, edit, toggle, delete, catalog seed, YAML import) runs in one `MarketingToolWriteUnit` transaction; on the host's entity manager an open manager is never cleared or reset and pending host changes refuse the write; edits and toggles are checked against the optimistic `version` they were rendered with (REQ-RUNTIME-003) |
+| FR-MK-015 | A lock conflict on the admin routes answers 409 (configurable to 503) with `X-Conflict-Code: CONFLICT_001` + `Retry-After`, or `CONFLICT_002` without `Retry-After` once part of the request committed; a duplicate code or a stale edit answers 409 with `X-Error-Code` (`MARKETING_TOOL_DUPLICATE_CODE`, `MARKETING_TOOL_STALE`); the commit-tracking middleware wraps only the bundle's connection by default |
 
 ### Runtime (FrankenPHP worker)
 

@@ -6,6 +6,7 @@ namespace Nowo\MarketingKitBundle\DependencyInjection\Compiler;
 
 use Nowo\MarketingKitBundle\Doctrine\ExcludedEntityNamespaceDriver;
 use Nowo\MarketingKitBundle\EventSubscriber\MarketingKitEntityManagerClearSubscriber;
+use Nowo\MarketingKitBundle\Persistence\MarketingToolWriteUnit;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\DependencyInjection\Argument\IteratorArgument;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
@@ -90,6 +91,11 @@ final class EntityManagerOptionPass implements CompilerPassInterface
         // 1.10.1 (REQ-RUNTIME-002 rule 4): the boundary subscriber clears the bundle-owned manager, never the host's
         // default one (doctrine.entity_manager may name it explicitly).
         $default = $container->hasParameter('doctrine.default_entity_manager') ? $container->getParameter('doctrine.default_entity_manager') : null;
+        // 1.13 (REQ-RUNTIME-003 rule 2): a configured manager other than the host's default is the bundle's own, so the
+        // MarketingToolWriteUnit may reset it after a failure; the host's default manager never is.
+        if ($name !== $default && $container->hasDefinition(MarketingToolWriteUnit::class)) {
+            $container->getDefinition(MarketingToolWriteUnit::class)->setArgument('$ownManager', true);
+        }
         if ($name !== $default && $container->hasDefinition(MarketingKitEntityManagerClearSubscriber::class)) {
             $container->getDefinition(MarketingKitEntityManagerClearSubscriber::class)->setArgument('$entityManagers', new IteratorArgument([
                 new Reference(sprintf('doctrine.orm.%s_entity_manager', $name), ContainerInterface::IGNORE_ON_UNINITIALIZED_REFERENCE),

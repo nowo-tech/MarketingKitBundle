@@ -69,9 +69,13 @@ interface MarketingToolSourceInterface
 
 ## Entity manager (rule 6)
 
-By default (`nowo_marketing_kit.doctrine.entity_manager: null`) `MarketingTool` lives on the host's default manager and
-the admin CRUD (`MarketingToolAdminController`, `MarketingToolAdminService`) flushes that manager. Its flush can also
-write changes the host left pending in the same request. This default stays until 2.0 (accepted ⚠️ in REQ-ARCH-001).
+By default (`nowo_marketing_kit.doctrine.entity_manager: null`) `MarketingTool` lives on the host's default manager.
+Since 1.13 every admin write (`MarketingToolAdminController`, `MarketingToolAdminService`) runs in one
+`MarketingToolWriteUnit` on that manager: its own transaction, flushed before the commit, and it refuses to start with
+a `LogicException` while the manager holds unflushed changes of other entities, so the host's pending work is never
+written or rolled back by the bundle. An open host manager is never cleared or reset (see
+[CONCURRENCY](CONCURRENCY.md)). Before 1.13 the admin flushed that manager blindly, including the host's pending
+changes. The default manager stays the default until 2.0 (REQ-ARCH-001 rule 6: opt-in dedicated manager below).
 
 Opt-in since 1.10.0: set `doctrine.entity_manager` to a dedicated manager. The entity is then mapped on that manager
 only, the admin reads and writes through it, `ClosedEntityManagerSubscriber` resets only it, and
@@ -109,6 +113,6 @@ Install, configure `profiles` in YAML, add the Twig functions to the layout. For
 | 3 No framework types in ports / VOs | None |
 | 4 Events carry IDs | No events |
 | 5 SPI | Ports above; Twig template overrides for the admin |
-| 6 No host EM flush | ⚠️ opt-in (`doctrine.entity_manager`); the default changes in 2.0 |
+| 6 No host EM flush | ⚠️ opt-in (`doctrine.entity_manager`); since 1.13 the default write unit refuses pending host work; the default changes in 2.0 |
 | 7 Events after commit | No events |
 | 8 Config through provider ports | YAML tree + `MarketingToolSourceInterface` |

@@ -34,6 +34,7 @@ final class MarketingToolTest extends TestCase
         self::assertSame('head', $tool->getPosition());
         self::assertSame(2, $tool->getSortOrder());
         self::assertSame(['container_id' => 'GTM-1'], $tool->getOptions());
+        self::assertSame(1, $tool->getVersion(), '1.13: optimistic version of a new row');
     }
 
     public function testDeclaresUniqueEntityOnProfileAndCode(): void

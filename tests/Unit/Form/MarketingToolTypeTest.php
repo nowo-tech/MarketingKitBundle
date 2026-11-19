@@ -8,6 +8,7 @@ use Nowo\MarketingKitBundle\Entity\MarketingTool;
 use Nowo\MarketingKitBundle\Form\MarketingToolType;
 use Nowo\MarketingKitBundle\Service\MarketingToolCatalog;
 use Nowo\MarketingKitBundle\Tests\Support\FormKitTestSupport;
+use ReflectionProperty;
 use Symfony\Component\Form\FormTypeInterface;
 use Symfony\Component\Form\Test\TypeTestCase;
 
@@ -33,6 +34,22 @@ final class MarketingToolTypeTest extends TypeTestCase
         /** @var mixed $data */
         $data = $form->getData();
         self::assertIsArray($data);
+    }
+
+    /**
+     * 1.13 (REQ-RUNTIME-003 rule 4): the edit form carries the version it was opened with (hidden, unmapped); a new
+     * tool has none.
+     */
+    public function testTheEditFormCarriesTheVersionItWasOpenedWith(): void
+    {
+        $tool = (new MarketingTool())->setProfile('default')->setCode('gtm')->setType('gtm');
+        $new  = $this->factory->create(MarketingToolType::class, $tool, ['profile_choices' => ['default']]);
+        self::assertNull($new->get('version')->getData());
+
+        (new ReflectionProperty(MarketingTool::class, 'id'))->setValue($tool, 5);
+        $edit = $this->factory->create(MarketingToolType::class, $tool, ['profile_choices' => ['default']]);
+        self::assertSame('1', $edit->get('version')->getData());
+        self::assertFalse($edit->get('version')->getConfig()->getMapped());
     }
 
     public function testSubmitMapsProviderOptions(): void

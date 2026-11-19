@@ -163,6 +163,7 @@ make -C demo/symfony8 demo-screenshots   # refresh docs/images/demo/*.webp
 - [GitHub Actions CI requirements](docs/GITHUB_CI.md)
 - [Demo with FrankenPHP](docs/DEMO-FRANKENPHP.md) (includes worker mode)
 - [FrankenPHP worker audit](docs/FRANKENPHP-WORKER-AUDIT.md) (kernel not reset / scenario B)
+- [Concurrency (REQ-RUNTIME-003)](docs/CONCURRENCY.md)
 - [Server cookbook (Nginx, php-fpm, FrankenPHP)](docs/SERVERS.md)
 
 ## Tests and coverage

@@ -42,6 +42,53 @@
 
 ## Unreleased
 
+From **1.12.0** (REQ-RUNTIME-003, see [CONCURRENCY.md](CONCURRENCY.md)):
+
+```bash
+composer update nowo-tech/marketing-kit-bundle -w
+```
+
+1. **Dependencies:** `nowo-tech/transaction-contract` ^1.0 and `nowo-tech/transaction-doctrine` ^1.6 are now required
+   (they bring `doctrine/dbal`). Use `-w` so Composer installs them.
+2. **Schema:** `marketing_tool` gets an optimistic-lock column. Generate a migration (`doctrine:migrations:diff`) or run
+   `doctrine:schema:update`; the SQL is `ALTER TABLE marketing_tool ADD version INT DEFAULT 1 NOT NULL` (with your
+   `doctrine.table_prefix`). Existing rows start at version 1. Do this before deploying the code: the admin and the
+   entity read the column.
+3. **Pending host changes (BC):** without `doctrine.entity_manager`, the admin writes on the host's default entity
+   manager. An admin write (or a call of `MarketingToolAdminService::seedCatalog()` / `importFromYaml()` from your code)
+   now refuses to start with a `LogicException` when that manager has unflushed changes on entities other than
+   `MarketingTool` (the same rule as transaction-doctrine's `DoctrineTransactionRunner::forHostEntityManager()`): the
+   bundle no longer flushes the host's work inside its transaction. Flush or clear your own changes before calling the
+   admin service, or set a dedicated `doctrine.entity_manager`.
+4. **nowo-tech/doctrine-encrypt-bundle hosts:** entities with encrypted fields are decrypted in place after loading, so
+   when they are managed by the host's default manager they always count as pending changes and every admin write on
+   that manager throws the `LogicException` above. Set a dedicated `doctrine.entity_manager` for `MarketingTool`.
+5. **Conflicts:** a lock conflict (deadlock, lock wait timeout, serialization failure) on the admin routes answers 409 +
+   `X-Conflict-Code: CONFLICT_001` (with `Retry-After`) or `CONFLICT_002` (without) instead of a 500. Set
+   `nowo_marketing_kit.conflict_response.status: 503` to answer 503 instead. A duplicate code or a stale edit / toggle
+   answers 409 with `X-Error-Code` (`MARKETING_TOOL_DUPLICATE_CODE`, `MARKETING_TOOL_STALE`), never a conflict code.
+6. **Templates:** the edit form and the toggle form have a new hidden `version` field. A host template that renders the
+   fields one by one must also render `form.version` (or `form_rest(form)`), otherwise the stale check falls back to
+   the version read in the request. A `web_ui.templates.form` override that replaces `nowo_ui_form_body` should render
+   `form_errors(form)`: the duplicate / stale message is a form-level error.
+7. **Commit tracking:** `conflict_response.commit_tracking` decides which connections get transaction-doctrine's
+   commit-tracking DBAL middleware (it counts commits for `CONFLICT_002`):
+   - `bundle` (default): only the connection of the bundle's entity manager (`doctrine.entity_manager`, else the
+     default one). Without a dedicated manager this is usually the host's default connection, so the host's own
+     queries on it go through the middleware too;
+   - `all`: every Doctrine connection;
+   - `off`: none.
+   When transaction-doctrine's `commit_detection` is on, its ledger is reused and the bundle wraps nothing. On DBAL 3,
+   `Connection::commit()` of a wrapped connection returns `null` instead of `true`: hosts that check that return value
+   set `commit_tracking: off` or enable transaction-doctrine's `commit_detection`.
+8. **Exact profiles (BC):** `MarketingToolRepository::findByProfileOrdered()` and `findToolRowsByProfile()` now match the
+   profile byte for byte on every database. Before, MySQL / MariaDB matched it case-insensitively (column collation), so
+   `Default` also listed the rows of `default`. Check that the profile names your rows and templates use match exactly
+   (`SELECT DISTINCT profile FROM <table_prefix>marketing_tool`).
+9. **Constructors:** `MarketingToolAdminController` and `MarketingToolAdminService` take an optional last argument
+   `?MarketingToolWriteUnit $writeUnit` (autowired). Code that builds them by hand keeps working; without it they build
+   a write unit on the injected manager.
+
 ## To 1.12.0
 
 From **1.11.0**:
