@@ -42,7 +42,6 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 use function gc_collect_cycles;
 use function is_array;
-use function is_callable;
 use function json_decode;
 use function json_encode;
 use function memory_get_usage;
@@ -410,8 +409,8 @@ final class DddEntityManagerKernelTest extends KernelTestCase
         $dispatcher = $this->dispatcher();
         foreach ([WorkerMessageHandledEvent::class, WorkerMessageFailedEvent::class] as $event) {
             foreach ($dispatcher->getListeners($event) as $listener) {
-                if (is_array($listener) && $listener[0] instanceof DoctrineClearEntityManagerWorkerSubscriber && is_callable($listener)) {
-                    $dispatcher->removeListener($event, $listener);
+                if (is_array($listener) && $listener[0] instanceof DoctrineClearEntityManagerWorkerSubscriber) {
+                    $dispatcher->removeSubscriber($listener[0]);
                 }
             }
         }
