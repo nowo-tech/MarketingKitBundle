@@ -43,6 +43,9 @@ use Twig\Environment;
 
 final class MarketingToolAdminControllerTest extends TestCase
 {
+    /** @var array<string, mixed> context of the last page rendered through formController() */
+    private array $rendered = [];
+
     public function testIndexFallsBackForUnknownProfile(): void
     {
         $repo = $this->createMock(MarketingToolRepository::class);
@@ -209,8 +212,8 @@ final class MarketingToolAdminControllerTest extends TestCase
     }
 
     /**
-     * A toggle rendered for an older version leaves the OptimisticLockException to the conflict listener (409 +
-     * X-Error-Code MARKETING_TOOL_STALE); nothing is flushed.
+     * A toggle rendered for an older version is refused: nothing is flushed, the admin goes back to the freshly read
+     * list with the stale message flashed and X-Error-Code MARKETING_TOOL_STALE (audit US-4), never a conflict code.
      */
     public function testAStaleToggleIsRefused(): void
     {
@@ -221,14 +224,46 @@ final class MarketingToolAdminControllerTest extends TestCase
         $em->method('lock')->willThrowException(OptimisticLockException::lockFailedVersionMismatch($tool, 1, 2));
         $em->expects(self::never())->method('flush');
 
+        $session = new Session(new MockArraySessionStorage());
         $request = Request::create('/admin/marketing/7/toggle', 'POST', ['_token' => 't', 'version' => '1']);
-        $request->setSession(new Session(new MockArraySessionStorage()));
+        $request->setSession($session);
 
         $repo       = $this->createMock(MarketingToolRepository::class);
-        $controller = $this->controller($repo, $em, $this->adminService($repo), $this->createMock(Environment::class), csrfValid: true);
+        $controller = $this->controller($repo, $em, $this->adminService($repo), $this->createMock(Environment::class), csrfValid: true, request: $request);
 
-        $this->expectException(OptimisticLockException::class);
-        $controller->toggle($request, $this->stubFind($repo, $tool));
+        $response = $controller->toggle($request, $this->stubFind($repo, $tool));
+
+        self::assertSame(302, $response->getStatusCode());
+        self::assertSame(MarketingToolConflictListener::STALE_TOOL, $response->headers->get(MarketingToolConflictListener::ERROR_CODE_HEADER));
+        self::assertNull($response->headers->get('X-Conflict-Code'));
+        self::assertSame([MarketingToolConflictListener::STALE_TOOL_MESSAGE], $session->getFlashBag()->peek('error'));
+        self::assertTrue($tool->isEnabled(), 'not flipped');
+    }
+
+    /**
+     * Audit US-5: an invalid submit detaches the bound tool, so a later flush of the host's manager cannot write the
+     * unvalidated values; nothing else is detached.
+     */
+    public function testAnInvalidSubmitForgetsTheBoundTool(): void
+    {
+        $tool = (new MarketingTool())->setProfile('default')->setCode('ga4')->setType('ga4');
+        $this->setId($tool, 1);
+
+        $em = $this->createMock(EntityManagerInterface::class);
+        $em->method('contains')->with($tool)->willReturn(true);
+        $em->expects(self::once())->method('detach')->with($tool);
+        $em->expects(self::never())->method('flush');
+
+        $form = $this->createMock(FormInterface::class);
+        $form->method('handleRequest')->willReturnSelf();
+        $form->method('isSubmitted')->willReturn(true);
+        $form->method('isValid')->willReturn(false);
+        $form->method('createView')->willReturn(new FormView());
+
+        $repo     = $this->createMock(MarketingToolRepository::class);
+        $response = $this->formController($em, $form, $repo)->edit($this->postRequest('/admin/marketing/1/edit'), $this->stubFind($repo, $tool));
+
+        self::assertSame(422, $response->getStatusCode());
     }
 
     public function testASaveThatLosesTheUniqueRaceAnswersTheForm409WithTheDomainCode(): void
@@ -245,6 +280,7 @@ final class MarketingToolAdminControllerTest extends TestCase
         self::assertSame(409, $response->getStatusCode());
         self::assertSame(MarketingToolConflictListener::DUPLICATE_CODE, $response->headers->get(MarketingToolConflictListener::ERROR_CODE_HEADER));
         self::assertNull($response->headers->get('X-Conflict-Code'), 'a domain refusal is never a conflict code');
+        self::assertSame('/nowo_marketing_kit_admin_new', $this->rendered['reload_url'], 'audit US-4: a fresh form');
     }
 
     public function testAnEditOpenedOnAnOlderVersionAnswersTheForm409WithTheStaleCode(): void
@@ -270,6 +306,7 @@ final class MarketingToolAdminControllerTest extends TestCase
 
         self::assertSame(409, $response->getStatusCode());
         self::assertSame(MarketingToolConflictListener::STALE_TOOL, $response->headers->get(MarketingToolConflictListener::ERROR_CODE_HEADER));
+        self::assertSame('/nowo_marketing_kit_admin_edit', $this->rendered['reload_url'], 'audit US-4: read the row again');
     }
 
     public function testDeleteRemovesTool(): void
@@ -579,7 +616,11 @@ final class MarketingToolAdminControllerTest extends TestCase
         $factory = $this->createMock(FormFactoryInterface::class);
         $factory->method('create')->willReturn($form);
         $twig = $this->createMock(Environment::class);
-        $twig->method('render')->willReturn('FORM');
+        $twig->method('render')->willReturnCallback(function (string $name, array $context): string {
+            $this->rendered = $context;
+
+            return 'FORM';
+        });
         $repo ??= $this->createMock(MarketingToolRepository::class);
 
         return $this->controller($repo, $em, $this->adminService($repo), $twig, formFactory: $factory);

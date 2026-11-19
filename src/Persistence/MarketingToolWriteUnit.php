@@ -86,7 +86,15 @@ final readonly class MarketingToolWriteUnit
             return $result;
         }
 
-        $this->assertNoHostPendingChanges($manager);
+        try {
+            $this->assertNoHostPendingChanges($manager);
+        } catch (LogicException $refused) {
+            // Audit US-1: the form already bound its values into a managed tool; forget it, so a later flush of the
+            // host's own work never writes the refused (unsaved) values.
+            $this->releaseHostManager($manager);
+
+            throw $refused;
+        }
 
         try {
             /** @var T $result */

@@ -24,9 +24,9 @@ Every write runs in one `Persistence\MarketingToolWriteUnit` (rule 1): one trans
 
 | Path | Transaction | Concurrency control (rule 4) | Answer when it loses a race |
 |------|-------------|------------------------------|-----------------------------|
-| Admin create (`POST /new`) | one write unit | unique key `uniq_marketing_tool_profile_code` (profile, code) + catch | the form again, 409, `X-Error-Code: MARKETING_TOOL_DUPLICATE_CODE` |
-| Admin edit (`POST /{id}/edit`) | one write unit | optimistic `version` column: the form carries the version it was opened with (`lock(OPTIMISTIC)` before the write) and the UPDATE checks it | the form again, 409, `X-Error-Code: MARKETING_TOOL_STALE`; a changed profile or code can also meet the unique key (`DUPLICATE_CODE`) |
-| Admin toggle (`POST /{id}/toggle`) | one write unit | optimistic `version`: the toggle form carries the version its list row was rendered for, and the UPDATE checks the version read in the request, so two toggles never lose one | 409, `X-Error-Code: MARKETING_TOOL_STALE` (host error page); reload the list and toggle again |
+| Admin create (`POST /new`) | one write unit | unique key `uniq_marketing_tool_profile_code` (profile, code) + catch | the form again, 409, `X-Error-Code: MARKETING_TOOL_DUPLICATE_CODE`, with a link to a fresh form |
+| Admin edit (`POST /{id}/edit`) | one write unit | optimistic `version` column: the form carries the version it was opened with (`lock(OPTIMISTIC)` before the write) and the UPDATE checks it | the form again, 409, `X-Error-Code: MARKETING_TOOL_STALE`, with a link that reads the current row again; a changed profile or code can also meet the unique key (`DUPLICATE_CODE`) |
+| Admin toggle (`POST /{id}/toggle`) | one write unit | optimistic `version`: the toggle form carries the version its list row was rendered for, and the UPDATE checks the version read in the request, so two toggles never lose one | back to the freshly read list (redirect) with the stale message flashed and `X-Error-Code: MARKETING_TOOL_STALE`; toggle again |
 | Admin delete (`POST /{id}/delete`) | one write unit | none needed: deleting is idempotent for the admin; a delete wins over a concurrent edit | — |
 | Catalog seed (`POST /seed`) | one write unit for the whole profile (codes read inside it, all created or none) | unique key + catch | 409, `X-Error-Code: MARKETING_TOOL_DUPLICATE_CODE` (host error page); run it again, it creates only the missing codes |
 | YAML import (`POST /import-yaml`) | one write unit for the whole profile (rows read inside it, all written or none) | unique key + optimistic `version` | 409, `X-Error-Code: MARKETING_TOOL_DUPLICATE_CODE` or `MARKETING_TOOL_STALE` (host error page); run it again, it upserts by code |
@@ -41,15 +41,17 @@ re-check the profile byte for byte after the read, so a case-insensitive MySQL /
 
 ## Conflict answers and codes
 
-`EventListener\MarketingToolConflictListener` (kernel.exception, priority -64) answers for the bundle's admin
-controller only; host routes keep the host's error handling.
+`EventListener\MarketingToolConflictListener` (kernel.exception, priority 8: before the framework's
+`ErrorListener::logKernelException()` at 0, so an expected 409 is not logged as a CRITICAL storage error) answers for
+the bundle's admin controller only; host routes keep the host's error handling. It is registered only while
+`web_ui.enabled` is true.
 
 | Failure | Status | Headers | Body (host error page) |
 |---------|--------|---------|------------------------|
 | Deadlock, lock wait timeout, serialization failure (MySQL 1213 / 1205, MariaDB 1020, PostgreSQL 40001 / 40P01 / 55P03), with nothing committed in the request | 409 (configurable to 503) | `X-Conflict-Code: CONFLICT_001`, `Retry-After` | "Another change to the marketing services is being saved at the same time. Retry in a moment." |
 | The same after a commit earlier in the same request, or a lost savepoint of unknown outcome | 409 (or 503) | `X-Conflict-Code: CONFLICT_002`, no `Retry-After` | "Part of the change may already be saved. Reload the page before trying again." |
 | Code already used in the profile (seed, import) | 409 | `X-Error-Code: MARKETING_TOOL_DUPLICATE_CODE` | fixed message |
-| Tool changed since it was read (toggle, import) | 409 | `X-Error-Code: MARKETING_TOOL_STALE` | fixed message |
+| Tool changed since it was read (import) | 409 | `X-Error-Code: MARKETING_TOOL_STALE` | fixed message |
 | Lost connection, any other database error | not mapped | — | a real error (500) |
 
 - `CONFLICT_001`: nothing was committed; retrying is safe.
@@ -82,6 +84,9 @@ nowo_marketing_kit:
 - `all`: every Doctrine connection.
 - `off`: no middleware; only the failure itself and transaction-doctrine's request mark decide.
 
+With `web_ui.enabled: false` no admin route answers a conflict, so the bundle registers no ledger, middleware or
+listener whatever `commit_tracking` says.
+
 When nowo-tech/transaction-doctrine's bundle is registered with `commit_detection`, its `CommitLedger` is reused and the
 bundle registers no middleware: no connection is wrapped twice. On DBAL 3, `Connection::commit()` of a wrapped
 connection returns `null` instead of `true`; hosts that check that return value set `commit_tracking: off` or enable
@@ -100,6 +105,9 @@ FrankenPHP worker mode with kernel reset off, standard and DDD hosts:
   fields of nowo-tech/doctrine-encrypt-bundle (decrypted after loading), always count as pending changes. With such
   entities managed by the host's manager, every admin write on that manager throws the `LogicException` above: set a
   dedicated `doctrine.entity_manager` for `MarketingTool`.
+- **Values that are never saved are forgotten.** When the unit refuses to start, and after an invalid submit (422),
+  the tool the form bound is detached from the manager, so a later flush of the host's own work never writes the
+  refused or unvalidated values.
 - **Bundle's own manager** (`doctrine.entity_manager` set to a manager other than the host's default):
   `DoctrineTransactionRunner::forEntityManager()`; after a storage failure that manager is closed and reset.
 - Nested in a host transaction, the unit runs on a savepoint and repairs the nesting level after a failure (rule 3); a

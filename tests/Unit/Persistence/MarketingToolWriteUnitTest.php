@@ -77,6 +77,34 @@ final class MarketingToolWriteUnitTest extends TestCase
         self::assertSame(0, (int) $manager->getConnection()->fetchOne('SELECT COUNT(*) FROM host_note'));
     }
 
+    /**
+     * Audit US-1: a refused unit also forgets the tool the form bound before it, so a later flush of the host's own
+     * work never writes the refused values; the host's entity stays managed.
+     */
+    public function testARefusedUnitForgetsTheBoundToolButNotTheHostWork(): void
+    {
+        [$registry, $manager] = $this->hostManager();
+        $tool                 = (new MarketingTool())->setCode('gtm');
+        $manager->persist($tool);
+        $manager->flush();
+
+        $tool->setSortOrder(99); // bound by the form
+        $note = new HostNote();
+        $manager->persist($note); // the host's pending work
+
+        try {
+            (new MarketingToolWriteUnit($manager, $registry))->run(static fn (EntityManagerInterface $em): null => null);
+            self::fail('The host work must not be carried.');
+        } catch (LogicException) {
+        }
+
+        self::assertFalse($manager->contains($tool), 'the refused tool is forgotten');
+        self::assertTrue($manager->contains($note), 'the host work is left alone');
+        $manager->flush(); // the host flushes its own work later
+        self::assertSame(0, (int) $manager->getConnection()->fetchOne('SELECT sortOrder FROM marketing_tool'), 'the refused value never reached the row');
+        self::assertSame(1, (int) $manager->getConnection()->fetchOne('SELECT COUNT(*) FROM host_note'));
+    }
+
     public function testPendingHostCollectionChangesRefuseTheUnit(): void
     {
         $unitOfWork = $this->createStub(UnitOfWork::class);

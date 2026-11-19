@@ -66,7 +66,9 @@ composer update nowo-tech/marketing-kit-bundle -w
 5. **Conflicts:** a lock conflict (deadlock, lock wait timeout, serialization failure) on the admin routes answers 409 +
    `X-Conflict-Code: CONFLICT_001` (with `Retry-After`) or `CONFLICT_002` (without) instead of a 500. Set
    `nowo_marketing_kit.conflict_response.status: 503` to answer 503 instead. A duplicate code or a stale edit / toggle
-   answers 409 with `X-Error-Code` (`MARKETING_TOOL_DUPLICATE_CODE`, `MARKETING_TOOL_STALE`), never a conflict code.
+   answers 409 with `X-Error-Code` (`MARKETING_TOOL_DUPLICATE_CODE`, `MARKETING_TOOL_STALE`), never a conflict code;
+   a stale toggle redirects back to the list with the message flashed and the same `X-Error-Code`. The conflict
+   listener runs at kernel.exception priority 8 (before the framework logs the exception), on the bundle's routes only.
 6. **Templates:** the edit form and the toggle form have a new hidden `version` field. A host template that renders the
    fields one by one must also render `form.version` (or `form_rest(form)`), otherwise the stale check falls back to
    the version read in the request. A `web_ui.templates.form` override that replaces `nowo_ui_form_body` should render
@@ -78,7 +80,8 @@ composer update nowo-tech/marketing-kit-bundle -w
      queries on it go through the middleware too;
    - `all`: every Doctrine connection;
    - `off`: none.
-   When transaction-doctrine's `commit_detection` is on, its ledger is reused and the bundle wraps nothing. On DBAL 3,
+   With `web_ui.enabled: false` the bundle registers no ledger, middleware or conflict listener at all. When
+   transaction-doctrine's `commit_detection` is on, its ledger is reused and the bundle wraps nothing. On DBAL 3,
    `Connection::commit()` of a wrapped connection returns `null` instead of `true`: hosts that check that return value
    set `commit_tracking: off` or enable transaction-doctrine's `commit_detection`.
 8. **Exact profiles (BC):** `MarketingToolRepository::findByProfileOrdered()` and `findToolRowsByProfile()` now match the

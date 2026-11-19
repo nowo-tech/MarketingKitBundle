@@ -55,8 +55,11 @@ use function str_starts_with;
  */
 final readonly class MarketingToolConflictListener
 {
-    /** kernel.exception priority: after the application's own listeners, before the framework's error listener (-128). */
-    public const PRIORITY = -64;
+    /**
+     * kernel.exception priority: above the framework's ErrorListener::logKernelException() (0), so an expected 409 is
+     * logged as the 409 it becomes, not as a CRITICAL storage error (audit US-3); only the bundle's routes are mapped.
+     */
+    public const PRIORITY = 8;
 
     /** kernel.request priority: before the router (32) and the firewall (8), so no controller wrote yet. */
     public const REQUEST_PRIORITY = 2048;

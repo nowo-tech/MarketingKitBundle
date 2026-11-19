@@ -14,6 +14,7 @@ admin.empty: Ainda não há serviços. Use «Semear catálogo» ou «Adicionar s
 admin.confirm_delete: Eliminar este serviço de marketing?
 admin.db_config_hint: 'Defina use_database_config: true para que a BD substitua o YAML em runtime.'
 admin.provider_options: Opções do fornecedor
+admin.reload: Recarregar a versão atual deste serviço
 admin.on: Ativo
 admin.off: Inativo
 admin.col.service: Serviço

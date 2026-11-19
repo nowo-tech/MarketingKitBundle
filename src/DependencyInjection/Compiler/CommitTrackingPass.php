@@ -24,7 +24,8 @@ use function sprintf;
  * - `conflict_response.commit_tracking: bundle` (default): the bundle's middleware wraps only the connection of the
  *   bundle's entity manager (`doctrine.entity_manager`, else the default one), never the host's other connections.
  * - `all`: every connection (the tag stays without a `connection` attribute).
- * - `off`, or `use_database_config` false: the extension registered nothing; this pass does nothing.
+ * - `off`, or `web_ui.enabled` false (no admin route answers a conflict, audit US-2): the extension registered nothing;
+ *   this pass does nothing.
  *
  * Runs before DoctrineBundle's MiddlewaresPass (priority 0).
  */

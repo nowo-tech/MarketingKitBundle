@@ -173,7 +173,11 @@ final class NowoMarketingKitExtension extends Extension implements PrependExtens
             $container->getDefinition(MarketingToolAdminController::class)->setArgument('$entityManager', $reference);
             $container->getDefinition(MarketingToolWriteUnit::class)->setArgument('$entityManager', $reference);
         }
-        $this->registerConflictAnswer($container, $config['conflict_response']);
+        if ($config['web_ui']['enabled']) {
+            // Audit US-2: without the admin routes nothing answers a conflict, so no ledger, middleware or listener
+            // (the host's connection is not wrapped for nothing).
+            $this->registerConflictAnswer($container, $config['conflict_response']);
+        }
         $container->setParameter('nowo_marketing_kit.security.access_roles', $config['security']['access_roles']);
         $container->setParameter('nowo_marketing_kit.security.access_checker', $config['security']['access_checker']);
         $container->setParameter('nowo_marketing_kit.security.allow_unauthenticated', $config['security']['allow_unauthenticated']);

@@ -56,9 +56,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Two admins toggling the same marketing service at once no longer lose one toggle (read-modify-write without a version): the second answers 409 with `X-Error-Code: MARKETING_TOOL_STALE`. Admin edits of a service changed since its form was opened no longer silently overwrite the newer row: the form answers again with 409 and `X-Error-Code: MARKETING_TOOL_STALE`. Admin-only, contention only.
+- Two admins toggling the same marketing service at once no longer lose one toggle (read-modify-write without a version): the second goes back to the list with the stale message and `X-Error-Code: MARKETING_TOOL_STALE`. Admin edits of a service changed since its form was opened no longer silently overwrite the newer row: the form answers again with 409 and `X-Error-Code: MARKETING_TOOL_STALE`. Admin-only, contention only.
 - Two admins creating the same code in one profile (or a catalog seed / YAML import racing a create) no longer answer a 500: the form answers 409 with `X-Error-Code: MARKETING_TOOL_DUPLICATE_CODE` (the seed and import get the same code on the error page). The unique (profile, code) key always kept one row.
 - The catalog seed and the YAML import read the rows inside their transaction and write all tools or none.
+- An invalid admin submit (422) and a refused write no longer leave the bound values in the host's entity manager, where a later flush of the host's own work could write them.
+- The 409 form answers carry a link to read the service again (`admin.reload`).
 - Profile lookups compare the profile byte for byte after the read (REQ-RUNTIME-003 rule 5): on a case-insensitive MySQL / MariaDB collation, `Default` no longer lists the tools of `default`.
 
 ### Demo

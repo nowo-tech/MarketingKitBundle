@@ -14,6 +14,7 @@ admin.empty: No services yet. Use “Seed catalog” to create the built-in prov
 admin.confirm_delete: Delete this marketing service?
 admin.db_config_hint: 'Set use_database_config: true so these database tools replace YAML tools at runtime.'
 admin.provider_options: Provider options
+admin.reload: Reload the current version of this service
 admin.on: On
 admin.off: Off
 admin.col.service: Service

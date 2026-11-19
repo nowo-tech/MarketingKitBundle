@@ -22,6 +22,9 @@ use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Extension\ExtensionInterface;
 use Symfony\Component\DependencyInjection\Reference;
 
+use function array_filter;
+use function array_values;
+
 final class NowoMarketingKitExtensionTest extends TestCase
 {
     public function testLoadPublishesParametersAndServices(): void
@@ -79,7 +82,12 @@ final class NowoMarketingKitExtensionTest extends TestCase
         self::assertInstanceOf(Reference::class, $policy);
         self::assertSame(ConflictResponsePolicy::class, (string) $policy);
         self::assertSame(NowoMarketingKitExtension::COMMIT_LEDGER_SERVICE, (string) $listener->getArgument(1));
-        self::assertCount(2, $listener->getTag('kernel.event_listener'));
+        $tags = $listener->getTag('kernel.event_listener');
+        self::assertCount(2, $tags);
+        $exception = array_values(array_filter($tags, static fn (array $tag): bool => ($tag['event'] ?? null) === 'kernel.exception'));
+        // Audit US-3: before the framework's ErrorListener::logKernelException() (priority 0), so an expected 409 is
+        // not logged as a CRITICAL storage error.
+        self::assertGreaterThan(0, $exception[0]['priority'] ?? 0);
         self::assertTrue($container->hasDefinition(MarketingToolWriteUnit::class));
         self::assertFalse($container->getDefinition(MarketingToolWriteUnit::class)->getArgument('$ownManager'));
     }
@@ -99,6 +107,22 @@ final class NowoMarketingKitExtensionTest extends TestCase
         self::assertNull($container->getDefinition(MarketingToolConflictListener::class)->getArgument(1), 'no ledger');
         self::assertFalse($container->hasDefinition(NowoMarketingKitExtension::COMMIT_TRACKING_MIDDLEWARE));
         self::assertSame('doctrine.orm.marketing_entity_manager', (string) $container->getDefinition(MarketingToolWriteUnit::class)->getArgument('$entityManager'));
+    }
+
+    /**
+     * Audit US-2: without the admin routes nothing answers a conflict: no ledger, middleware or listener (the host's
+     * connection is not wrapped); the write unit stays for host code calling the admin service.
+     */
+    public function testLoadSkipsTheConflictAnswerWhenTheWebUiIsDisabled(): void
+    {
+        $container = new ContainerBuilder();
+        $container->setParameter('kernel.bundles', ['SecurityBundle' => 'Symfony\\Bundle\\SecurityBundle\\SecurityBundle']);
+        (new NowoMarketingKitExtension())->load([['web_ui' => ['enabled' => false]]], $container);
+
+        self::assertFalse($container->hasDefinition(MarketingToolConflictListener::class));
+        self::assertFalse($container->hasDefinition(NowoMarketingKitExtension::COMMIT_LEDGER_SERVICE));
+        self::assertFalse($container->hasDefinition(NowoMarketingKitExtension::COMMIT_TRACKING_MIDDLEWARE));
+        self::assertTrue($container->hasDefinition(MarketingToolWriteUnit::class));
     }
 
     public function testLoadWithoutTablePrefixSkipsListener(): void

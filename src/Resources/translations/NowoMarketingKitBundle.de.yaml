@@ -14,6 +14,7 @@ admin.empty: Noch keine Dienste. Nutzen Sie «Katalog anlegen» oder «Dienst hi
 admin.confirm_delete: Diesen Marketing-Dienst löschen?
 admin.db_config_hint: 'Setzen Sie use_database_config: true, damit DB-Tools YAML zur Laufzeit ersetzen.'
 admin.provider_options: Anbieteroptionen
+admin.reload: Aktuelle Version dieses Dienstes neu laden
 admin.on: An
 admin.off: Aus
 admin.col.service: Dienst

@@ -24,6 +24,7 @@ use Symfony\Component\Form\FormError;
 use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\Form\FormView;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -206,14 +207,28 @@ class MarketingToolAdminController extends AbstractController
         $form = $this->csrfActionForm('toggle_marketing_tool_' . $tool->getId(), '', version: $tool->getVersion());
         if ($this->isCsrfActionValid($request, $form)) {
             $expectedVersion = $this->submittedVersion($form);
-            // A toggle rendered for an older version is refused (OptimisticLockException: 409 + X-Error-Code
-            // MARKETING_TOOL_STALE), and the UPDATE checks the version read here, so two toggles never lose one.
-            $this->writeUnit()->run(static function (EntityManagerInterface $manager) use ($tool, $expectedVersion): void {
-                if ($expectedVersion !== null) {
-                    $manager->lock($tool, LockMode::OPTIMISTIC, $expectedVersion);
-                }
-                $tool->setEnabled(!$tool->isEnabled());
-            });
+            $profile         = $tool->getProfile();
+
+            try {
+                // A toggle rendered for an older version is refused, and the UPDATE checks the version read here, so
+                // two toggles never lose one.
+                $this->writeUnit()->run(static function (EntityManagerInterface $manager) use ($tool, $expectedVersion): void {
+                    if ($expectedVersion !== null) {
+                        $manager->lock($tool, LockMode::OPTIMISTIC, $expectedVersion);
+                    }
+                    $tool->setEnabled(!$tool->isEnabled());
+                });
+            } catch (OptimisticLockException) {
+                // The domain answer (never a CONFLICT_* code): back to the freshly read list, which is the "reload" the
+                // message asks for (audit US-4), with the error flashed and X-Error-Code on the redirect.
+                $this->addFlash('error', MarketingToolConflictListener::STALE_TOOL_MESSAGE);
+
+                return new RedirectResponse(
+                    $this->generateUrl('nowo_marketing_kit_admin_index', ['profile' => $profile]),
+                    Response::HTTP_FOUND,
+                    [MarketingToolConflictListener::ERROR_CODE_HEADER => MarketingToolConflictListener::STALE_TOOL],
+                );
+            }
             $this->addFlash('success', sprintf('Service "%s" is now %s.', $tool->getCode(), $tool->isEnabled() ? 'enabled' : 'disabled'));
         }
 
@@ -244,8 +259,14 @@ class MarketingToolAdminController extends AbstractController
         ]);
         $form->handleRequest($request);
 
-        $status  = $form->isSubmitted() ? Response::HTTP_UNPROCESSABLE_ENTITY : Response::HTTP_OK;
-        $headers = [];
+        $status    = $form->isSubmitted() ? Response::HTTP_UNPROCESSABLE_ENTITY : Response::HTTP_OK;
+        $headers   = [];
+        $reloadUrl = null;
+        if ($form->isSubmitted() && !$form->isValid()) {
+            // Audit US-5: the form bound unvalidated values into the managed tool; forget it, so a later flush of the
+            // host's own work never writes them. Only the bundle's entity is detached, never the host's.
+            $this->forget($tool);
+        }
         if ($form->isSubmitted() && $form->isValid()) {
             $expectedVersion = $isNew ? null : $this->submittedVersion($form);
 
@@ -266,6 +287,11 @@ class MarketingToolAdminController extends AbstractController
                 $form->addError(new FormError($code === MarketingToolConflictListener::DUPLICATE_CODE ? MarketingToolConflictListener::DUPLICATE_CODE_MESSAGE : MarketingToolConflictListener::STALE_TOOL_MESSAGE));
                 $status  = Response::HTTP_CONFLICT;
                 $headers = [MarketingToolConflictListener::ERROR_CODE_HEADER => $code];
+                // Audit US-4: a link to the current row (the edit form read again) or to a fresh form, so the admin is
+                // not stuck resubmitting the old version.
+                $reloadUrl = $isNew || $tool->getId() === null
+                    ? $this->generateUrl('nowo_marketing_kit_admin_new', ['profile' => $tool->getProfile()])
+                    : $this->generateUrl('nowo_marketing_kit_admin_edit', ['id' => $tool->getId()]);
             }
         }
 
@@ -278,7 +304,18 @@ class MarketingToolAdminController extends AbstractController
             'is_new'              => $isNew,
             'catalog'             => $this->catalog,
             'use_database_config' => $this->useDatabaseConfig,
+            'reload_url'          => $reloadUrl,
         ], new Response(null, $status, $headers));
+    }
+
+    /**
+     * Detaches a bundle tool from its manager when it is managed there (a bundle entity only; nothing else is touched).
+     */
+    private function forget(MarketingTool $tool): void
+    {
+        if ($this->entityManager->contains($tool)) {
+            $this->entityManager->detach($tool);
+        }
     }
 
     /**
