@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 1.13.0](#to-1130)
 - [To 1.12.0](#to-1120)
 - [To 1.10.3](#to-1103)
 - [To 1.10.2](#to-1102)
@@ -41,6 +42,14 @@
   - [From nothing to 1.0.0](#from-nothing-to-100)
 
 ## Unreleased
+
+## To 1.13.0
+
+From **1.12.0**:
+
+```bash
+composer update nowo-tech/marketing-kit-bundle
+```
 
 From **1.12.0** (REQ-RUNTIME-003, see [CONCURRENCY.md](CONCURRENCY.md)):
 
