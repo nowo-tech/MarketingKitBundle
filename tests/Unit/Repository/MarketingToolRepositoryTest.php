@@ -19,12 +19,14 @@ final class MarketingToolRepositoryTest extends TestCase
     public function testFindByProfileOrderedBuildsQuery(): void
     {
         $tool = (new MarketingTool())->setCode('gtm');
+        // A case-insensitive collation also returns the rows of `Default`: compared byte for byte (rule 5).
+        $otherCase = (new MarketingTool())->setProfile('Default')->setCode('ga4');
 
         $query = $this->getMockBuilder(Query::class)
             ->disableOriginalConstructor()
             ->onlyMethods(['getResult'])
             ->getMock();
-        $query->method('getResult')->willReturn([$tool]);
+        $query->method('getResult')->willReturn([$otherCase, $tool]);
 
         $qb = $this->createMock(QueryBuilder::class);
         $qb->method('andWhere')->with('t.profile = :profile')->willReturnSelf();
@@ -56,7 +58,8 @@ final class MarketingToolRepositoryTest extends TestCase
 
     public function testFindToolRowsByProfileUsesArrayHydration(): void
     {
-        $rows = [['code' => 'gtm', 'type' => 'gtm', 'enabled' => true, 'category' => 'analytics', 'position' => 'head', 'sortOrder' => 0, 'options' => []]];
+        $row  = ['code' => 'gtm', 'type' => 'gtm', 'enabled' => true, 'category' => 'analytics', 'position' => 'head', 'sortOrder' => 0, 'options' => []];
+        $rows = [['profile' => 'Default'] + $row, ['profile' => 'default'] + $row];
 
         $query = $this->getMockBuilder(Query::class)
             ->disableOriginalConstructor()
@@ -66,7 +69,7 @@ final class MarketingToolRepositoryTest extends TestCase
 
         $qb = $this->createMock(QueryBuilder::class);
         $qb->expects(self::once())->method('select')
-            ->with('t.code', 't.type', 't.enabled', 't.category', 't.position', 't.sortOrder', 't.options')
+            ->with('t.profile', 't.code', 't.type', 't.enabled', 't.category', 't.position', 't.sortOrder', 't.options')
             ->willReturnSelf();
         $qb->method('andWhere')->with('t.profile = :profile')->willReturnSelf();
         $qb->method('setParameter')->with('profile', 'default')->willReturnSelf();
@@ -92,6 +95,6 @@ final class MarketingToolRepositoryTest extends TestCase
             }
         };
 
-        self::assertSame($rows, $repo->findToolRowsByProfile('default'));
+        self::assertSame([$row], $repo->findToolRowsByProfile('default'), 'only the exact profile, without the profile key');
     }
 }

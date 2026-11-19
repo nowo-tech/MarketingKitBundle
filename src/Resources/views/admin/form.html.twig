@@ -3,8 +3,9 @@
   View model: page (View\FormPage, MarketingKitPages::formPage()): header admin.new / admin.edit, intro = service
   label and provider type, back link and cancel = the list of the tool profile; form = MarketingToolType;
   formThemes = web_ui.form_themes.
-  Extra variables (1.x, kept for web_ui.templates overrides): form, tool, is_new, catalog, use_database_config.
-  Data blocks: nowo_ui_form_body — the REQ-TWIG-003 child loop for the common fields, then the provider options
+  Extra variables (1.x, kept for web_ui.templates overrides): form, tool, is_new, catalog, use_database_config,
+  reload_url (1.13: link to read the service again after a lost race, else null).
+  Data blocks: nowo_ui_form_body — the form-level errors (1.13: a lost race), the REQ-TWIG-003 child loop for the common fields, then the provider options
   (option_* children) in their own fieldset; nowo_ui_content prepends the use_database_config notice.
 #}
 {% extends '@NowoUiKit/page/form.html.twig' %}
@@ -17,6 +18,11 @@
 {% endblock %}
 
 {% block nowo_ui_form_body %}
+    {# 1.13 (REQ-RUNTIME-003): a save that lost a race (duplicate code, stale version) carries its error on the form. #}
+    {{ form_errors(form) }}
+    {% if reload_url|default(null) %}
+        <p data-testid="marketing-kit-reload"><a href="{{ reload_url }}">{{ 'admin.reload'|trans({}, 'NowoMarketingKitBundle') }}</a></p>
+    {% endif %}
     {# REQ-TWIG-003: child loop; the provider options (option_*) are grouped in the fieldset below #}
     {% for child in form %}
         {% if not child.rendered and not (child.vars.name starts with 'option_') %}

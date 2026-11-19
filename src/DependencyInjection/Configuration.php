@@ -9,12 +9,14 @@ use Nowo\MarketingKitBundle\Enum\ToolPosition;
 use Nowo\MarketingKitBundle\Enum\ToolType;
 use Nowo\MarketingKitBundle\Provider\ToolIdValidator;
 use Nowo\MarketingKitBundle\Ui\MarketingKitPages;
+use Nowo\TransactionDoctrine\Symfony\Conflict\ConflictResponsePolicy;
 use Symfony\Component\Config\Definition\Builder\ArrayNodeDefinition;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\ConfigurationInterface;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 
 use function implode;
+use function in_array;
 use function is_string;
 use function preg_match;
 use function sprintf;
@@ -155,6 +157,30 @@ final class Configuration implements ConfigurationInterface
                             ->defaultValue('default')
                             ->setDeprecated('nowo-tech/marketing-kit-bundle', '1.6', 'The "%node%" option at "%path%" is deprecated and has no effect: the bundle always uses the default Doctrine entity manager and its connection. Remove it from your configuration.')
                             ->info('Deprecated since 1.6, no effect: the default Doctrine entity manager (and its connection) is always used.')
+                        ->end()
+                    ->end()
+                ->end()
+                ->arrayNode('conflict_response')
+                    ->info('Since 1.13 (REQ-RUNTIME-003): answer of a lock conflict (deadlock, lock wait timeout, serialization failure) on the marketing tool admin. Unset: nowo-tech/transaction-doctrine\'s conflict_response when that bundle is registered, else 409 with Retry-After 1.')
+                    ->addDefaultsIfNotSet()
+                    ->children()
+                        ->integerNode('status')
+                            ->info('409 (default, CONFLICT_001 / CONFLICT_002) or 503. Null: follow transaction-doctrine, else 409.')
+                            ->defaultNull()
+                            ->validate()
+                                ->ifTrue(static fn (mixed $value): bool => $value !== null && !in_array($value, ConflictResponsePolicy::STATUSES, true))
+                                ->thenInvalid('nowo_marketing_kit.conflict_response.status must be 409 or 503, got %s.')
+                            ->end()
+                        ->end()
+                        ->integerNode('retry_after')
+                            ->info('Retry-After seconds of a CONFLICT_001 answer. Null: follow transaction-doctrine, else 1.')
+                            ->defaultNull()
+                            ->min(0)
+                        ->end()
+                        ->enumNode('commit_tracking')
+                            ->values(['bundle', 'all', 'off'])
+                            ->defaultValue('bundle')
+                            ->info('Commits counted for CONFLICT_002 when nowo-tech/transaction-doctrine\'s commit_detection is off: bundle (default, the connection of the bundle\'s entity manager only), all (every Doctrine connection) or off (no middleware; only the failure itself and transaction-doctrine\'s request mark decide). With commit_detection on, transaction-doctrine\'s ledger is reused and the bundle adds no middleware; with web_ui.enabled false nothing is registered.')
                         ->end()
                     ->end()
                 ->end()

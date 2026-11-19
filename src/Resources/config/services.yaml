@@ -9,6 +9,7 @@ services:
             - '../../DependencyInjection/'
             - '../../Entity/'
             - '../../Controller/'
+            - '../../EventListener/'
             - '../../NowoMarketingKitBundle.php'
             - '../../Resources/'
 
@@ -38,6 +39,15 @@ services:
 
     # 1.12.0 (REQ-ARCH-001 rule 1): hosts may alias these ports to their own services.
     Nowo\MarketingKitBundle\Config\MarketingConfigResolverInterface: '@Nowo\MarketingKitBundle\Config\MarketingConfigResolver'
+
+    # 1.13 (REQ-RUNTIME-003 rule 1): one transaction per admin write. $ownManager is set by EntityManagerOptionPass when
+    # doctrine.entity_manager names a manager other than the host's default; the extension points $entityManager at it.
+    Nowo\MarketingKitBundle\Persistence\MarketingToolWriteUnit:
+        arguments:
+            $registry: '@doctrine'
+            $managerName: '%nowo_marketing_kit.doctrine.entity_manager%'
+            $ownManager: false
+            $logger: '@?logger'
 
     Nowo\MarketingKitBundle\Service\MarketingToolAdminService:
         arguments:

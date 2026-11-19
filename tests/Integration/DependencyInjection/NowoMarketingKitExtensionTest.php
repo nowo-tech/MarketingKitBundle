@@ -7,16 +7,23 @@ namespace Nowo\MarketingKitBundle\Tests\Integration\DependencyInjection;
 use LogicException;
 use Nowo\MarketingKitBundle\DependencyInjection\NowoMarketingKitExtension;
 use Nowo\MarketingKitBundle\DependencyInjection\TablePrefixListener;
+use Nowo\MarketingKitBundle\EventListener\MarketingToolConflictListener;
+use Nowo\MarketingKitBundle\Persistence\MarketingToolWriteUnit;
 use Nowo\MarketingKitBundle\Security\ConfigurableMarketingKitAccessChecker;
 use Nowo\MarketingKitBundle\Security\MarketingKitAccessCheckerInterface;
 use Nowo\MarketingKitBundle\Service\MarketingScriptRenderer;
 use Nowo\MarketingKitBundle\Twig\MarketingKitExtension;
+use Nowo\TransactionDoctrine\Symfony\Conflict\ConflictResponsePolicy;
+use Nowo\TransactionDoctrine\WriteUnit\CommitLedger;
 use PHPUnit\Framework\Attributes\IgnoreDeprecations;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Extension\ExtensionInterface;
 use Symfony\Component\DependencyInjection\Reference;
+
+use function array_filter;
+use function array_values;
 
 final class NowoMarketingKitExtensionTest extends TestCase
 {
@@ -55,6 +62,67 @@ final class NowoMarketingKitExtensionTest extends TestCase
         self::assertTrue($container->hasDefinition(MarketingScriptRenderer::class));
         self::assertTrue($container->hasDefinition(MarketingKitExtension::class));
         self::assertTrue($container->hasAlias(MarketingKitAccessCheckerInterface::class));
+    }
+
+    /**
+     * 1.13 (REQ-RUNTIME-003): zero config registers the conflict answer (transaction-doctrine's policy service when
+     * present), the bundle's commit ledger and middleware, and the write unit on the default manager.
+     */
+    public function testLoadRegistersTheConflictAnswerAndTheWriteUnit(): void
+    {
+        $container = new ContainerBuilder();
+        $container->setParameter('kernel.bundles', ['SecurityBundle' => 'Symfony\\Bundle\\SecurityBundle\\SecurityBundle']);
+        (new NowoMarketingKitExtension())->load([[]], $container);
+
+        self::assertSame('bundle', $container->getParameter(NowoMarketingKitExtension::COMMIT_TRACKING_PARAMETER));
+        self::assertSame(CommitLedger::class, $container->getDefinition(NowoMarketingKitExtension::COMMIT_LEDGER_SERVICE)->getClass());
+        self::assertTrue($container->getDefinition(NowoMarketingKitExtension::COMMIT_TRACKING_MIDDLEWARE)->hasTag('doctrine.middleware'));
+        $listener = $container->getDefinition(MarketingToolConflictListener::class);
+        $policy   = $listener->getArgument(0);
+        self::assertInstanceOf(Reference::class, $policy);
+        self::assertSame(ConflictResponsePolicy::class, (string) $policy);
+        self::assertSame(NowoMarketingKitExtension::COMMIT_LEDGER_SERVICE, (string) $listener->getArgument(1));
+        $tags = $listener->getTag('kernel.event_listener');
+        self::assertCount(2, $tags);
+        $exception = array_values(array_filter($tags, static fn (array $tag): bool => ($tag['event'] ?? null) === 'kernel.exception'));
+        // Audit US-3: before the framework's ErrorListener::logKernelException() (priority 0), so an expected 409 is
+        // not logged as a CRITICAL storage error.
+        self::assertGreaterThan(0, $exception[0]['priority'] ?? 0);
+        self::assertTrue($container->hasDefinition(MarketingToolWriteUnit::class));
+        self::assertFalse($container->getDefinition(MarketingToolWriteUnit::class)->getArgument('$ownManager'));
+    }
+
+    public function testLoadHonoursTheConflictResponseOptionsAndTheBundleManager(): void
+    {
+        $container = new ContainerBuilder();
+        $container->setParameter('kernel.bundles', ['SecurityBundle' => 'Symfony\\Bundle\\SecurityBundle\\SecurityBundle']);
+        (new NowoMarketingKitExtension())->load([[
+            'doctrine'          => ['entity_manager' => 'marketing'],
+            'conflict_response' => ['status' => 503, 'commit_tracking' => 'off'],
+        ]], $container);
+
+        $policy = $container->getDefinition(MarketingToolConflictListener::class)->getArgument(0);
+        self::assertInstanceOf(Definition::class, $policy);
+        self::assertSame([503, ConflictResponsePolicy::DEFAULT_RETRY_AFTER], $policy->getArguments());
+        self::assertNull($container->getDefinition(MarketingToolConflictListener::class)->getArgument(1), 'no ledger');
+        self::assertFalse($container->hasDefinition(NowoMarketingKitExtension::COMMIT_TRACKING_MIDDLEWARE));
+        self::assertSame('doctrine.orm.marketing_entity_manager', (string) $container->getDefinition(MarketingToolWriteUnit::class)->getArgument('$entityManager'));
+    }
+
+    /**
+     * Audit US-2: without the admin routes nothing answers a conflict: no ledger, middleware or listener (the host's
+     * connection is not wrapped); the write unit stays for host code calling the admin service.
+     */
+    public function testLoadSkipsTheConflictAnswerWhenTheWebUiIsDisabled(): void
+    {
+        $container = new ContainerBuilder();
+        $container->setParameter('kernel.bundles', ['SecurityBundle' => 'Symfony\\Bundle\\SecurityBundle\\SecurityBundle']);
+        (new NowoMarketingKitExtension())->load([['web_ui' => ['enabled' => false]]], $container);
+
+        self::assertFalse($container->hasDefinition(MarketingToolConflictListener::class));
+        self::assertFalse($container->hasDefinition(NowoMarketingKitExtension::COMMIT_LEDGER_SERVICE));
+        self::assertFalse($container->hasDefinition(NowoMarketingKitExtension::COMMIT_TRACKING_MIDDLEWARE));
+        self::assertTrue($container->hasDefinition(MarketingToolWriteUnit::class));
     }
 
     public function testLoadWithoutTablePrefixSkipsListener(): void

@@ -8,7 +8,7 @@ COMPOSE_BIN := $(shell docker compose version >/dev/null 2>&1 && echo "docker co
 COMPOSE     := $(COMPOSE_BIN) -f $(COMPOSE_FILE)
 SERVICE_PHP := php
 
-.PHONY: help ensure-up up down down-dev build shell install test test-coverage coverage-php-percent coverage-check cs-check cs-fix rector rector-dry phpstan igor qa release-check release-check-demos demo-smoke composer-sync clean update validate validate-translations assets setup-hooks check-no-cursor-coauthor check-open-prs check-no-raw-html-form strip-cursor-coauthor-from-history update-deps check-twig-extra
+.PHONY: help ensure-up up down down-dev build shell install test test-with-db down-db test-coverage coverage-php-percent coverage-check cs-check cs-fix rector rector-dry phpstan igor qa release-check release-check-demos demo-smoke composer-sync clean update validate validate-translations assets setup-hooks check-no-cursor-coauthor check-open-prs check-no-raw-html-form strip-cursor-coauthor-from-history update-deps check-twig-extra
 
 # Default target
 help:
@@ -25,6 +25,8 @@ help:
 	@echo "  shell         Open shell in container"
 	@echo "  install       Install Composer dependencies (starts container if needed)"
 	@echo "  test          Run PHPUnit tests"
+	@echo "  test-with-db  Run the real-database concurrency tests (MySQL 8.4, MariaDB 11.4, PostgreSQL 16)"
+	@echo "  down-db       Stop and remove the test databases"
 	@echo "  test-coverage Run tests with code coverage"
 	@echo "  coverage-check Fail if PHP Lines coverage < 99%%"
 	@echo "  coverage-php-percent  Print Lines coverage from coverage-php.txt"
@@ -63,7 +65,7 @@ up:
 	@echo "✅ Container ready!"
 
 down:
-	$(COMPOSE) down
+	$(COMPOSE) --profile databases down
 
 down-dev:
 	$(COMPOSE) down --remove-orphans
@@ -84,6 +86,15 @@ install: ensure-up
 
 test: ensure-up
 	$(COMPOSE) exec $(SERVICE_PHP) composer test
+
+# REQ-RUNTIME-003: two-connection concurrency tests on MySQL 8.4, MariaDB 11.4 and PostgreSQL 16 (none may be skipped).
+test-with-db: ensure-up
+	$(COMPOSE) --profile databases up -d --wait mysql mariadb postgres
+	$(COMPOSE) exec -T $(SERVICE_PHP) vendor/bin/phpunit --group database --no-coverage --fail-on-skipped
+
+down-db:
+	$(COMPOSE) --profile databases stop mysql mariadb postgres
+	$(COMPOSE) --profile databases rm -f mysql mariadb postgres
 
 test-coverage: ensure-up
 	$(COMPOSE) exec $(SERVICE_PHP) composer test-coverage | tee coverage-php.txt

@@ -10,10 +10,11 @@ RUN apk add --no-cache \
     linux-headers \
     bash \
     libzip-dev \
-    zip
+    zip \
+    postgresql-dev
 
 # Install PHP extensions
-RUN docker-php-ext-install -j$(nproc) zip
+RUN docker-php-ext-install -j$(nproc) zip pdo_mysql pdo_pgsql
 
 # Install pcov for code coverage
 RUN pecl install pcov && docker-php-ext-enable pcov

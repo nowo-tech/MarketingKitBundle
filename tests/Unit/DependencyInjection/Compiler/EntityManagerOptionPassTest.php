@@ -7,6 +7,7 @@ namespace Nowo\MarketingKitBundle\Tests\Unit\DependencyInjection\Compiler;
 use Nowo\MarketingKitBundle\DependencyInjection\Compiler\EntityManagerOptionPass;
 use Nowo\MarketingKitBundle\Doctrine\ExcludedEntityNamespaceDriver;
 use Nowo\MarketingKitBundle\EventSubscriber\MarketingKitEntityManagerClearSubscriber;
+use Nowo\MarketingKitBundle\Persistence\MarketingToolWriteUnit;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\DependencyInjection\Argument\IteratorArgument;
@@ -128,6 +129,25 @@ final class EntityManagerOptionPassTest extends TestCase
         $managers = $default->getDefinition(MarketingKitEntityManagerClearSubscriber::class)->getArgument('$entityManagers');
         self::assertInstanceOf(IteratorArgument::class, $managers);
         self::assertSame([], $managers->getValues(), 'The host\'s default manager is never cleared by the bundle.');
+    }
+
+    /**
+     * 1.13 (REQ-RUNTIME-003 rule 2): only a manager other than the host's default is the bundle's own (reset after a
+     * failure by the write unit); naming the host's default manager keeps it the host's.
+     */
+    public function testMarksTheWriteUnitManagerAsOwnOnlyForANonDefaultManager(): void
+    {
+        $container = $this->container('bundle', ['default' => ['App\\Entity'], 'bundle' => [self::ENTITIES]]);
+        $container->setParameter('doctrine.default_entity_manager', 'default');
+        $container->setDefinition(MarketingToolWriteUnit::class, (new Definition())->setArgument('$ownManager', false));
+        (new EntityManagerOptionPass())->process($container);
+        self::assertTrue($container->getDefinition(MarketingToolWriteUnit::class)->getArgument('$ownManager'));
+
+        $default = $this->container('default', ['default' => [self::ENTITIES]]);
+        $default->setParameter('doctrine.default_entity_manager', 'default');
+        $default->setDefinition(MarketingToolWriteUnit::class, (new Definition())->setArgument('$ownManager', false));
+        (new EntityManagerOptionPass())->process($default);
+        self::assertFalse($default->getDefinition(MarketingToolWriteUnit::class)->getArgument('$ownManager'));
     }
 
     /**

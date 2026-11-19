@@ -14,6 +14,7 @@ admin.empty: Nog geen diensten. Gebruik «Catalogus zaaien» of «Dienst toevoeg
 admin.confirm_delete: Deze marketingdienst verwijderen?
 admin.db_config_hint: 'Zet use_database_config: true zodat DB-tools YAML tijdens runtime vervangen.'
 admin.provider_options: Provideropties
+admin.reload: De huidige versie van deze dienst opnieuw laden
 admin.on: Aan
 admin.off: Uit
 admin.col.service: Dienst

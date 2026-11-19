@@ -54,9 +54,23 @@ class MarketingTool
     #[ORM\Column(type: Types::JSON)]
     private array $options = [];
 
+    /**
+     * 1.13 (REQ-RUNTIME-003 rule 4): optimistic lock. Doctrine bumps it on every update and refuses an update whose row
+     * moved on since it was read (OptimisticLockException); the edit form and the toggle carry the version they were
+     * opened with.
+     */
+    #[ORM\Version]
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => 1])]
+    private int $version = 1;
+
     public function getId(): ?int
     {
         return $this->id;
+    }
+
+    public function getVersion(): int
+    {
+        return $this->version;
     }
 
     public function getProfile(): string

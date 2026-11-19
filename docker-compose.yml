@@ -14,7 +14,35 @@ services:
     environment:
       - COMPOSER_ALLOW_SUPERUSER=1
       - XDEBUG_MODE=coverage
+      # REQ-RUNTIME-003: real-database concurrency tests (make test-with-db starts the "databases" profile).
+      - MK_MYSQL_URL=mysql://root@mysql:3306/marketing_kit?serverVersion=8.4.0&charset=utf8mb4
+      - MK_MARIADB_URL=mysql://root@mariadb:3306/marketing_kit?serverVersion=11.4.0-MariaDB&charset=utf8mb4
+      - MK_POSTGRES_URL=pgsql://postgres@postgres:5432/marketing_kit?serverVersion=16
     command: ["tail", "-f", "/dev/null"]
+    networks:
+      - marketing-kit-bundle-network
+
+  mysql:
+    image: mysql:8.4
+    profiles: [databases]
+    environment: { MYSQL_ALLOW_EMPTY_PASSWORD: 'yes', MYSQL_DATABASE: marketing_kit }
+    healthcheck: { test: ['CMD', 'mysqladmin', 'ping', '-h', '127.0.0.1'], interval: 5s, retries: 30 }
+    networks:
+      - marketing-kit-bundle-network
+
+  mariadb:
+    image: mariadb:11.4
+    profiles: [databases]
+    environment: { MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: 'yes', MARIADB_DATABASE: marketing_kit }
+    healthcheck: { test: ['CMD', 'healthcheck.sh', '--connect', '--innodb_initialized'], interval: 5s, retries: 30 }
+    networks:
+      - marketing-kit-bundle-network
+
+  postgres:
+    image: postgres:16-alpine
+    profiles: [databases]
+    environment: { POSTGRES_HOST_AUTH_METHOD: trust, POSTGRES_DB: marketing_kit }
+    healthcheck: { test: ['CMD', 'pg_isready', '-U', 'postgres'], interval: 5s, retries: 30 }
     networks:
       - marketing-kit-bundle-network
 
