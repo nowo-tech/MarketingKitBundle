@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nowo\MarketingKitBundle\Tests\Unit\Persistence;
 
+use Closure;
 use Doctrine\DBAL\Driver\AbstractException;
 use Doctrine\DBAL\Exception\DeadlockException;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
@@ -15,7 +16,10 @@ use Nowo\MarketingKitBundle\Doctrine\MarketingKitHostFlushReporter;
 use Nowo\MarketingKitBundle\Entity\MarketingTool;
 use Nowo\MarketingKitBundle\Persistence\MarketingToolWriteUnit;
 use Nowo\MarketingKitBundle\Tests\Support\CollectsDeprecations;
+use Nowo\MarketingKitBundle\Tests\Support\Entity\HostChild;
 use Nowo\MarketingKitBundle\Tests\Support\Entity\HostNote;
+use Nowo\MarketingKitBundle\Tests\Support\Entity\HostParent;
+use Nowo\MarketingKitBundle\Tests\Support\Entity\HostProfile;
 use Nowo\MarketingKitBundle\Tests\Support\Entity\HostTag;
 use Nowo\MarketingKitBundle\Tests\Support\SqliteManagerRegistry;
 use Nowo\TransactionContract\TransientStorageFailure;
@@ -123,6 +127,49 @@ final class MarketingToolWriteUnitTest extends TestCase
 
         $this->expectExceptionObject(new LogicException(MarketingToolWriteUnit::HOST_PENDING_MESSAGE));
         (new MarketingToolWriteUnit($manager))->run(static fn (EntityManagerInterface $em): null => null);
+    }
+
+    /**
+     * Audit XD-5: an inverse collection cleared with orphan removal schedules orphan removals only (no entity deletion,
+     * no collection change); the unit refuses them, so its flush never deletes the host's children.
+     */
+    public function testAClearedOrphanRemovalCollectionRefusesTheUnit(): void
+    {
+        [$registry, $manager] = $this->hostManager();
+        $parent               = new HostParent();
+        $parent->addChild(new HostChild());
+        $parent->addChild(new HostChild());
+        $manager->persist($parent);
+        $manager->flush();
+
+        $parent->children->clear();
+        self::assertNotSame([], $this->orphans($manager));
+
+        $this->assertRefused($registry, $manager);
+        self::assertSame(2, (int) $manager->getConnection()->fetchOne('SELECT COUNT(*) FROM host_child'), 'no child deleted');
+        self::assertNotSame([], $this->orphans($manager), 'read-only: the host\'s orphan removals are left as they were');
+    }
+
+    /** Audit XD-5: an inverse one-to-one set to null with orphan removal is refused too. */
+    public function testAnUnsetOrphanRemovalOneToOneRefusesTheUnit(): void
+    {
+        [$registry, $manager] = $this->hostManager();
+        $parent               = new HostParent();
+        $parent->setProfile(new HostProfile());
+        $manager->persist($parent);
+        $manager->flush();
+
+        $parent->profile = null;
+
+        $this->assertRefused($registry, $manager);
+        self::assertSame(1, (int) $manager->getConnection()->fetchOne('SELECT COUNT(*) FROM host_profile'), 'the profile is not deleted');
+
+        // The host flushes its own orphan removal; ORM then keeps re-scheduling the deleted (unmanaged) profile, which
+        // no flush deletes again: not pending work, so the next unit runs.
+        $manager->flush();
+        self::assertSame(0, (int) $manager->getConnection()->fetchOne('SELECT COUNT(*) FROM host_profile'));
+        (new MarketingToolWriteUnit($manager, $registry))->run(static fn (EntityManagerInterface $em) => $em->persist((new MarketingTool())->setCode('ga4')));
+        self::assertSame(['ga4'], $manager->getConnection()->fetchFirstColumn('SELECT code FROM marketing_tool'));
     }
 
     public function testADomainFailureOnTheHostManagerForgetsOnlyTheToolRows(): void
@@ -263,6 +310,30 @@ final class MarketingToolWriteUnitTest extends TestCase
         (new SchemaTool($manager))->createSchema($manager->getMetadataFactory()->getAllMetadata());
 
         return [$registry, $manager];
+    }
+
+    private function assertRefused(SqliteManagerRegistry $registry, EntityManagerInterface $manager): void
+    {
+        try {
+            (new MarketingToolWriteUnit($manager, $registry))->run(static fn (EntityManagerInterface $em) => $em->persist((new MarketingTool())->setCode('gtm')));
+            self::fail('The host\'s orphan removals must not be carried.');
+        } catch (LogicException $refused) {
+            self::assertSame(MarketingToolWriteUnit::HOST_PENDING_MESSAGE, $refused->getMessage());
+        }
+
+        self::assertTrue($manager->isOpen());
+        self::assertSame(0, (int) $manager->getConnection()->fetchOne('SELECT COUNT(*) FROM marketing_tool'));
+    }
+
+    /**
+     * @return array<object>
+     */
+    private function orphans(EntityManagerInterface $manager): array
+    {
+        /** @var array<object> $orphans */
+        $orphans = Closure::bind(static fn (UnitOfWork $unitOfWork): array => $unitOfWork->orphanRemovals, null, UnitOfWork::class)($manager->getUnitOfWork());
+
+        return $orphans;
     }
 
     /**

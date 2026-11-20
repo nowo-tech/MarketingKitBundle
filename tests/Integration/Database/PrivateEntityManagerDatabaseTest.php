@@ -21,7 +21,10 @@ use Nowo\MarketingKitBundle\EventListener\MarketingToolConflictListener;
 use Nowo\MarketingKitBundle\Persistence\MarketingToolWriteUnit;
 use Nowo\MarketingKitBundle\Repository\MarketingToolRepository;
 use Nowo\MarketingKitBundle\Tests\Support\CollectsDeprecations;
+use Nowo\MarketingKitBundle\Tests\Support\Entity\HostChild;
 use Nowo\MarketingKitBundle\Tests\Support\Entity\HostNote;
+use Nowo\MarketingKitBundle\Tests\Support\Entity\HostParent;
+use Nowo\MarketingKitBundle\Tests\Support\Entity\HostProfile;
 use Nowo\MarketingKitBundle\Tests\Support\Entity\HostTag;
 use Nowo\TransactionContract\TransientStorageFailure;
 use Nowo\TransactionDoctrine\ConflictCode;
@@ -150,6 +153,55 @@ final class PrivateEntityManagerDatabaseTest extends TestCase
 
         // The same flush in private mode reports nothing: the private manager holds no application work.
         self::assertSame([], $this->deprecations(static fn () => $stack->privateUnit()->run(static fn (EntityManagerInterface $em) => $em->persist((new MarketingTool())->setCode('ga4')))));
+    }
+
+    /**
+     * Audit XD-5, host mode: the application's orphan removals (an inverse collection cleared, an inverse one-to-one set
+     * to null) are refused like any other pending change, so the unit's flush never deletes those rows; the
+     * application's manager stays open and its orphan removals stay pending, then its own flush deletes them.
+     */
+    #[DataProvider('databases')]
+    public function testHostModeRefusesTheApplicationsOrphanRemovals(?string $url): void
+    {
+        $stack  = $this->fresh($url);
+        $parent = new HostParent();
+        $parent->addChild(new HostChild());
+        $parent->addChild(new HostChild());
+        $parent->setProfile(new HostProfile());
+        $stack->host->persist($parent);
+        $stack->host->flush();
+        $write = static fn (EntityManagerInterface $em) => $em->persist((new MarketingTool())->setCode('gtm'));
+
+        $parent->children->clear();
+        $refused = $this->failureOf(static fn () => $stack->hostUnit()->run($write));
+        self::assertSame(MarketingToolWriteUnit::HOST_PENDING_MESSAGE, $refused->getMessage());
+        self::assertSame(2, $this->rowCount($stack, 'host_child'));
+        self::assertSame([], $this->codes($stack));
+
+        $stack->host->flush(); // the application's own flush
+        self::assertSame(0, $this->rowCount($stack, 'host_child'));
+
+        $parent->profile = null;
+        $refused         = $this->failureOf(static fn () => $stack->hostUnit()->run($write));
+        self::assertSame(MarketingToolWriteUnit::HOST_PENDING_MESSAGE, $refused->getMessage());
+        self::assertSame(1, $this->rowCount($stack, 'host_profile'));
+        self::assertTrue($stack->host->isOpen());
+
+        $stack->host->flush();
+        self::assertSame(0, $this->rowCount($stack, 'host_profile'));
+        // ORM keeps the loaded (deleted) profile as the parent's original inverse value, so the deleted orphan is
+        // scheduled again at every change-set computation and never deleted again: not pending work, the unit runs.
+        // transaction-doctrine's probe may list the parent and the profile for that stale value (a report only:
+        // nothing is written for them).
+        $messages = $this->deprecations(static fn () => $stack->hostUnit()->run($write));
+        self::assertSame(['gtm'], $this->codes($stack));
+        self::assertSame(1, $this->rowCount($stack, 'host_parent'));
+        foreach ($messages as $message) {
+            self::assertContains($message, [
+                'Your pending changes to ' . HostParent::class . ' were flushed by NowoMarketingKitBundle; 2.0 no longer does.',
+                'Your pending changes to ' . HostProfile::class . ' were flushed by NowoMarketingKitBundle; 2.0 no longer does.',
+            ]);
+        }
     }
 
     /**

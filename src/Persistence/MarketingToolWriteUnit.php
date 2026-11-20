@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Nowo\MarketingKitBundle\Persistence;
 
+use Closure;
 use Doctrine\DBAL\Exception as DBALException;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\UnitOfWork;
 use Doctrine\Persistence\ManagerRegistry;
 use LogicException;
 use Nowo\MarketingKitBundle\Doctrine\MarketingKitHostFlushReporter;
@@ -128,7 +130,8 @@ final readonly class MarketingToolWriteUnit
     }
 
     /**
-     * Pending changes on entities that are not marketing tool rows belong to the host: refuse to carry them.
+     * Pending changes on entities that are not marketing tool rows belong to the host: refuse to carry them. Read-only:
+     * change sets are computed (as the flush would), nothing is flushed, cleared, detached or reset here.
      */
     private function assertNoHostPendingChanges(EntityManagerInterface $manager): void
     {
@@ -149,6 +152,31 @@ final readonly class MarketingToolWriteUnit
         if ($unitOfWork->getScheduledCollectionUpdates() !== [] || $unitOfWork->getScheduledCollectionDeletions() !== []) {
             throw new LogicException(self::HOST_PENDING_MESSAGE);
         }
+
+        // Audit XD-5 (1.14): orphan removals are deletions the flush performs too (an inverse collection cleared, an
+        // inverse one-to-one set to null), held apart from the scheduled deletions until the flush. A marketing tool
+        // row has no association, so every orphan is the host's. Only a managed orphan is deleted by the flush: ORM
+        // keeps the loaded value of an inverse one-to-one after its orphan was deleted, so every later change-set
+        // computation schedules that (no longer managed) entity again, and the flush skips it.
+        foreach ($this->orphanRemovals($unitOfWork) as $orphan) {
+            if ($manager->contains($orphan)) {
+                throw new LogicException(self::HOST_PENDING_MESSAGE);
+            }
+        }
+    }
+
+    /**
+     * The entities orphan removal deletes at the next flush. UnitOfWork keeps them private: read without changing them
+     * (as transaction-doctrine's HostFlushProbe does).
+     *
+     * @return array<object>
+     */
+    private function orphanRemovals(UnitOfWork $unitOfWork): array
+    {
+        /** @var array<object> $orphans */
+        $orphans = Closure::bind(static fn (UnitOfWork $unitOfWork): array => $unitOfWork->orphanRemovals, null, UnitOfWork::class)($unitOfWork);
+
+        return $orphans;
     }
 
     /**
