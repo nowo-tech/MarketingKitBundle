@@ -77,6 +77,19 @@ written or rolled back by the bundle. An open host manager is never cleared or r
 [CONCURRENCY](CONCURRENCY.md)). Before 1.13 the admin flushed that manager blindly, including the host's pending
 changes. The default manager stays the default until 2.0 (REQ-ARCH-001 rule 6: opt-in dedicated manager below).
 
+Opt-in since 1.14.0, zero-config: `doctrine.private_entity_manager: true`. The repository (through a
+`PrivateManagerRegistry`), the admin service and controller and the write unit work through a private manager of the
+bundle (transaction-doctrine's `PrivateManager\PrivateEntityManager`) on the connection, mapping and event manager of
+`doctrine.entity_manager`, else the default manager: same table, no host configuration. The write unit treats it as
+the bundle's own manager (a failure closes it and the private registry drops it); it is dropped at every request /
+Messenger / console boundary by `MarketingKitEntityManagerClearSubscriber` (and by transaction-doctrine's bundle when
+registered, and at `kernel.reset`) and replaced when closed. The application's managers are never flushed, cleared,
+closed or reset. 2.0 makes it the only host mode (`false` is removed; `doctrine.entity_manager` stays as the DDD
+option). While the write unit flushes the application's manager (no private manager, no dedicated manager), the
+host-flush probe (`Doctrine\MarketingKitHostFlushReporter`) reports each application entity class that flush writes.
+Covered by `tests/Integration/Worker/PrivateEntityManagerWorkerTest.php` and
+`tests/Integration/Database/PrivateEntityManagerDatabaseTest.php` (SQLite, MySQL 8.4, MariaDB 11.4, PostgreSQL 16).
+
 Opt-in since 1.10.0: set `doctrine.entity_manager` to a dedicated manager. The entity is then mapped on that manager
 only, the admin reads and writes through it, `ClosedEntityManagerSubscriber` resets only it, and
 `MarketingKitEntityManagerClearSubscriber` clears it at every request / Messenger / console boundary. The host's managers
@@ -113,6 +126,6 @@ Install, configure `profiles` in YAML, add the Twig functions to the layout. For
 | 3 No framework types in ports / VOs | None |
 | 4 Events carry IDs | No events |
 | 5 SPI | Ports above; Twig template overrides for the admin |
-| 6 No host EM flush | ⚠️ opt-in (`doctrine.entity_manager`); since 1.13 the default write unit refuses pending host work; the default changes in 2.0 |
+| 6 No host EM flush | ⚠️ opt-in (`doctrine.private_entity_manager: true` since 1.14, zero-config, or `doctrine.entity_manager`); since 1.13 the default write unit refuses pending host work; unset or `false` gives a notice and the host-flush probe; 2.0 makes the private manager the only host mode |
 | 7 Events after commit | No events |
 | 8 Config through provider ports | YAML tree + `MarketingToolSourceInterface` |

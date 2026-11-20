@@ -11,9 +11,12 @@ use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\SchemaTool;
 use Doctrine\ORM\UnitOfWork;
 use LogicException;
+use Nowo\MarketingKitBundle\Doctrine\MarketingKitHostFlushReporter;
 use Nowo\MarketingKitBundle\Entity\MarketingTool;
 use Nowo\MarketingKitBundle\Persistence\MarketingToolWriteUnit;
+use Nowo\MarketingKitBundle\Tests\Support\CollectsDeprecations;
 use Nowo\MarketingKitBundle\Tests\Support\Entity\HostNote;
+use Nowo\MarketingKitBundle\Tests\Support\Entity\HostTag;
 use Nowo\MarketingKitBundle\Tests\Support\SqliteManagerRegistry;
 use Nowo\TransactionContract\TransientStorageFailure;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -27,6 +30,8 @@ use function dirname;
 #[CoversClass(MarketingToolWriteUnit::class)]
 final class MarketingToolWriteUnitTest extends TestCase
 {
+    use CollectsDeprecations;
+
     private const BUNDLE = ['Nowo\\MarketingKitBundle\\Entity' => __DIR__ . '/../../../src/Entity'];
 
     public function testTheHostManagerUnitFlushesTheToolAndCommits(): void
@@ -205,6 +210,46 @@ final class MarketingToolWriteUnitTest extends TestCase
         self::assertInstanceOf(UniqueConstraintViolationException::class, $caught);
         self::assertNotSame($manager, $registry->getManager('mk'), 'the bundle\'s own manager was reset');
         self::assertSame(1, (int) $manager->getConnection()->fetchOne('SELECT COUNT(*) FROM marketing_tool'));
+    }
+
+    /**
+     * 1.14 (REQ-ARCH-001 rule 6): host work that enters the host's manager during the unit (an operation or a listener of
+     * the host) is flushed by the unit; the probe reports each foreign class once, right before that flush.
+     */
+    public function testTheHostFlushProbeReportsEachForeignClassFlushedByTheUnit(): void
+    {
+        [$registry, $manager] = $this->hostManager();
+        $unit                 = new MarketingToolWriteUnit($manager, $registry, hostFlushReporter: new MarketingKitHostFlushReporter(true));
+
+        $messages = $this->deprecations(static fn () => $unit->run(static function (EntityManagerInterface $em): void {
+            $em->persist((new MarketingTool())->setCode('gtm'));
+            $em->persist(new HostNote());
+            $em->persist(new HostNote());
+            $tag        = new HostTag();
+            $tag->label = 'x';
+            $em->persist($tag);
+        }));
+
+        self::assertSame([
+            'Your pending changes to ' . HostNote::class . ' were flushed by NowoMarketingKitBundle; 2.0 no longer does.',
+            'Your pending changes to ' . HostTag::class . ' were flushed by NowoMarketingKitBundle; 2.0 no longer does.',
+        ], $messages);
+        self::assertSame(2, (int) $manager->getConnection()->fetchOne('SELECT COUNT(*) FROM host_note'), 'the 1.x behaviour is unchanged');
+    }
+
+    public function testTheProbeIsSilentWithoutForeignWorkAndOnTheBundlesOwnManager(): void
+    {
+        [$registry, $manager] = $this->hostManager();
+        $reporter             = new MarketingKitHostFlushReporter(true);
+        $tool                 = static fn (EntityManagerInterface $em) => $em->persist((new MarketingTool())->setCode('ga4'));
+
+        self::assertSame([], $this->deprecations(static fn () => (new MarketingToolWriteUnit($manager, $registry, hostFlushReporter: $reporter))->run($tool)));
+
+        $own = new MarketingToolWriteUnit($manager, $registry, 'default', true, hostFlushReporter: $reporter);
+        self::assertSame([], $this->deprecations(static fn () => $own->run(static function (EntityManagerInterface $em): void {
+            $em->persist((new MarketingTool())->setCode('meta'));
+            $em->persist(new HostNote());
+        })), 'the bundle\'s own manager (doctrine.entity_manager, private manager) is never probed');
     }
 
     /**

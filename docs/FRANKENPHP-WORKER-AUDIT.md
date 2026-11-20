@@ -98,6 +98,10 @@ Consent is read from the current main request on every render (`CookieConsentGat
 ## Usage recommendations in worker mode
 
 - The bundle is correct with **or without** Symfony's `services_resetter`. Scenario B (no resetter) is supported.
+- 1.14: with `doctrine.private_entity_manager: true` the bundle's private manager (and the host-flush probe's reported
+  classes) are dropped at the same outermost boundaries by `MarketingKitEntityManagerClearSubscriber` (and by
+  transaction-doctrine's bundle when registered, and at `kernel.reset`); a closed private manager is replaced on its
+  next use. Worker test: `tests/Integration/Worker/PrivateEntityManagerWorkerTest.php` (kernel reset off, 20 requests).
 - **Host rule (REQ-RUNTIME-002 rule 7):** a host that disables or bypasses the services resetter must also clear its own entity managers at every boundary (main request start or end, Messenger message, console command); otherwise the identity map serves stale rows across requests. Without `doctrine.entity_manager` this includes `MarketingTool`, which then lives on the application's manager. Set `doctrine.entity_manager` to give the tools their own manager: the bundle clears that one itself.
 - Custom `ConsentGateInterface` implementations must read consent from `RequestStack` at call time, never cache it in a property.
 - Custom tool renderers (tag `nowo_marketing_kit.tool_renderer`) must stay stateless.

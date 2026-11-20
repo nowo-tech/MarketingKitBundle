@@ -8,6 +8,7 @@ use Doctrine\DBAL\Exception as DBALException;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
 use LogicException;
+use Nowo\MarketingKitBundle\Doctrine\MarketingKitHostFlushReporter;
 use Nowo\MarketingKitBundle\Entity\MarketingTool;
 use Nowo\MarketingKitBundle\EventListener\MarketingToolConflictListener;
 use Nowo\TransactionContract\TransientStorageFailure;
@@ -39,8 +40,14 @@ use Throwable;
  * optimistic lock failure, a lost connection) is rethrown unchanged. No retry here: the answer is the 409 of
  * {@see MarketingToolConflictListener}.
  *
+ * 1.14: with `doctrine.private_entity_manager: true` the manager is the bundle's private one (transaction-doctrine's
+ * `PrivateEntityManager`, same connection and table) and the unit takes the first path: a failure closes it and the
+ * private registry drops it, never an application manager. In the host's-manager path the host-flush probe
+ * ({@see MarketingKitHostFlushReporter}) runs right before the flush and reports each application entity class the
+ * flush would write (2.0 no longer flushes them).
+ *
  * Stateless (FrankenPHP worker mode, kernel reset off): DoctrineBundle resets a manager service in place, so the
- * injected manager stays the current one.
+ * injected manager stays the current one; the private manager is a stable decorator dropped at every boundary.
  */
 final readonly class MarketingToolWriteUnit
 {
@@ -52,6 +59,7 @@ final readonly class MarketingToolWriteUnit
      * @param string|null $managerName `doctrine.entity_manager` (null: the default manager)
      * @param bool $ownManager whether that manager is the bundle's own (configured and not the host's default)
      * @param LoggerInterface|null $logger structured failure / repair notices of transaction-doctrine (no SQL)
+     * @param MarketingKitHostFlushReporter|null $hostFlushReporter 1.14: the host-flush probe of the host's-manager path
      */
     public function __construct(
         private EntityManagerInterface $entityManager,
@@ -59,6 +67,7 @@ final readonly class MarketingToolWriteUnit
         private ?string $managerName = null,
         private bool $ownManager = false,
         private ?LoggerInterface $logger = null,
+        private ?MarketingKitHostFlushReporter $hostFlushReporter = null,
     ) {
     }
 
@@ -96,11 +105,15 @@ final readonly class MarketingToolWriteUnit
             throw $refused;
         }
 
+        $reporter = $this->hostFlushReporter;
+
         try {
             /** @var T $result */
             $result = DoctrineTransactionRunner::forConnection($manager->getConnection(), null, $this->logger)
-                ->run(static function () use ($operation, $manager): mixed {
+                ->run(static function () use ($operation, $manager, $reporter): mixed {
                     $result = $operation($manager);
+                    // 1.14 (REQ-ARCH-001 rule 6): report the application's pending work this flush writes (read-only).
+                    $reporter?->beforeFlush($manager);
                     $manager->flush();
 
                     return $result;

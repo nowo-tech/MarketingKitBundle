@@ -7,18 +7,29 @@ namespace Nowo\MarketingKitBundle\DependencyInjection;
 use LogicException;
 use Nowo\MarketingKitBundle\Controller\MarketingToolAdminController;
 use Nowo\MarketingKitBundle\DependencyInjection\Compiler\CommitTrackingPass;
+use Nowo\MarketingKitBundle\DependencyInjection\Compiler\PrivateEntityManagerSourcePass;
 use Nowo\MarketingKitBundle\DependencyInjection\Configuration as BundleConfiguration;
+use Nowo\MarketingKitBundle\Doctrine\MarketingKitHostFlushReporter;
+use Nowo\MarketingKitBundle\Entity\MarketingTool;
 use Nowo\MarketingKitBundle\EventListener\MarketingToolConflictListener;
+use Nowo\MarketingKitBundle\EventSubscriber\ClosedEntityManagerSubscriber;
+use Nowo\MarketingKitBundle\EventSubscriber\MarketingKitEntityManagerClearSubscriber;
 use Nowo\MarketingKitBundle\Persistence\MarketingToolWriteUnit;
 use Nowo\MarketingKitBundle\Provider\ToolRendererInterface;
+use Nowo\MarketingKitBundle\Repository\MarketingToolRepository;
 use Nowo\MarketingKitBundle\Security\AllowAllMarketingKitAccessChecker;
 use Nowo\MarketingKitBundle\Security\ConfigurableMarketingKitAccessChecker;
 use Nowo\MarketingKitBundle\Security\MarketingKitAccessCheckerInterface;
 use Nowo\MarketingKitBundle\Service\MarketingToolAdminService;
+use Nowo\TransactionDoctrine\HostFlushProbe;
+use Nowo\TransactionDoctrine\PrivateManager\PrivateEntityManager;
+use Nowo\TransactionDoctrine\PrivateManager\PrivateEntityManagerMiddleware;
+use Nowo\TransactionDoctrine\PrivateManager\PrivateManagerRegistry;
 use Nowo\TransactionDoctrine\Symfony\Conflict\ConflictResponsePolicy;
 use Nowo\TransactionDoctrine\WriteUnit\CommitLedger;
 use Nowo\TransactionDoctrine\WriteUnit\Dbal\CommitTrackingMiddleware;
 use Symfony\Component\Config\FileLocator;
+use Symfony\Component\DependencyInjection\Argument\IteratorArgument;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\Definition;
@@ -33,6 +44,7 @@ use function is_array;
 use function is_string;
 use function ltrim;
 use function sprintf;
+use function trigger_deprecation;
 
 /**
  * Loads MarketingKit services and publishes configuration parameters.
@@ -47,6 +59,30 @@ final class NowoMarketingKitExtension extends Extension implements PrependExtens
 
     /** 1.13: container parameter holding `conflict_response.commit_tracking` (bundle, all or off). */
     public const COMMIT_TRACKING_PARAMETER = 'nowo_marketing_kit.conflict_response.commit_tracking';
+
+    /** 1.14: container parameter holding `doctrine.private_entity_manager === true`. */
+    public const PRIVATE_ENTITY_MANAGER_PARAMETER = 'nowo_marketing_kit.doctrine.private_entity_manager';
+
+    /**
+     * 1.14: container parameter holding the name of the application's manager the private one is created on:
+     * `doctrine.entity_manager`, else the default entity manager (resolved by {@see PrivateEntityManagerSourcePass}).
+     */
+    public const PRIVATE_SOURCE_MANAGER_PARAMETER = 'nowo_marketing_kit.private_entity_manager.source_manager';
+
+    /** 1.14: the bundle's private entity manager (`doctrine.private_entity_manager: true`). */
+    public const PRIVATE_ENTITY_MANAGER_SERVICE = 'nowo_marketing_kit.private_entity_manager';
+
+    /** 1.14: the registry the bundle's repository gets in private mode (MarketingTool → the private manager). */
+    public const PRIVATE_REGISTRY_SERVICE = 'nowo_marketing_kit.private_manager_registry';
+
+    /** 1.14: tells the private manager how the connection's transactions end (tagged by {@see PrivateEntityManagerSourcePass}). */
+    public const PRIVATE_MIDDLEWARE_SERVICE = 'nowo_marketing_kit.private_entity_manager_middleware';
+
+    /** 1.14: the notice of a host that sets neither `doctrine.private_entity_manager` nor `doctrine.entity_manager`. */
+    public const PRIVATE_ENTITY_MANAGER_UNSET_DEPRECATION = 'Not setting "nowo_marketing_kit.doctrine.private_entity_manager" is deprecated: marketing tool writes flush the application\'s entity manager, including its own pending changes. 2.0 always writes through a private entity manager on the same connection and table that never flushes them. Opt in now with "nowo_marketing_kit: { doctrine: { private_entity_manager: true } }", or set "doctrine.entity_manager" to a manager of the bundle\'s own (see UPGRADING.md "To 1.14.0").';
+
+    /** 1.14: the notice of a host that sets `doctrine.private_entity_manager: false` without `doctrine.entity_manager`. */
+    public const PRIVATE_ENTITY_MANAGER_FALSE_DEPRECATION = '"nowo_marketing_kit.doctrine.private_entity_manager: false" is deprecated and removed in 2.0: marketing tool writes flush the application\'s entity manager, including its own pending changes, and 2.0 always writes through a private entity manager on the same connection and table that never flushes them. Set it to true now, or set "doctrine.entity_manager" to a manager of the bundle\'s own (see UPGRADING.md "To 1.14.0").';
 
     /**
      * Seeds UiKit defaults from web_ui when the host has not set nowo_ui_kit (REQ-UI-001-kit).
@@ -166,7 +202,9 @@ final class NowoMarketingKitExtension extends Extension implements PrependExtens
         $container->setParameter('nowo_marketing_kit.doctrine.connection', $config['doctrine']['connection']);
         $container->setParameter('nowo_marketing_kit.doctrine.entity_manager', $config['doctrine']['entity_manager']);
         $entityManager = $config['doctrine']['entity_manager'];
-        if (is_string($entityManager)) {
+        $private       = $config['doctrine']['private_entity_manager'] ?? null;
+        $this->registerPrivateEntityManager($container, $private === null ? null : (bool) $private, is_string($entityManager) && $entityManager !== '' ? $entityManager : null);
+        if (is_string($entityManager) && $private !== true) {
             // 1.10.0 (audit LD-MK-M1): the admin reads and writes MarketingTool through its own manager.
             $reference = new Reference(sprintf('doctrine.orm.%s_entity_manager', $entityManager));
             $container->getDefinition(MarketingToolAdminService::class)->setArgument('$entityManager', $reference);
@@ -207,6 +245,89 @@ final class NowoMarketingKitExtension extends Extension implements PrependExtens
             $definition->addTag('doctrine.event_listener', ['event' => 'loadClassMetadata']);
             $container->setDefinition(TablePrefixListener::class, $definition);
         }
+    }
+
+    /**
+     * 1.14 (REQ-ARCH-001 rule 6): `doctrine.private_entity_manager`.
+     *
+     * - true: the repository (through a {@see PrivateManagerRegistry}), the admin service, the admin controller and the
+     *   {@see MarketingToolWriteUnit} work through transaction-doctrine's {@see PrivateEntityManager}, created on the
+     *   connection, configuration and event manager of `doctrine.entity_manager` (else the default manager). Same table,
+     *   no host configuration. It is dropped at every outermost unit-of-work boundary
+     *   ({@see MarketingKitEntityManagerClearSubscriber}; also by transaction-doctrine's bundle through the
+     *   {@see PrivateEntityManager::TAG} tag, and at `kernel.reset`) and replaced when closed.
+     * - false or null: the bundle writes through the manager that maps MarketingTool (1.x). With
+     *   `doctrine.entity_manager` unset, both trigger a deprecation notice (null: the default flips; false: removed in
+     *   2.0). {@see MarketingKitHostFlushReporter} reports in both, whenever the write unit flushes the application's
+     *   manager.
+     */
+    private function registerPrivateEntityManager(ContainerBuilder $container, ?bool $private, ?string $entityManagerName): void
+    {
+        $container->setParameter(self::PRIVATE_ENTITY_MANAGER_PARAMETER, $private === true);
+        $container->setParameter(self::PRIVATE_SOURCE_MANAGER_PARAMETER, $entityManagerName ?? '');
+
+        if ($private !== true && $entityManagerName === null) {
+            trigger_deprecation('nowo-tech/marketing-kit-bundle', '1.14', $private === null ? self::PRIVATE_ENTITY_MANAGER_UNSET_DEPRECATION : self::PRIVATE_ENTITY_MANAGER_FALSE_DEPRECATION);
+        }
+
+        $container->register(MarketingKitHostFlushReporter::class, MarketingKitHostFlushReporter::class)
+            ->setAutowired(false)
+            ->setAutoconfigured(false)
+            ->setArguments([$private !== true, new Reference(HostFlushProbe::SERVICE_ID, ContainerInterface::NULL_ON_INVALID_REFERENCE)])
+            ->addTag('kernel.reset', ['method' => 'reset']);
+        $container->getDefinition(MarketingToolWriteUnit::class)
+            ->setArgument('$hostFlushReporter', new Reference(MarketingKitHostFlushReporter::class));
+
+        $resettables = [new Reference(MarketingKitHostFlushReporter::class, ContainerInterface::IGNORE_ON_UNINITIALIZED_REFERENCE)];
+
+        if ($private === true) {
+            $source = '%' . self::PRIVATE_SOURCE_MANAGER_PARAMETER . '%';
+            $container->register(self::PRIVATE_ENTITY_MANAGER_SERVICE, PrivateEntityManager::class)
+                ->setAutowired(false)
+                ->setAutoconfigured(false)
+                ->setArguments([
+                    new Reference('doctrine'),
+                    $source,
+                    MarketingTool::class,
+                    MarketingKitHostFlushReporter::BUNDLE_NAME,
+                    new Reference('logger', ContainerInterface::NULL_ON_INVALID_REFERENCE),
+                ])
+                ->addTag(PrivateEntityManager::TAG)
+                ->addTag('kernel.reset', ['method' => 'reset']);
+            $container->register(self::PRIVATE_REGISTRY_SERVICE, PrivateManagerRegistry::class)
+                ->setAutowired(false)
+                ->setAutoconfigured(false)
+                ->setArguments([
+                    new Reference('doctrine'),
+                    new Reference(self::PRIVATE_ENTITY_MANAGER_SERVICE),
+                    MarketingKitHostFlushReporter::OWN_NAMESPACES,
+                    $source,
+                ]);
+            // Tagged doctrine.middleware for the source manager's connection by PrivateEntityManagerSourcePass.
+            $container->register(self::PRIVATE_MIDDLEWARE_SERVICE, PrivateEntityManagerMiddleware::class)
+                ->setAutowired(false)
+                ->setAutoconfigured(false)
+                ->setArguments([new Reference(self::PRIVATE_ENTITY_MANAGER_SERVICE), 'nowo_marketing_kit_']);
+
+            $manager  = new Reference(self::PRIVATE_ENTITY_MANAGER_SERVICE);
+            $registry = new Reference(self::PRIVATE_REGISTRY_SERVICE);
+            $container->getDefinition(MarketingToolRepository::class)->setArgument('$registry', $registry);
+            $container->getDefinition(MarketingToolAdminService::class)->setArgument('$entityManager', $manager);
+            $container->getDefinition(MarketingToolAdminController::class)->setArgument('$entityManager', $manager);
+            // The private manager is the bundle's own: a failed unit closes it and the private registry drops it.
+            $container->getDefinition(MarketingToolWriteUnit::class)
+                ->setArgument('$entityManager', $manager)
+                ->setArgument('$registry', $registry)
+                ->setArgument('$managerName', $source)
+                ->setArgument('$ownManager', true);
+            $container->getDefinition(ClosedEntityManagerSubscriber::class)
+                ->setArgument('$registry', $registry)
+                ->setArgument('$entityManagerName', $source);
+
+            $resettables[] = new Reference(self::PRIVATE_ENTITY_MANAGER_SERVICE, ContainerInterface::IGNORE_ON_UNINITIALIZED_REFERENCE);
+        }
+
+        $container->getDefinition(MarketingKitEntityManagerClearSubscriber::class)->setArgument('$resettables', new IteratorArgument($resettables));
     }
 
     /**

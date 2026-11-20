@@ -25,6 +25,11 @@ use Symfony\Component\DependencyInjection\Reference;
 use function array_filter;
 use function array_values;
 
+/**
+ * These tests load the 1.x host-mode configuration (doctrine.private_entity_manager unset), which triggers the 1.14
+ * notice asserted in {@see PrivateEntityManagerExtensionTest}.
+ */
+#[IgnoreDeprecations]
 final class NowoMarketingKitExtensionTest extends TestCase
 {
     public function testLoadPublishesParametersAndServices(): void

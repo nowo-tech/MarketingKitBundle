@@ -8,6 +8,7 @@ use Doctrine\Bundle\DoctrineBundle\DependencyInjection\Compiler\DoctrineOrmMappi
 use Nowo\MarketingKitBundle\DependencyInjection\Compiler\CommitTrackingPass;
 use Nowo\MarketingKitBundle\DependencyInjection\Compiler\CsrfProtectionPass;
 use Nowo\MarketingKitBundle\DependencyInjection\Compiler\EntityManagerOptionPass;
+use Nowo\MarketingKitBundle\DependencyInjection\Compiler\PrivateEntityManagerSourcePass;
 use Nowo\MarketingKitBundle\DependencyInjection\Compiler\TwigPathsPass;
 use Nowo\MarketingKitBundle\DependencyInjection\NowoMarketingKitExtension;
 use Symfony\Component\DependencyInjection\Compiler\PassConfig;
@@ -26,6 +27,9 @@ class NowoMarketingKitBundle extends Bundle
         $container->addCompilerPass(new CsrfProtectionPass());
         // 1.13 (REQ-RUNTIME-003): scope the commit-tracking middleware before DoctrineBundle's MiddlewaresPass (priority 0).
         $container->addCompilerPass(new CommitTrackingPass(), PassConfig::TYPE_BEFORE_OPTIMIZATION, 5);
+        // 1.14 (doctrine.private_entity_manager: true): the private manager's source and its DBAL middleware, before
+        // DoctrineBundle's MiddlewaresPass (priority 0).
+        $container->addCompilerPass(new PrivateEntityManagerSourcePass(), PassConfig::TYPE_BEFORE_OPTIMIZATION, 5);
 
         $entityDir = __DIR__ . '/Entity';
         if (is_dir($entityDir)) {

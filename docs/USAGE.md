@@ -66,6 +66,19 @@ With Doctrine schema created, open **`/admin/marketing`** (`web_ui.path_prefix`)
 
 Set `use_database_config: true` so DB rows replace YAML tools at runtime when the profile has at least one row.
 
+Since 1.14, also set `doctrine.private_entity_manager: true` (the 2.0 behaviour, zero-config: same connection and
+table; see [UPGRADING](UPGRADING.md#to-1140)), so an admin write never flushes your application's pending changes:
+
+```yaml
+nowo_marketing_kit:
+    use_database_config: true
+    doctrine:
+        private_entity_manager: true
+```
+
+Left unset, the bundle keeps the 1.x behaviour with a deprecation notice; 2.0 always uses the private manager
+(`doctrine.entity_manager: <name>` stays for a dedicated manager).
+
 ```bash
 php bin/console doctrine:schema:update --force
 # or a migration that creates marketing_tool
