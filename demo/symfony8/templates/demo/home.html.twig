@@ -2,9 +2,11 @@
 
 {% block title %}Marketing Kit Demo{% endblock %}
 
+{% block nowo_ui_page_header %}
+    {{ include(nowo_ui_partial('page_header'), {title: 'Marketing Kit Demo', intro: 'Database config is enabled. Configure marketing services in the admin CRUD.'}) }}
+{% endblock %}
+
 {% block body %}
-    <h1>Marketing Kit Demo</h1>
-    <p>Database config is enabled. Configure marketing services in the admin CRUD.</p>
     <section class="nowo-ui-card">
         <div class="nowo-ui-card__body">
             <p><a class="nowo-ui-link" href="{{ path('nowo_marketing_kit_admin_index') }}"><strong>/admin/marketing</strong></a> — list, seed catalog, import YAML, edit provider IDs, toggle on/off.</p>
