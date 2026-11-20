@@ -84,7 +84,9 @@ final class HostPortsKernel extends Kernel
             'use_database_config'    => true,
             'respect_cookie_consent' => false,
             'security'               => ['allow_unauthenticated' => true],
-            'profiles'               => [
+            // 1.14: the 2.0 default (no notice).
+            'doctrine' => ['private_entity_manager' => true],
+            'profiles' => [
                 'default' => ['tools' => [
                     'ga4' => ['type' => 'ga4', 'category' => 'analytics', 'options' => ['measurement_id' => 'G-YAML0001']],
                 ]],

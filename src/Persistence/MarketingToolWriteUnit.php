@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace Nowo\MarketingKitBundle\Persistence;
 
+use Closure;
 use Doctrine\DBAL\Exception as DBALException;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\UnitOfWork;
 use Doctrine\Persistence\ManagerRegistry;
 use LogicException;
+use Nowo\MarketingKitBundle\Doctrine\MarketingKitHostFlushReporter;
 use Nowo\MarketingKitBundle\Entity\MarketingTool;
 use Nowo\MarketingKitBundle\EventListener\MarketingToolConflictListener;
 use Nowo\TransactionContract\TransientStorageFailure;
@@ -39,8 +42,14 @@ use Throwable;
  * optimistic lock failure, a lost connection) is rethrown unchanged. No retry here: the answer is the 409 of
  * {@see MarketingToolConflictListener}.
  *
+ * 1.14: with `doctrine.private_entity_manager: true` the manager is the bundle's private one (transaction-doctrine's
+ * `PrivateEntityManager`, same connection and table) and the unit takes the first path: a failure closes it and the
+ * private registry drops it, never an application manager. In the host's-manager path the host-flush probe
+ * ({@see MarketingKitHostFlushReporter}) runs right before the flush and reports each application entity class the
+ * flush would write (2.0 no longer flushes them).
+ *
  * Stateless (FrankenPHP worker mode, kernel reset off): DoctrineBundle resets a manager service in place, so the
- * injected manager stays the current one.
+ * injected manager stays the current one; the private manager is a stable decorator dropped at every boundary.
  */
 final readonly class MarketingToolWriteUnit
 {
@@ -52,6 +61,7 @@ final readonly class MarketingToolWriteUnit
      * @param string|null $managerName `doctrine.entity_manager` (null: the default manager)
      * @param bool $ownManager whether that manager is the bundle's own (configured and not the host's default)
      * @param LoggerInterface|null $logger structured failure / repair notices of transaction-doctrine (no SQL)
+     * @param MarketingKitHostFlushReporter|null $hostFlushReporter 1.14: the host-flush probe of the host's-manager path
      */
     public function __construct(
         private EntityManagerInterface $entityManager,
@@ -59,6 +69,7 @@ final readonly class MarketingToolWriteUnit
         private ?string $managerName = null,
         private bool $ownManager = false,
         private ?LoggerInterface $logger = null,
+        private ?MarketingKitHostFlushReporter $hostFlushReporter = null,
     ) {
     }
 
@@ -96,11 +107,15 @@ final readonly class MarketingToolWriteUnit
             throw $refused;
         }
 
+        $reporter = $this->hostFlushReporter;
+
         try {
             /** @var T $result */
             $result = DoctrineTransactionRunner::forConnection($manager->getConnection(), null, $this->logger)
-                ->run(static function () use ($operation, $manager): mixed {
+                ->run(static function () use ($operation, $manager, $reporter): mixed {
                     $result = $operation($manager);
+                    // 1.14 (REQ-ARCH-001 rule 6): report the application's pending work this flush writes (read-only).
+                    $reporter?->beforeFlush($manager);
                     $manager->flush();
 
                     return $result;
@@ -115,7 +130,8 @@ final readonly class MarketingToolWriteUnit
     }
 
     /**
-     * Pending changes on entities that are not marketing tool rows belong to the host: refuse to carry them.
+     * Pending changes on entities that are not marketing tool rows belong to the host: refuse to carry them. Read-only:
+     * change sets are computed (as the flush would), nothing is flushed, cleared, detached or reset here.
      */
     private function assertNoHostPendingChanges(EntityManagerInterface $manager): void
     {
@@ -136,6 +152,31 @@ final readonly class MarketingToolWriteUnit
         if ($unitOfWork->getScheduledCollectionUpdates() !== [] || $unitOfWork->getScheduledCollectionDeletions() !== []) {
             throw new LogicException(self::HOST_PENDING_MESSAGE);
         }
+
+        // Audit XD-5 (1.14): orphan removals are deletions the flush performs too (an inverse collection cleared, an
+        // inverse one-to-one set to null), held apart from the scheduled deletions until the flush. A marketing tool
+        // row has no association, so every orphan is the host's. Only a managed orphan is deleted by the flush: ORM
+        // keeps the loaded value of an inverse one-to-one after its orphan was deleted, so every later change-set
+        // computation schedules that (no longer managed) entity again, and the flush skips it.
+        foreach ($this->orphanRemovals($unitOfWork) as $orphan) {
+            if ($manager->contains($orphan)) {
+                throw new LogicException(self::HOST_PENDING_MESSAGE);
+            }
+        }
+    }
+
+    /**
+     * The entities orphan removal deletes at the next flush. UnitOfWork keeps them private: read without changing them
+     * (as transaction-doctrine's HostFlushProbe does).
+     *
+     * @return array<object>
+     */
+    private function orphanRemovals(UnitOfWork $unitOfWork): array
+    {
+        /** @var array<object> $orphans */
+        $orphans = Closure::bind(static fn (UnitOfWork $unitOfWork): array => $unitOfWork->orphanRemovals, null, UnitOfWork::class)($unitOfWork);
+
+        return $orphans;
     }
 
     /**

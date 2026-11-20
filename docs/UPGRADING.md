@@ -3,6 +3,12 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 1.14.0](#to-1140)
+  - [The private entity manager notices](#the-private-entity-manager-notices)
+  - [Reading the host-flush probe](#reading-the-host-flush-probe)
+  - [Opting in: what changes](#opting-in-what-changes)
+  - [Other 2.0 notices](#other-20-notices)
+  - [Preparing for 2.0](#preparing-for-20)
 - [To 1.13.0](#to-1130)
 - [To 1.12.0](#to-1120)
 - [To 1.10.3](#to-1103)
@@ -42,6 +48,134 @@
   - [From nothing to 1.0.0](#from-nothing-to-100)
 
 ## Unreleased
+
+## To 1.14.0
+
+From **1.13.x**:
+
+```bash
+composer update nowo-tech/marketing-kit-bundle nowo-tech/transaction-doctrine
+```
+
+1.14.0 is the last 1.x minor before 2.0. Without configuration it behaves as 1.13. It adds the
+`doctrine.private_entity_manager` opt-in, deprecation notices for what 2.0 changes, and a host-flush probe that lists
+what that change would mean for your application. It requires `nowo-tech/transaction-doctrine` ^1.9.1.
+
+### The private entity manager notices
+
+With `doctrine.entity_manager` unset and `doctrine.private_entity_manager` unset, building the container now logs:
+
+> Not setting "nowo_marketing_kit.doctrine.private_entity_manager" is deprecated: marketing tool writes flush the
+> application's entity manager, including its own pending changes. 2.0 always writes through a private entity manager
+> on the same connection and table that never flushes them. Opt in now with "nowo_marketing_kit: { doctrine: {
+> private_entity_manager: true } }", or set "doctrine.entity_manager" to a manager of the bundle's own (see
+> UPGRADING.md "To 1.14.0").
+
+With `doctrine.private_entity_manager: false` (and `doctrine.entity_manager` unset):
+
+> "nowo_marketing_kit.doctrine.private_entity_manager: false" is deprecated and removed in 2.0: marketing tool writes
+> flush the application's entity manager, including its own pending changes, and 2.0 always writes through a private
+> entity manager on the same connection and table that never flushes them. Set it to true now, or set
+> "doctrine.entity_manager" to a manager of the bundle's own (see UPGRADING.md "To 1.14.0").
+
+The same notices are triggered when `doctrine.entity_manager` names your default entity manager (for example
+`entity_manager: default`): the bundle then writes through that manager exactly as when the option is unset, and the
+host-flush probe runs too.
+
+What they mean: today every admin write (create, edit, toggle, delete, catalog seed, YAML import) runs in a
+`MarketingToolWriteUnit` on your default entity manager and flushes it. Since 1.13 the unit refuses to start while that
+manager holds pending changes of your entities (since 1.14 also pending orphan removals: an inverse collection with
+`orphanRemoval` cleared, or an inverse one-to-one with `orphanRemoval` set to null), but work that enters the manager during the unit (a Doctrine listener
+of yours, an orphan removal) is still flushed with the marketing tool. In 2.0 the bundle always writes through a private
+manager and never flushes your manager; `private_entity_manager: false` no longer exists.
+
+To opt in now (the table, the connection and the mapping do not change; no migration):
+
+```yaml
+nowo_marketing_kit:
+    doctrine:
+        private_entity_manager: true
+```
+
+A host with `doctrine.entity_manager` naming a dedicated manager other than the default one (the DDD option, kept in
+2.0) gets no notice: that manager is the bundle's own and the bundle never flushes your default manager.
+
+### Reading the host-flush probe
+
+Whenever the write unit flushes your manager (no `private_entity_manager: true`, no dedicated
+`doctrine.entity_manager`), it calls the host-flush probe of nowo-tech/transaction-doctrine right before that flush.
+Every entity class outside `Nowo\MarketingKitBundle\Entity` with pending changes in the flushed manager (a scheduled
+insert or delete, an orphan removal, a changed field, association or collection) triggers one deprecation per request,
+message or command:
+
+> Your pending changes to App\Entity\AuditEntry were flushed by NowoMarketingKitBundle; 2.0 no longer does.
+
+The bundle never changes your entities itself, so every class listed is your application's own work that relies on a
+marketing tool write to reach the database. Read the collected messages as your migration list:
+
+1. Run your usual traffic and test suite on 1.14 with deprecations logged (the Symfony profiler, the `deprecation`
+   log channel, or PHPUnit's deprecation report).
+2. For each class listed, find the code that changes it without flushing: typically a Doctrine listener of yours that
+   reacts to `MarketingTool` changes (for example an audit trail) or a decorator of the admin services. Make it flush its
+   own changes (or run it in your own transaction).
+3. When no message is left, set `private_entity_manager: true`. The probe is silent in that mode.
+
+Because the 1.13 write unit already refuses pending changes that exist before it starts, most applications never see
+a probe message. The probe is read-only: it flushes, clears, closes or resets nothing. It is
+NowoTransactionDoctrineBundle's shared `nowo_transaction_doctrine.host_flush_probe` when you register that bundle,
+otherwise one of the bundle's own; both are reset at every request, message and command boundary (FrankenPHP worker
+mode with the kernel reset off included).
+
+### Opting in: what changes
+
+With `private_entity_manager: true`:
+
+- `MarketingToolRepository` (through a `PrivateManagerRegistry`), the admin service, the admin controller and the
+  write unit use the private manager. It is created on the connection, configuration (mapping, metadata cache) and
+  event manager (your Doctrine listeners) of `doctrine.entity_manager`, else of your default entity manager. The SQL
+  filters enabled on that manager are mirrored.
+- An admin write flushes only the marketing tool rows, and no longer refuses to run while your manager holds pending
+  changes (they are not its concern any more). A failed write closes only the private manager, which is replaced on
+  the next use; your manager stays open. Lock conflicts still answer 409 + `CONFLICT_001` / `CONFLICT_002`.
+- The private manager is dropped at every request, message and command boundary (and at `kernel.reset`):
+  `MarketingTool` entities never stay managed from one unit to the next. Changes the bundle left unflushed then are
+  discarded and logged as a warning (classes and counts only).
+- `getRepository(MarketingTool::class)` on your own manager (or the `MarketingToolRepository` service) returns the
+  bundle's repository, which reads through the private manager: tools you load that way belong to the private manager.
+  Do not `persist()` or `flush()` them through your manager; change them through the admin or
+  `MarketingToolAdminService`.
+- An entity of yours that points at a marketing tool (a many-to-one or one-to-one to `MarketingTool`) must get it from
+  your own manager with `$yourManager->getReference(MarketingTool::class, $id)`, not from the bundle's repository: a
+  tool loaded through the private manager is unknown to your manager, and your flush would refuse it as a new entity
+  found through a relationship.
+- The connection is shared: a transaction you open around a call of `MarketingToolAdminService` includes its rows (the
+  private flush then uses a savepoint), and your rollback undoes them.
+- DBAL 3 with `use_savepoints` off: a failed private flush inside your transaction marks your transaction
+  rollback-only. Turn savepoints on (always on in DBAL 4).
+
+### Other 2.0 notices
+
+- **Admin controller final.** `MarketingToolAdminController` has been `@final` since 1.7 (Symfony's debug class loader
+  reports a subclass in debug mode). Since 1.14 a subclass of yours also triggers a runtime notice when it is built:
+  *"App\Controller\MyAdmin" extends "Nowo\MarketingKitBundle\Controller\MarketingToolAdminController", which is final
+  in 2.0 …*. Decorate or replace the controller service, or alias the bundle's ports (access checker, tool source,
+  renderers) instead.
+- **Fourth `MarketingConfigResolver` argument.** Passing a `MarketingToolRepository` as `$toolRepository` has
+  triggered a notice since 1.12 (removed in 2.0). A positional `null` in that slot cannot be detected at runtime: if you
+  build the resolver yourself, pass `requestStack:` and `toolSource:` by name, so the call keeps working when 2.0 drops
+  the parameter.
+
+### Preparing for 2.0
+
+2.0 contains only the deprecations announced in 1.x:
+
+- The private entity manager is the only host mode: `doctrine.private_entity_manager` defaults to `true` and `false`
+  is removed. `doctrine.entity_manager: <name>` stays as the DDD option.
+- The fourth `MarketingConfigResolver` argument (`$toolRepository`) is removed, `MarketingToolAdminController` is
+  `final`, and the deprecated `doctrine.connection` key is removed.
+
+After 2.0.0 is tagged, the 1.x line gets security fixes for 6 months: Moderate and higher are backported to the last
+1.x minor; Low ones are fixed in 2.x only, with the advice to upgrade.
 
 ## To 1.13.0
 

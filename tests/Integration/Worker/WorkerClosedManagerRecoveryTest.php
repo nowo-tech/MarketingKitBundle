@@ -8,6 +8,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\SchemaTool;
 use Doctrine\Persistence\ManagerRegistry;
 use Nowo\MarketingKitBundle\Entity\MarketingTool;
+use PHPUnit\Framework\Attributes\IgnoreDeprecations;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
@@ -19,7 +20,10 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
  * resetter): one booted kernel serves every request through the http_kernel service, so kernel.reset never runs.
  * A closed bundle manager is reset before the next admin request, which then renders from the database; the host's
  * own closed manager ("reporting") is never touched by the bundle.
+ *
+ * Host mode on purpose (doctrine.private_entity_manager unset: the 1.14 notice when the container is built).
  */
+#[IgnoreDeprecations]
 final class WorkerClosedManagerRecoveryTest extends KernelTestCase
 {
     protected static function getKernelClass(): string
