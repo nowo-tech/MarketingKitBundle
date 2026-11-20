@@ -19,10 +19,10 @@
 {% block nowo_ui_navigation %}
     {% set _route = app.request.attributes.get('_route') %}
     <header class="nowo-ui-header" data-testid="demo-masthead">
-        <a class="nowo-ui-brand" href="{{ path('demo_home') }}">Marketing Kit demo</a>
+        <a class="nowo-ui-brand" href="{{ path('demo_home') }}">Marketing Kit · Symfony 8</a>
         <nav class="nowo-ui-menu" aria-label="Demo">
-            <a class="nowo-ui-link" href="{{ path('demo_home') }}"{% if _route == 'demo_home' %} aria-current="page"{% endif %}>Home</a>
-            <a class="nowo-ui-link" href="{{ path('nowo_marketing_kit_admin_index') }}"{% if _route starts with 'nowo_marketing_kit_admin' %} aria-current="page"{% endif %}>Marketing services</a>
+            <a class="nowo-ui-link" href="{{ path('demo_home') }}"{% if _route == 'demo_home' %} aria-current="page"{% endif %} data-testid="demo-nav-demo_home">Home</a>
+            <a class="nowo-ui-link" href="{{ path('nowo_marketing_kit_admin_index') }}"{% if _route starts with 'nowo_marketing_kit_admin' %} aria-current="page"{% endif %} data-testid="demo-nav-nowo_marketing_kit_admin_index">Marketing services</a>
         </nav>
         <div class="nowo-ui-header__end">
             {{ include('@NowoUiKitBundle/partials/_theme_toggle.html.twig', { compact: true }, false) }}
