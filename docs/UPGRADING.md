@@ -4,6 +4,7 @@
 
 - [Unreleased](#unreleased)
 - [To 1.14.0](#to-1140)
+- [To 1.14.0](#to-1140-1)
   - [The private entity manager notices](#the-private-entity-manager-notices)
   - [Reading the host-flush probe](#reading-the-host-flush-probe)
   - [Opting in: what changes](#opting-in-what-changes)
@@ -48,6 +49,14 @@
   - [From nothing to 1.0.0](#from-nothing-to-100)
 
 ## Unreleased
+
+## To 1.14.0
+
+From **1.13.0**:
+
+```bash
+composer update nowo-tech/marketing-kit-bundle
+```
 
 ## To 1.14.0
 
