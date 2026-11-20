@@ -68,6 +68,52 @@ final class PrivateEntityManagerExtensionTest extends TestCase
         self::assertSame('doctrine.orm.marketing_entity_manager', (string) $container->getDefinition(MarketingToolWriteUnit::class)->getArgument('$entityManager'));
     }
 
+    /**
+     * Audit XD-4: `doctrine.entity_manager` naming the application's default manager writes through that manager as when
+     * unset, so the source pass triggers the same notice (the extension cannot know the default manager's name) and
+     * the write unit keeps the application's-manager path with the probe.
+     */
+    #[IgnoreDeprecations]
+    public function testTheDefaultManagerNamedAsEntityManagerTriggersTheUnsetNotice(): void
+    {
+        $container = $this->load(['doctrine' => ['entity_manager' => 'main']]);
+        $container->setParameter('doctrine.default_entity_manager', 'main');
+
+        $this->expectUserDeprecationMessage('Since nowo-tech/marketing-kit-bundle 1.14: ' . NowoMarketingKitExtension::PRIVATE_ENTITY_MANAGER_UNSET_DEPRECATION);
+        (new PrivateEntityManagerSourcePass())->process($container);
+
+        $this->assertProbeEnabled($container, true);
+        self::assertFalse($container->getDefinition(MarketingToolWriteUnit::class)->getArgument('$ownManager'));
+    }
+
+    #[IgnoreDeprecations]
+    public function testTheDefaultManagerNamedWithExplicitFalseTriggersTheRemovalNotice(): void
+    {
+        $container = $this->load(['doctrine' => ['entity_manager' => 'default', 'private_entity_manager' => false]]);
+
+        $this->expectUserDeprecationMessage('Since nowo-tech/marketing-kit-bundle 1.14: ' . NowoMarketingKitExtension::PRIVATE_ENTITY_MANAGER_FALSE_DEPRECATION);
+        (new PrivateEntityManagerSourcePass())->process($container); // no doctrine.default_entity_manager: "default"
+    }
+
+    public function testTheSourcePassTriggersNothingForADedicatedManagerOrThePrivateMode(): void
+    {
+        $dedicated = $this->load(['doctrine' => ['entity_manager' => 'marketing']]);
+        $dedicated->setParameter('doctrine.default_entity_manager', 'main');
+        (new PrivateEntityManagerSourcePass())->process($dedicated);
+
+        $private = $this->load(['doctrine' => ['entity_manager' => 'main', 'private_entity_manager' => true]]);
+        $private->setParameter('doctrine.default_entity_manager', 'main');
+        $private->setParameter('doctrine.entity_managers', ['main' => 'doctrine.orm.main_entity_manager']);
+        $private->setDefinition('doctrine.orm.main_entity_manager', new Definition('stdClass', [new Reference('doctrine.dbal.default_connection')]));
+        (new PrivateEntityManagerSourcePass())->process($private);
+
+        $withoutSetting = $this->load(['doctrine' => ['entity_manager' => 'default']]);
+        $withoutSetting->getParameterBag()->remove(NowoMarketingKitExtension::PRIVATE_ENTITY_MANAGER_SETTING_PARAMETER);
+        (new PrivateEntityManagerSourcePass())->process($withoutSetting);
+
+        self::assertSame('main', $private->getParameter(NowoMarketingKitExtension::PRIVATE_SOURCE_MANAGER_PARAMETER));
+    }
+
     public function testTrueWiresThePrivateManagerWithoutNotice(): void
     {
         $container = $this->load(['doctrine' => ['private_entity_manager' => true]]);

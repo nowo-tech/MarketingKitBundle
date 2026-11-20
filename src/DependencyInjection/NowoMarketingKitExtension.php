@@ -69,6 +69,13 @@ final class NowoMarketingKitExtension extends Extension implements PrependExtens
      */
     public const PRIVATE_SOURCE_MANAGER_PARAMETER = 'nowo_marketing_kit.private_entity_manager.source_manager';
 
+    /**
+     * 1.14: container parameter holding `doctrine.private_entity_manager` as configured (null when unset), read by
+     * {@see PrivateEntityManagerSourcePass} to trigger the notice when `doctrine.entity_manager` names the application's
+     * default manager.
+     */
+    public const PRIVATE_ENTITY_MANAGER_SETTING_PARAMETER = 'nowo_marketing_kit.private_entity_manager.setting';
+
     /** 1.14: the bundle's private entity manager (`doctrine.private_entity_manager: true`). */
     public const PRIVATE_ENTITY_MANAGER_SERVICE = 'nowo_marketing_kit.private_entity_manager';
 
@@ -248,6 +255,19 @@ final class NowoMarketingKitExtension extends Extension implements PrependExtens
     }
 
     /**
+     * 1.14: the deprecation notice for a `doctrine.private_entity_manager` setting that writes through the application's
+     * manager (null: unset; false: removed in 2.0), or null for true.
+     */
+    public static function privateEntityManagerNotice(?bool $private): ?string
+    {
+        return match ($private) {
+            null    => self::PRIVATE_ENTITY_MANAGER_UNSET_DEPRECATION,
+            false   => self::PRIVATE_ENTITY_MANAGER_FALSE_DEPRECATION,
+            default => null,
+        };
+    }
+
+    /**
      * 1.14 (REQ-ARCH-001 rule 6): `doctrine.private_entity_manager`.
      *
      * - true: the repository (through a {@see PrivateManagerRegistry}), the admin service, the admin controller and the
@@ -258,16 +278,19 @@ final class NowoMarketingKitExtension extends Extension implements PrependExtens
      *   {@see PrivateEntityManager::TAG} tag, and at `kernel.reset`) and replaced when closed.
      * - false or null: the bundle writes through the manager that maps MarketingTool (1.x). With
      *   `doctrine.entity_manager` unset, both trigger a deprecation notice (null: the default flips; false: removed in
-     *   2.0). {@see MarketingKitHostFlushReporter} reports in both, whenever the write unit flushes the application's
-     *   manager.
+     *   2.0); {@see PrivateEntityManagerSourcePass} triggers the same notice when `doctrine.entity_manager` names the
+     *   application's default manager (audit XD-4: the bundle flushes it as when unset).
+     *   {@see MarketingKitHostFlushReporter} reports in both, whenever the write unit flushes the application's manager.
      */
     private function registerPrivateEntityManager(ContainerBuilder $container, ?bool $private, ?string $entityManagerName): void
     {
         $container->setParameter(self::PRIVATE_ENTITY_MANAGER_PARAMETER, $private === true);
         $container->setParameter(self::PRIVATE_SOURCE_MANAGER_PARAMETER, $entityManagerName ?? '');
+        $container->setParameter(self::PRIVATE_ENTITY_MANAGER_SETTING_PARAMETER, $private);
 
-        if ($private !== true && $entityManagerName === null) {
-            trigger_deprecation('nowo-tech/marketing-kit-bundle', '1.14', $private === null ? self::PRIVATE_ENTITY_MANAGER_UNSET_DEPRECATION : self::PRIVATE_ENTITY_MANAGER_FALSE_DEPRECATION);
+        $notice = self::privateEntityManagerNotice($private);
+        if ($notice !== null && $entityManagerName === null) {
+            trigger_deprecation('nowo-tech/marketing-kit-bundle', '1.14', $notice);
         }
 
         $container->register(MarketingKitHostFlushReporter::class, MarketingKitHostFlushReporter::class)
