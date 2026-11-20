@@ -17,6 +17,7 @@ use Nowo\TransactionDoctrine\HostFlushProbe;
 use Nowo\TransactionDoctrine\PrivateManager\PrivateEntityManager;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use ReflectionClass;
 
 use function dirname;
 
@@ -73,6 +74,24 @@ final class MarketingKitHostFlushReporterTest extends TestCase
         $private = new PrivateEntityManager($registry, 'default', MarketingTool::class);
         self::assertSame([], $this->deprecations(static fn () => (new MarketingKitHostFlushReporter(true))->beforeFlush($private)));
         self::assertFalse($private->isCreated(), 'a private manager is never inspected');
+    }
+
+    /**
+     * Audit XD-7: whatever the probe call throws never breaks the write it observes. transaction-doctrine >= 1.9.1
+     * catches its own inspection failures, so the call is made to fail here (a reporter whose probe is not set).
+     */
+    public function testAFailingProbeNeverBreaksTheFlush(): void
+    {
+        $manager = $this->hostManager();
+        $manager->persist(new HostNote());
+        $class    = new ReflectionClass(MarketingKitHostFlushReporter::class);
+        $reporter = $class->newInstanceWithoutConstructor();
+        $class->getProperty('enabled')->setValue($reporter, true); // $probe stays unset: calling it throws an Error
+
+        $reporter->beforeFlush($manager);
+
+        $manager->flush();
+        self::assertSame(1, (int) $manager->getConnection()->fetchOne('SELECT COUNT(*) FROM host_note'));
     }
 
     private function hostManager(): EntityManagerInterface
