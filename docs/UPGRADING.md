@@ -59,7 +59,7 @@ composer update nowo-tech/marketing-kit-bundle nowo-tech/transaction-doctrine
 
 1.14.0 is the last 1.x minor before 2.0. Without configuration it behaves as 1.13. It adds the
 `doctrine.private_entity_manager` opt-in, deprecation notices for what 2.0 changes, and a host-flush probe that lists
-what that change would mean for your application. It requires `nowo-tech/transaction-doctrine` ^1.9.
+what that change would mean for your application. It requires `nowo-tech/transaction-doctrine` ^1.9.1.
 
 ### The private entity manager notices
 
@@ -78,9 +78,14 @@ With `doctrine.private_entity_manager: false` (and `doctrine.entity_manager` uns
 > entity manager on the same connection and table that never flushes them. Set it to true now, or set
 > "doctrine.entity_manager" to a manager of the bundle's own (see UPGRADING.md "To 1.14.0").
 
+The same notices are triggered when `doctrine.entity_manager` names your default entity manager (for example
+`entity_manager: default`): the bundle then writes through that manager exactly as when the option is unset, and the
+host-flush probe runs too.
+
 What they mean: today every admin write (create, edit, toggle, delete, catalog seed, YAML import) runs in a
 `MarketingToolWriteUnit` on your default entity manager and flushes it. Since 1.13 the unit refuses to start while that
-manager holds pending changes of your entities, but work that enters the manager during the unit (a Doctrine listener
+manager holds pending changes of your entities (since 1.14 also pending orphan removals: an inverse collection with
+`orphanRemoval` cleared, or an inverse one-to-one with `orphanRemoval` set to null), but work that enters the manager during the unit (a Doctrine listener
 of yours, an orphan removal) is still flushed with the marketing tool. In 2.0 the bundle always writes through a private
 manager and never flushes your manager; `private_entity_manager: false` no longer exists.
 
@@ -92,8 +97,8 @@ nowo_marketing_kit:
         private_entity_manager: true
 ```
 
-A host with `doctrine.entity_manager` naming a dedicated manager (the DDD option, kept in 2.0) gets no notice: that
-manager is the bundle's own and the bundle never flushes your default manager.
+A host with `doctrine.entity_manager` naming a dedicated manager other than the default one (the DDD option, kept in
+2.0) gets no notice: that manager is the bundle's own and the bundle never flushes your default manager.
 
 ### Reading the host-flush probe
 
@@ -139,6 +144,10 @@ With `private_entity_manager: true`:
   bundle's repository, which reads through the private manager: tools you load that way belong to the private manager.
   Do not `persist()` or `flush()` them through your manager; change them through the admin or
   `MarketingToolAdminService`.
+- An entity of yours that points at a marketing tool (a many-to-one or one-to-one to `MarketingTool`) must get it from
+  your own manager with `$yourManager->getReference(MarketingTool::class, $id)`, not from the bundle's repository: a
+  tool loaded through the private manager is unknown to your manager, and your flush would refuse it as a new entity
+  found through a relationship.
 - The connection is shared: a transaction you open around a call of `MarketingToolAdminService` includes its rows (the
   private flush then uses a savepoint), and your rollback undoes them.
 - DBAL 3 with `use_savepoints` off: a failed private flush inside your transaction marks your transaction

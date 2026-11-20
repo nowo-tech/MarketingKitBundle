@@ -65,14 +65,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   notice when the container is built: 2.0 always uses the private manager. Set it to `true` to opt in now.
 - `doctrine.private_entity_manager: false` (without `doctrine.entity_manager`) triggers its own notice: the option
   value is removed in 2.0. `doctrine.entity_manager: <name>` stays as the DDD option.
+- Both notices are also triggered when `doctrine.entity_manager` names the application's default entity manager (the
+  bundle then flushes that manager exactly as when the option is unset, with the host-flush probe); only a dedicated
+  manager of the bundle's own gives no notice.
 - Extending `MarketingToolAdminController` (`@final` since 1.7) now also triggers a runtime notice when the subclass is
   built; the class is `final` in 2.0.
+
+### Fixed
+
+- `MarketingToolWriteUnit` on the application's manager (the default host mode, since 1.13.0) now also refuses to start
+  while that manager holds pending orphan removals (an inverse collection with `orphanRemoval` cleared, an inverse
+  one-to-one with `orphanRemoval` set to null). Before, it only looked at scheduled inserts, updates, deletions and
+  collection changes, so its flush deleted those rows of the application inside the marketing tool transaction. The
+  check is read-only, as before: nothing is flushed, cleared or detached on the application's behalf.
+- The host-flush probe call is guarded: a failure while it inspects the application's manager never breaks the
+  marketing tool write it observes.
 
 ### Changed
 
 - Demo: aligned with UiKit (UiKit page header on the home page, `demo-nav-*` test ids on the shared `demo-masthead`, `· Symfony 8` brand and title suffix).
-- Requires `nowo-tech/transaction-doctrine` ^1.9 (host-flush probe and private entity manager kit; 1.8.1 fixed
-  GHSA-9wh3-m3m5-jffx and GHSA-65w2-9r4h-848g).
+- Requires `nowo-tech/transaction-doctrine` ^1.9.1 (host-flush probe and private entity manager kit; 1.9.1 guards
+  the probe and fixes its false positives on backed-enum columns; 1.8.1 fixed GHSA-9wh3-m3m5-jffx and
+  GHSA-65w2-9r4h-848g).
 
 ## [1.13.0] - 2026-11-19
 

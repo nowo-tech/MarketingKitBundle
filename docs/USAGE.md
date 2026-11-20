@@ -77,7 +77,9 @@ nowo_marketing_kit:
 ```
 
 Left unset, the bundle keeps the 1.x behaviour with a deprecation notice; 2.0 always uses the private manager
-(`doctrine.entity_manager: <name>` stays for a dedicated manager).
+(`doctrine.entity_manager: <name>` stays for a dedicated manager). With the private manager, an entity of yours that
+points at a marketing tool must take it from your own manager with `$yourManager->getReference(MarketingTool::class,
+$id)`, never from the bundle's repository (a tool loaded there belongs to the private manager).
 
 ```bash
 php bin/console doctrine:schema:update --force
