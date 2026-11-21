@@ -37,7 +37,14 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
       testMatch: /.*\.spec\.ts/,
-      testIgnore: /screenshots\.spec\.ts/,
+      testIgnore: [/screenshots\.spec\.ts/, /demo-platform\.spec\.ts/],
+    },
+    {
+      // REQ-DEMO-014: layout rules + axe on the demo pages, after the admin spec has seeded the catalog (list rows, edit form).
+      name: 'platform',
+      use: { ...devices['Desktop Chrome'] },
+      testMatch: /demo-platform\.spec\.ts/,
+      dependencies: ['chromium'],
     },
     {
       name: 'screenshots',

@@ -4,8 +4,8 @@ import { resolve } from 'node:path';
 import { ADMIN, prepareDemoState } from './helpers';
 
 /**
- * REQ-DEMO-013 — README screenshots in full demo context: demo masthead + Marketing Kit admin (UiKit scaffolds) +
- * Symfony web debug toolbar, on a realistic state (catalog seeded, YAML imported, GA4 and Meta Pixel configured).
+ * REQ-DEMO-013 — README screenshots in full demo context: demo platform shell + Marketing Kit admin (UiKit scaffolds),
+ * without the Symfony web debug toolbar, on a realistic state (catalog seeded, YAML imported, GA4 and Meta Pixel configured).
  * Captured as PNG; `make demo-screenshots` converts them to WebP and deletes the PNGs.
  */
 test.describe.configure({ mode: 'serial' });
@@ -18,17 +18,14 @@ const WIDTH = 1440;
 const HEIGHT = 900;
 
 /**
- * Captures the viewport (masthead → bundle UI → fixed web debug toolbar) once the toolbar is rendered. When `until`
- * is given, the viewport grows so that element is fully visible above the toolbar.
+ * Captures the viewport (demo platform shell + bundle UI; the Symfony web debug toolbar is hidden, it is never part of a
+ * README screenshot). When `until` is given, the viewport grows so that element is fully visible.
  */
 async function captureDemoFrame(page: Page, file: string, until?: Locator): Promise<void> {
-  const toolbar = page.locator('.sf-toolbar .sf-toolbarreset');
-  await expect(toolbar).toBeVisible();
+  await page.addStyleTag({ content: '.sf-toolbar,.sf-minitoolbar,[id^="sfwdt"]{display:none!important}' });
   if (until) {
     const bottom = await until.evaluate((el) => el.getBoundingClientRect().bottom + window.scrollY);
-    const toolbarHeight = (await toolbar.boundingBox())?.height ?? 40;
-    await page.setViewportSize({ width: WIDTH, height: Math.max(HEIGHT, Math.ceil(bottom + 32 + toolbarHeight)) });
-    await expect(toolbar).toBeVisible();
+    await page.setViewportSize({ width: WIDTH, height: Math.max(HEIGHT, Math.ceil(bottom + 32)) });
   }
   await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => setTimeout(done, 400))));
   await page.screenshot({ path: resolve(outDir, file) });

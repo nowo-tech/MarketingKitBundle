@@ -1,6 +1,25 @@
-{#- REQ-DEMO-014: the demo pages share the UiKit host layout (UiKit default theme, no CSS framework, no CDN). -#}
-{% extends 'layouts/admin.html.twig' %}
-
+{#- REQ-DEMO-014: the demo runs inside UiKit's shared demo platform shell. This file only declares the demo and keeps the
+    tracking hooks of the bundle around the page. -#}
+{% extends '@NowoUiKit/demo_platform/layout.html.twig' %}
+{% set nowo_ui_demo_platform = {
+    bundle: 'Marketing Kit',
+    home_route: 'demo_home',
+    repository: 'https://github.com/nowo-tech/MarketingKitBundle',
+    translation_domain: false,
+    nav: [
+        {label: 'Home', route: 'demo_home'},
+        {label: 'Marketing services', route: 'nowo_marketing_kit_admin_index', active: ['nowo_marketing_kit_admin*'], section: 'Admin', testid: 'demo-nav-nowo_marketing_kit_admin_index'},
+    ],
+} %}
 {% block nowo_ui_document_title %}{% block title %}Marketing Kit Demo{% endblock %} — Symfony 8{% endblock %}
 
-{% block nowo_ui_content %}{% block body %}{% endblock %}{% endblock %}
+{% block nowo_ui_head %}
+    {{ parent() }}
+    {{ nowo_marketing_head() }}
+{% endblock %}
+
+{% block nowo_ui_body %}
+    {{ nowo_marketing_body_start() }}
+    {{ parent() }}
+    {{ nowo_marketing_body_end() }}
+{% endblock %}
