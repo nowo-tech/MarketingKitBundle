@@ -67,7 +67,7 @@ make -C demo/symfony8 test-e2e           # admin happy path: seed, import YAML, 
 make -C demo/symfony8 demo-screenshots   # docs/images/demo/admin-list.webp + admin-form.webp (PNG -> WebP via sharp)
 ```
 
-Screenshots show the demo masthead, the admin UI and the Symfony web debug toolbar; look at them before committing.
+Screenshots show the demo platform shell and the admin UI, without the Symfony web debug toolbar; look at them before committing.
 
 ## Code of Conduct
 

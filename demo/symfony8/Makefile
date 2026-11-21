@@ -105,7 +105,7 @@ test-e2e: ensure-up reset-demo
 		-v "$(CURDIR)/e2e:/e2e" -w /e2e \
 		-e DEMO_BASE_URL=http://127.0.0.1:$$PORT \
 		$(PLAYWRIGHT_IMAGE) \
-		bash -lc 'npm ci --no-fund --no-audit && npx playwright test --project=chromium --workers=1'
+		bash -lc 'npm ci --no-fund --no-audit && npx playwright test --project=platform --workers=1'
 
 # Resets the demo, captures PNGs with the screenshots project, converts them to WebP (sharp, quality 90) under
 # docs/images/demo/ and deletes the PNGs. One command to refresh the README images.
