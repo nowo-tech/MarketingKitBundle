@@ -2,11 +2,11 @@
 
 **Baseline spec**: [`spec.md`](spec.md)  
 **Package**: `nowo-tech/marketing-kit-bundle`  
-**Last audited**: 2026-11-16
+**Last audited**: 2026-11-22
 
 Every production file tracked under `src/` is listed once below with the spec section and requirement IDs it implements. Tests (`tests/`) and the demo (`demo/`) are out of scope.
 
-Audit command (production count): `git ls-files src | wc -l` → **64** (2026-11-19).
+Audit command (production count): `git ls-files src | wc -l` → **66** (2026-11-22).
 
 ## Bundle & DI (`src/`, `src/DependencyInjection/`)
 
@@ -58,6 +58,8 @@ Audit command (production count): `git ls-files src | wc -l` → **64** (2026-11
 | `src/EventSubscriber/ConsentVaryCookieSubscriber.php` | `Vary: Cookie` on responses whose tags were gated by consent cookies | FR-MK-005 |
 | `src/Doctrine/ExcludedEntityNamespaceDriver.php` | Maps nothing for the bundle namespace on every other entity manager | FR-MK-012 |
 | `src/EventSubscriber/MarketingKitEntityManagerClearSubscriber.php` | Clears the bundle's own entity manager at the outermost unit-of-work boundary | FR-MK-010, FR-MK-012 |
+| `src/DependencyInjection/Compiler/PrivateEntityManagerSourcePass.php` | 1.14: with `doctrine.private_entity_manager: true` resolves the application's manager the private one is created on and runs transaction-doctrine's `PrivateEntityManagerPass`; deprecation path for an unset option | FR-MK-016 |
+| `src/Doctrine/MarketingKitHostFlushReporter.php` | 1.14: reports (deprecation, read-only, guarded) the application's pending changes a tool write flushes on the application's manager | FR-MK-016 |
 | `src/Persistence/MarketingToolWriteUnit.php` | One transaction per admin write (REQ-RUNTIME-003, 1.13) | FR-MK-014 |
 | `src/EventListener/MarketingToolConflictListener.php` | 409 + CONFLICT_001 / CONFLICT_002, domain 409 codes (REQ-RUNTIME-003, 1.13) | FR-MK-015 |
 
@@ -142,7 +144,7 @@ Domain **`NowoMarketingKitBundle`** (REQ-I18N-003).
 | Config resolution | 6 | 6 |
 | Consent | 2 | 2 |
 | Enums | 4 | 4 |
-| Persistence | 8 | 8 |
+| Persistence | 10 | 10 |
 | Providers | 11 | 11 |
 | Services & Twig | 5 | 5 |
 | Admin UI | 5 | 5 |
@@ -150,4 +152,4 @@ Domain **`NowoMarketingKitBundle`** (REQ-I18N-003).
 | Config YAML | 2 | 2 |
 | Twig views | 3 | 3 |
 | Translations | 7 | 7 |
-| **Total production sources** | **64** | **64** |
+| **Total production sources** | **66** | **66** |
