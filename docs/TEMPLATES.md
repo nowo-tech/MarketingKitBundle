@@ -37,8 +37,8 @@ under `templates/bundles/NowoMarketingKitBundle/`):
 | `index` | `tools` (`list<MarketingTool>`), `profile`, `profiles`, `catalog` (`MarketingToolCatalog`), `use_database_config`, `profile_form`, `seed_form`, `import_form`, `toggle_forms`, `delete_forms` (both keyed by tool id). The same `FormView`s back the `page` actions: render each only once |
 | `form` | `form` (the `FormView` of `page.form`), `tool`, `is_new`, `catalog`, `use_database_config` |
 
-The Twig globals `nowo_marketing_kit_layout` and `nowo_marketing_kit_css_framework` stay for host templates; the
-pages do not read them (removed in 2.0).
+The Twig globals `nowo_marketing_kit_layout` and `nowo_marketing_kit_css_framework` (deprecated since 1.9) were
+removed in 2.0: use UiKit's `nowo_ui_layout` and `nowo_ui_kit.*`.
 
 ## Unique pages
 
@@ -57,7 +57,6 @@ None: both admin pages extend a UiKit scaffold.
 
 | Partial | Role |
 | --- | --- |
-| `admin/_legacy_layout.html.twig` | Deprecated BC bridge around a 1.x layout set in `web_ui.layout_template` that renders `{% block body %}` and not the UiKit canonical blocks (selected by `MarketingKitPages::layout()`; removed in 2.0) |
 
 The bundle ships no local pagination, flash, confirm, modal, page header, filters or empty-state partial: the
 scaffolds and the UiKit partials (`action`, `confirm`, `list_filters`, `table`, `empty`, `flashes`) render them. The

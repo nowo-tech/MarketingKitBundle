@@ -10,58 +10,61 @@ use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\UnitOfWork;
 use Doctrine\Persistence\ManagerRegistry;
 use LogicException;
-use Nowo\MarketingKitBundle\Doctrine\MarketingKitHostFlushReporter;
 use Nowo\MarketingKitBundle\Entity\MarketingTool;
 use Nowo\MarketingKitBundle\EventListener\MarketingToolConflictListener;
 use Nowo\TransactionContract\TransientStorageFailure;
 use Nowo\TransactionDoctrine\DoctrineTransactionRunner;
+use Nowo\TransactionDoctrine\PrivateManager\PrivateEntityManager;
 use Psr\Log\LoggerInterface;
 use Throwable;
+
+use function sprintf;
 
 /**
  * One write unit of the marketing tool rows (1.13, REQ-RUNTIME-003 rule 1): every admin create, edit, toggle, delete,
  * catalog seed and YAML import runs its writes here, in ONE transaction on the manager of {@see MarketingTool}, flushed
  * before the commit.
  *
- * - The bundle's own manager (`doctrine.entity_manager` set and not the host's default):
- *   transaction-doctrine's {@see DoctrineTransactionRunner::forEntityManager()}; after a failure that manager is closed
- *   and reset (it maps the marketing tool rows only).
- * - The host's manager (the default case, zero config): an open manager is never cleared, closed or reset (rule 2).
- *   The admin form binds into a managed {@see MarketingTool} before the unit starts, so pending changes on that class
- *   are the bundle's own work and are flushed by the unit. Pending changes on any OTHER entity belong to the host: the
- *   unit refuses to start with a LogicException (the rule of {@see DoctrineTransactionRunner::forHostEntityManager()}),
- *   since its flush would carry them into a transaction that may roll back. Entities whose loaded state is rewritten
- *   in place by a listener (for example decrypted after loading) always count as pending; such hosts set a dedicated
- *   `doctrine.entity_manager`. The unit runs on transaction-doctrine's connection runner (levels rolled back to the
- *   entry level, nested units on savepoints, a lost savepoint never taken as success); after a failure a closed
- *   manager is replaced through the registry, and in an open one only the marketing tool rows are detached, so nothing
- *   the rollback undid can be flushed later by the host.
+ * - The bundle's own manager — 2.0: always, as the container wires it. Either the bundle's private entity manager
+ *   (transaction-doctrine's `PrivateEntityManager`, same connection and table as the application's default manager;
+ *   REQ-ARCH-001 rule 6) or a dedicated `doctrine.entity_manager` (the DDD option): transaction-doctrine's
+ *   {@see DoctrineTransactionRunner::forEntityManager()}; after a failure that manager is closed and dropped / reset
+ *   (it maps the marketing tool rows only), never an application manager. Before the flush of the private manager,
+ *   an entity it holds that is not a marketing tool (an application entity loaded or persisted through it, for example
+ *   by a Doctrine listener of the application) fails the unit with a LogicException before anything is written: the
+ *   private manager only ever writes the bundle's rows, and the application flushes its entities through its own
+ *   manager. A dedicated manager is the application's choice and is not inspected.
+ * - A manager handed in by code that builds the unit itself with `ownManager: false` (the constructor default; the
+ *   container never does since 2.0): an open manager is never cleared, closed or reset (rule 2). Pending changes on any
+ *   entity that is not a marketing tool belong to the caller: the unit refuses to start with a LogicException (the
+ *   rule of {@see DoctrineTransactionRunner::forHostEntityManager()}). The unit runs on transaction-doctrine's
+ *   connection runner (levels rolled back to the entry level, nested units on savepoints, a lost savepoint never taken
+ *   as success); after a failure a closed manager is replaced through the registry, and in an open one only the
+ *   marketing tool rows are detached, so nothing the rollback undid can be flushed later.
  *
  * Deadlocks, lock wait timeouts and serialization failures leave as {@see TransientStorageFailure} (the storage error as
  * previous, no Retry-After hint: the configured conflict_response decides); anything else (a unique violation, an
  * optimistic lock failure, a lost connection) is rethrown unchanged. No retry here: the answer is the 409 of
  * {@see MarketingToolConflictListener}.
  *
- * 1.14: with `doctrine.private_entity_manager: true` the manager is the bundle's private one (transaction-doctrine's
- * `PrivateEntityManager`, same connection and table) and the unit takes the first path: a failure closes it and the
- * private registry drops it, never an application manager. In the host's-manager path the host-flush probe
- * ({@see MarketingKitHostFlushReporter}) runs right before the flush and reports each application entity class the
- * flush would write (2.0 no longer flushes them).
- *
  * Stateless (FrankenPHP worker mode, kernel reset off): DoctrineBundle resets a manager service in place, so the
  * injected manager stays the current one; the private manager is a stable decorator dropped at every boundary.
  */
 final readonly class MarketingToolWriteUnit
 {
+    /** 2.0: an entity that is not a marketing tool is held by the private manager (format: the entity class, twice). */
+    public const FOREIGN_ENTITY_MESSAGE = 'A %s entity is held by NowoMarketingKitBundle\'s private entity manager: the bundle writes only its own marketing tool rows there, never your application\'s. Load, persist and flush %s through your own entity manager (see UPGRADING.md "To 2.0.0", "Private manager only").';
+
     public const HOST_PENDING_MESSAGE = 'The entity manager of the marketing tools has pending changes on other entities (the host\'s): flush or clear them before a marketing tool write; the marketing tool transaction would otherwise carry them into a transaction that may roll back.';
 
     /**
      * @param EntityManagerInterface $entityManager the manager of {@see MarketingTool}
      * @param ManagerRegistry|null $registry the Doctrine registry (reset of a closed manager)
      * @param string|null $managerName `doctrine.entity_manager` (null: the default manager)
-     * @param bool $ownManager whether that manager is the bundle's own (configured and not the host's default)
+     * @param bool $ownManager whether that manager is the bundle's own (2.0: the container always passes true)
      * @param LoggerInterface|null $logger structured failure / repair notices of transaction-doctrine (no SQL)
-     * @param MarketingKitHostFlushReporter|null $hostFlushReporter 1.14: the host-flush probe of the host's-manager path
+     * @param object|null $hostFlushReporter deprecated since 2.0, ignored; removed in 3.0 (1.14: the host-flush probe of
+     *                                       the host's-manager path, removed with that mode)
      */
     public function __construct(
         private EntityManagerInterface $entityManager,
@@ -69,8 +72,9 @@ final readonly class MarketingToolWriteUnit
         private ?string $managerName = null,
         private bool $ownManager = false,
         private ?LoggerInterface $logger = null,
-        private ?MarketingKitHostFlushReporter $hostFlushReporter = null,
+        ?object $hostFlushReporter = null,
     ) {
+        unset($hostFlushReporter); // deprecated since 2.0, ignored (BC: kept until 3.0)
     }
 
     /**
@@ -92,7 +96,12 @@ final readonly class MarketingToolWriteUnit
         if ($this->ownManager) {
             /** @var T $result */
             $result = DoctrineTransactionRunner::forEntityManager($manager, $this->registry, $this->managerName, null, $this->logger)
-                ->run(static fn (): mixed => $operation($manager));
+                ->run(static function () use ($operation, $manager): mixed {
+                    $result = $operation($manager);
+                    self::assertOnlyBundleEntities($manager);
+
+                    return $result;
+                });
 
             return $result;
         }
@@ -107,15 +116,11 @@ final readonly class MarketingToolWriteUnit
             throw $refused;
         }
 
-        $reporter = $this->hostFlushReporter;
-
         try {
             /** @var T $result */
             $result = DoctrineTransactionRunner::forConnection($manager->getConnection(), null, $this->logger)
-                ->run(static function () use ($operation, $manager, $reporter): mixed {
+                ->run(static function () use ($operation, $manager): mixed {
                     $result = $operation($manager);
-                    // 1.14 (REQ-ARCH-001 rule 6): report the application's pending work this flush writes (read-only).
-                    $reporter?->beforeFlush($manager);
                     $manager->flush();
 
                     return $result;
@@ -130,7 +135,38 @@ final readonly class MarketingToolWriteUnit
     }
 
     /**
-     * Pending changes on entities that are not marketing tool rows belong to the host: refuse to carry them. Read-only:
+     * 2.0 (REQ-ARCH-001 rule 6, wave-1 lesson W1-2): fails when the private manager is about to write an entity that is
+     * not a marketing tool. Read-only (identity map and scheduled inserts / deletes; nothing is computed, flushed,
+     * cleared or detached). A dedicated `doctrine.entity_manager` is the application's own choice and is not inspected.
+     *
+     * @throws LogicException naming the first foreign class; nothing has been written
+     */
+    private static function assertOnlyBundleEntities(EntityManagerInterface $manager): void
+    {
+        if (!$manager instanceof PrivateEntityManager) {
+            return;
+        }
+
+        $unitOfWork = $manager->getUnitOfWork();
+        $classes    = [];
+        foreach ($unitOfWork->getIdentityMap() as $class => $entities) {
+            if ($entities !== []) {
+                $classes[] = $class;
+            }
+        }
+        foreach ([...$unitOfWork->getScheduledEntityInsertions(), ...$unitOfWork->getScheduledEntityDeletions()] as $entity) {
+            $classes[] = $manager->getClassMetadata($entity::class)->getName();
+        }
+
+        foreach ($classes as $class) {
+            if ($class !== MarketingTool::class) {
+                throw new LogicException(sprintf(self::FOREIGN_ENTITY_MESSAGE, $class, $class));
+            }
+        }
+    }
+
+    /**
+     * Pending changes on entities that are not marketing tool rows belong to the caller: refuse to carry them. Read-only:
      * change sets are computed (as the flush would), nothing is flushed, cleared, detached or reset here.
      */
     private function assertNoHostPendingChanges(EntityManagerInterface $manager): void

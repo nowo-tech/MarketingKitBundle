@@ -32,8 +32,9 @@ Every write runs in one `Persistence\MarketingToolWriteUnit` (rule 1): one trans
 | YAML import (`POST /import-yaml`) | one write unit for the whole profile (rows read inside it, all written or none) | unique key + optimistic `version` | 409, `X-Error-Code: MARKETING_TOOL_DUPLICATE_CODE` or `MARKETING_TOOL_STALE` (host error page); run it again, it upserts by code |
 | Any of the above meeting a row lock, a deadlock or a serialization failure | — | — | 409 + `CONFLICT_001` / `CONFLICT_002` (below) |
 
-`grep -rn "flush()" src/` has one hit: the flush inside `MarketingToolWriteUnit::run()` on the host's manager (the
-bundle's own manager is flushed by `DoctrineTransactionRunner::forEntityManager()`).
+`grep -rn "flush()" src/` has one hit: the flush inside `MarketingToolWriteUnit::run()` on a manager handed in by code
+that builds the unit itself (never wired by the container since 2.0). The bundle's own manager (the private one by
+default, or a dedicated `doctrine.entity_manager`) is flushed by `DoctrineTransactionRunner::forEntityManager()`.
 
 Business keys compare exactly (rule 5): `MarketingToolRepository::findByProfileOrdered()` and `findToolRowsByProfile()`
 re-check the profile byte for byte after the read, so a case-insensitive MySQL / MariaDB collation never makes
@@ -96,19 +97,27 @@ transaction-doctrine's `commit_detection`.
 
 FrankenPHP worker mode with kernel reset off, standard and DDD hosts:
 
-- **Host's manager** (zero config, `doctrine.entity_manager: null`): an open manager is never cleared, closed or reset
+- **The bundle's private manager** (2.0 default, zero config): `DoctrineTransactionRunner::forEntityManager()` on
+  transaction-doctrine's `PrivateEntityManager` (same connection and table as the default manager). A failure closes
+  only the private manager, which the private registry drops; the application's managers are never flushed, cleared,
+  closed or reset, and their pending changes neither block nor ride along with a marketing tool write. Before the
+  flush, an application entity held by the private manager fails the unit before anything is written. Covered on the
+  real servers by `PrivateEntityManagerDatabaseTest` (CONFLICT_001 edit, CONFLICT_002, concurrent seeds, all-or-nothing
+  import) and `ZeroConfigDataLossDatabaseTest`.
+- **A manager handed in by code that builds the write unit itself** (`ownManager: false`; the container never does
+  since 2.0): an open manager is never cleared, closed or reset
   (rule 2). The unit refuses to start with a `LogicException` when the manager has pending changes on entities other
   than `MarketingTool` (the host's work would be carried into a transaction that may roll back): the bundle never
   flushes the host's work. After a failure a closed manager is replaced through the registry, and an open one forgets
   only the marketing tool rows.
 - **Entities rewritten after loading.** Entities whose loaded state a listener rewrites in place, such as the encrypted
   fields of nowo-tech/doctrine-encrypt-bundle (decrypted after loading), always count as pending changes. With such
-  entities managed by the host's manager, every admin write on that manager throws the `LogicException` above: set a
-  dedicated `doctrine.entity_manager` for `MarketingTool`.
+  entities managed by a manager handed in that way, every write on it throws the `LogicException` above. The 2.0
+  default (the private manager) is not affected.
 - **Values that are never saved are forgotten.** When the unit refuses to start, and after an invalid submit (422),
   the tool the form bound is detached from the manager, so a later flush of the host's own work never writes the
   refused or unvalidated values.
-- **Bundle's own manager** (`doctrine.entity_manager` set to a manager other than the host's default):
+- **Dedicated manager** (`doctrine.entity_manager` set to a manager other than the host's default, the DDD option):
   `DoctrineTransactionRunner::forEntityManager()`; after a storage failure that manager is closed and reset.
 - Nested in a host transaction, the unit runs on a savepoint and repairs the nesting level after a failure (rule 3); a
   lost savepoint is never taken as success.

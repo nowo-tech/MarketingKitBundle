@@ -40,8 +40,8 @@ on the whole site. `allow_custom_html` only removes the raw-HTML shortcut; a tag
   nothing). IDs in JavaScript are emitted as JSON string literals. Hotjar site IDs are 1–16 digits without a leading
   zero.
 - **Admin templates** are UiKit scaffolds: no inline handlers, deletes confirmed in a `<dialog>`, POST + CSRF.
-- **Legacy layout bridge**: `web_ui.layout_template` is a template name from configuration (trusted), never from a
-  request.
+- **Admin layout**: `web_ui.layout_template` is a template name from configuration (trusted), never from a request.
+  Since 2.0 a layout without the UiKit canonical blocks fails the page (the 1.x bridge was removed).
 
 ## Admin access
 

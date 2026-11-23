@@ -31,13 +31,11 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
-use Symfony\Component\VarExporter\LazyObjectInterface;
 
 use function ctype_digit;
 use function in_array;
 use function is_string;
 use function sprintf;
-use function trigger_deprecation;
 
 /**
  * CRUD admin to configure marketing services (providers) stored in Doctrine. Pages are UiKit page scaffolds
@@ -51,15 +49,12 @@ use function trigger_deprecation;
  * version it was rendered for as well. Lock conflicts reach {@see MarketingToolConflictListener} (409 + CONFLICT_001 /
  * CONFLICT_002).
  *
- * @final since 1.7, will be final in 2.0 (not an extension point; decorate or replace the service instead). Since 1.14
- *        a subclass outside the bundle triggers a deprecation notice when it is constructed.
+ * Final since 2.0 (`@final` since 1.7, runtime notice since 1.14): not an extension point. Decorate or replace the
+ * controller service, or alias the bundle's ports (access checker, tool source, renderers) instead.
  */
 #[Route(path: '/%nowo_marketing_kit.web_ui.route_path%', name: 'nowo_marketing_kit_admin_')]
-class MarketingToolAdminController extends AbstractController
+final class MarketingToolAdminController extends AbstractController
 {
-    /** 1.14: the notice of a host class that extends this controller (final in 2.0). */
-    public const SUBCLASS_DEPRECATION = '"%s" extends "%s", which is final in 2.0: extending the marketing tool admin controller is deprecated. Decorate or replace the controller service, or alias the bundle\'s ports (access checker, tool source, renderers) instead (see UPGRADING.md "To 1.14.0").';
-
     public function __construct(
         private readonly MarketingToolRepository $repository,
         private readonly EntityManagerInterface $entityManager,
@@ -70,12 +65,6 @@ class MarketingToolAdminController extends AbstractController
         private readonly MarketingKitPages $pages = new MarketingKitPages(),
         private readonly ?MarketingToolWriteUnit $writeUnit = null,
     ) {
-        // 1.14: a subclass of the host's (a class outside the bundle that extends this one) breaks in 2.0, where the
-        // class is final. Lazy-object proxies of the container are not subclasses of the host's.
-        // @phpstan-ignore notIdentical.alwaysFalse, booleanAnd.alwaysFalse (static is a host subclass until 2.0)
-        if (static::class !== self::class && !$this instanceof LazyObjectInterface) {
-            trigger_deprecation('nowo-tech/marketing-kit-bundle', '1.14', self::SUBCLASS_DEPRECATION, static::class, self::class);
-        }
     }
 
     #[Route(path: '', name: 'index', methods: ['GET'])]

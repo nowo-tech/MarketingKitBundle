@@ -6,22 +6,26 @@ namespace Nowo\MarketingKitBundle\Twig;
 
 use Nowo\MarketingKitBundle\Service\MarketingScriptRendererInterface;
 use Twig\Extension\AbstractExtension;
-use Twig\Extension\GlobalsInterface;
 use Twig\TwigFunction;
 
 /**
- * Twig helpers: nowo_marketing_head / body_start / body_end, plus the
- * nowo_marketing_kit_layout / nowo_marketing_kit_css_framework globals (REQ-UI-001). Since 1.9 the admin pages are
- * UiKit scaffolds and do not read these globals (except the deprecated 1.x layout bridge, which extends
- * nowo_marketing_kit_layout); they stay for host templates and are removed in 2.0.
+ * Twig helpers: nowo_marketing_head / body_start / body_end.
+ *
+ * 2.0: the Twig globals `nowo_marketing_kit_layout` and `nowo_marketing_kit_css_framework` (deprecated since 1.9,
+ * unused by the admin pages) were removed; use UiKit's `nowo_ui_layout` and `nowo_ui_kit.*` instead.
  */
-final class MarketingKitExtension extends AbstractExtension implements GlobalsInterface
+final class MarketingKitExtension extends AbstractExtension
 {
-    public function __construct(
+    /**
+     * @param string|null $layoutTemplate deprecated since 2.0, ignored (it fed the removed global); removed in 3.0
+     * @param string $cssFramework deprecated since 2.0, ignored (it fed the removed global); removed in 3.0
+     */
+    public function __construct(// @phpstan-ignore constructor.unusedParameter, constructor.unusedParameter (BC: kept until 3.0)
         private readonly MarketingScriptRendererInterface $renderer,
-        private readonly ?string $layoutTemplate = null,
-        private readonly string $cssFramework = 'none',
+        ?string $layoutTemplate = null,
+        string $cssFramework = 'none',
     ) {
+        unset($layoutTemplate, $cssFramework);
     }
 
     public function getFunctions(): array
@@ -30,17 +34,6 @@ final class MarketingKitExtension extends AbstractExtension implements GlobalsIn
             new TwigFunction('nowo_marketing_head', $this->head(...), ['is_safe' => ['html']]),
             new TwigFunction('nowo_marketing_body_start', $this->bodyStart(...), ['is_safe' => ['html']]),
             new TwigFunction('nowo_marketing_body_end', $this->bodyEnd(...), ['is_safe' => ['html']]),
-        ];
-    }
-
-    /**
-     * @return array{nowo_marketing_kit_layout: string|null, nowo_marketing_kit_css_framework: string}
-     */
-    public function getGlobals(): array
-    {
-        return [
-            'nowo_marketing_kit_layout'        => $this->layoutTemplate,
-            'nowo_marketing_kit_css_framework' => $this->cssFramework,
         ];
     }
 

@@ -20,7 +20,7 @@ use Twig\Extra\TwigExtraBundle\TwigExtraBundle;
 use function dirname;
 
 /**
- * 1.14: the host of {@see WorkerTestKernel} with `doctrine.private_entity_manager: true` (the 2.0 default). The default
+ * The host of {@see WorkerTestKernel} (zero configuration: the private entity manager, the only mode since 2.0). The default
  * manager also maps a host entity (HostNote), whose pending work a marketing tool write must never flush.
  */
 final class PrivateWorkerTestKernel extends Kernel
@@ -90,7 +90,6 @@ final class PrivateWorkerTestKernel extends Kernel
         $container->extension('nowo_marketing_kit', [
             'use_database_config' => true,
             'security'            => ['allow_unauthenticated' => true],
-            'doctrine'            => ['private_entity_manager' => true],
         ]);
         $container->services()->set('logger', NullLogger::class);
     }

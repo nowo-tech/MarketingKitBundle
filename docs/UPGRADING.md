@@ -3,6 +3,12 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 2.0.0](#to-200)
+  - [Before you upgrade](#before-you-upgrade)
+  - [The private entity manager is the only mode](#the-private-entity-manager-is-the-only-mode)
+  - [Removed](#removed)
+  - [Private manager only](#private-manager-only)
+  - [1.x support](#1x-support)
 - [To 1.14.0](#to-1140)
   - [The private entity manager notices](#the-private-entity-manager-notices)
   - [Reading the host-flush probe](#reading-the-host-flush-probe)
@@ -48,6 +54,143 @@
   - [From nothing to 1.0.0](#from-nothing-to-100)
 
 ## Unreleased
+
+## To 2.0.0
+
+From **1.14.x** (upgrade to 1.14 first and clear its notices, see [Before you upgrade](#before-you-upgrade)):
+
+```bash
+composer require nowo-tech/marketing-kit-bundle:^2.0 -W
+```
+
+2.0 contains only changes that 1.x announced through deprecation notices: an application that runs the last 1.x
+minor without deprecation notices from this bundle upgrades without code changes. After 2.0.0 is released, the 1.x
+line receives security fixes for 6 months: fixes rated Moderate and above are backported to the last 1.x minor;
+Low ones are fixed in 2.x only.
+
+No PHP, Symfony, Doctrine or database change: same requirements as 1.14 (`nowo-tech/transaction-doctrine` ^1.9.1), same
+`marketing_tool` table, no migration. No package moves in or out of `require`.
+
+### Before you upgrade
+
+**Data-loss check first.** In 1.x without configuration, every marketing tool write (admin create, edit, toggle,
+delete, catalog seed, YAML import, `MarketingToolAdminService::seedCatalog()` / `importFromYaml()`) flushed your default
+entity manager. 2.0 never does: a change of yours that was only stored because a marketing tool write flushed your
+manager is **no longer stored**. Typically: a Doctrine listener of yours that reacts to `MarketingTool` changes (an
+audit trail), a decorator of the admin services, or code that changes an entity and then calls a MarketingKit service.
+
+1.14 tells you whether your application does this. Run your usual traffic and test suite on 1.14 with deprecations
+logged (the Symfony profiler, the `deprecation` log channel, or PHPUnit's deprecation report) and look for this line,
+one per entity class and request / message / command:
+
+> Your pending changes to App\Entity\AuditEntry were flushed by NowoMarketingKitBundle; 2.0 no longer does.
+
+- **No such line** (and you never ran 1.14 with `private_entity_manager: true` hiding it): nothing of yours relied on
+  the bundle's flush. Because 1.13+ already refused to start a write while your manager held pending changes, this is
+  the usual result.
+- **One or more lines:** each class listed is work of yours that only reached the database through a marketing tool
+  write. Make the code that changes it flush (or run it in your own transaction), then check again. Upgrading with a
+  line left means those changes stay pending in your manager and are lost unless something else of yours flushes it.
+- The probe is silent with `private_entity_manager: true`: if you opted in on 1.14, remove the key for one run (or
+  check the period before you set it) to see the list.
+
+Then clear every other notice of this bundle on 1.14:
+
+| 1.14 notice | What to do |
+| --- | --- |
+| `Not setting "nowo_marketing_kit.doctrine.private_entity_manager" is deprecated: marketing tool writes flush the application's entity manager, …` | After the data-loss check: nothing (2.0 is that behaviour). Setting `true` silences it on 1.14. |
+| `"nowo_marketing_kit.doctrine.private_entity_manager: false" is deprecated and removed in 2.0: …` | Remove the key (data-loss check first). |
+| `Your pending changes to App\X were flushed by NowoMarketingKitBundle; 2.0 no longer does.` | See the data-loss check above. |
+| `Passing $toolRepository to "Nowo\MarketingKitBundle\Config\MarketingConfigResolver" is deprecated and removed in 2.0; …` (since 1.12) | If you build the resolver yourself, pass `requestStack:` and `toolSource:` by name. A positional `null` in the fourth slot cannot be detected at runtime: check your own `new MarketingConfigResolver(...)` calls. |
+| `"App\…" extends "Nowo\MarketingKitBundle\Controller\MarketingToolAdminController", which is final in 2.0: …` | Decorate or replace the controller service, or alias the bundle's ports (access checker, tool source, renderers). |
+| `The "css_framework" option at "nowo_marketing_kit.web_ui" is deprecated: set nowo_ui_kit.css_framework once for every bundle. …` (since 1.9) | Move the value to `nowo_ui_kit.css_framework` (`bootstrap` = `bootstrap5`). |
+| `The "icon_set" option at "nowo_marketing_kit.web_ui" is deprecated: set nowo_ui_kit.icon_set once for every bundle. …` (since 1.9) | Move the value to `nowo_ui_kit.icon_set`. |
+| `The "connection" option at "nowo_marketing_kit.doctrine" is deprecated and has no effect: …` (since 1.6) | Remove the key. |
+| `The layout "…" does not render the UiKit canonical blocks (nowo_ui_content); it is wrapped in "@NowoMarketingKitBundle/admin/_legacy_layout.html.twig". …` (since 1.9) | Render the UiKit canonical blocks in `web_ui.layout_template` (or extend `@NowoUiKit/layout/admin.html.twig`), or set it to `null` to use `nowo_ui_kit.layouts.admin`. |
+
+Also check your templates for the Twig globals `nowo_marketing_kit_layout` and `nowo_marketing_kit_css_framework`
+(deprecated since 1.9 in the CHANGELOG and TEMPLATES.md; no runtime notice): use `nowo_ui_layout` and `nowo_ui_kit.*`.
+
+1.14's "Preparing for 2.0" list named the private manager, the resolver argument, the final controller and
+`doctrine.connection` only. 2.0 also removes the 1.9 deprecations above (`web_ui.css_framework`, `web_ui.icon_set`,
+the layout bridge and the two Twig globals): this section corrects that list.
+
+### The private entity manager is the only mode
+
+| 1.x setting | 1.x behaviour | 2.0 |
+| --- | --- | --- |
+| no `doctrine` keys (the default) | writes flush your default manager (notice + probe) | the bundle's private manager on your default manager's connection, mapping and listeners; same table; your manager is never flushed |
+| `doctrine.entity_manager: <your default manager's name>` | same as unset (notice + probe) | same as unset: the private manager on it |
+| `doctrine.private_entity_manager: true` | the private manager (1.14 opt-in) | the same; the key is deprecated (no effect), remove it; removed in 3.0 |
+| `doctrine.private_entity_manager: false` | writes flush your manager (notice + probe) | **build error**: remove the key |
+| `doctrine.entity_manager: <a dedicated manager>` (DDD option) | the bundle uses that manager directly | unchanged, no notice |
+| `doctrine.entity_manager: <a dedicated manager>` + `private_entity_manager: true` | the private manager on the dedicated one | unchanged (keep the key until 3.0: removing it switches to the dedicated manager directly) |
+
+The private manager is transaction-doctrine's `PrivateEntityManager`: created on your default manager's connection,
+configuration (mapping, metadata cache) and event manager (your Doctrine listeners), with your enabled SQL filters
+mirrored. A write flushes only marketing tool rows, no longer refuses to run while your manager holds pending changes,
+and a failed write closes only the private manager (replaced on the next use; your manager stays open). Lock
+conflicts still answer 409 + `CONFLICT_001` / `CONFLICT_002`. It is dropped at every request, Messenger message and
+console command boundary and at `kernel.reset` (FrankenPHP worker mode with the kernel reset off included); changes
+the bundle left unflushed then are discarded and logged as a warning (classes and counts only).
+
+To keep the bundle's rows away from your manager entirely, use a dedicated `doctrine.entity_manager` (unchanged).
+
+### Removed
+
+| Removed | Deprecated since | Replacement |
+| --- | --- | --- |
+| The mode in which marketing tool writes flushed your entity manager; its two notices, `NowoMarketingKitExtension::PRIVATE_ENTITY_MANAGER_UNSET_DEPRECATION`, `::PRIVATE_ENTITY_MANAGER_FALSE_DEPRECATION`, `::privateEntityManagerNotice()` | 1.14 | The private entity manager (above) |
+| `doctrine.private_entity_manager: false` | 1.14 | Remove the key (build error otherwise) |
+| The host-flush probe (`Doctrine\MarketingKitHostFlushReporter`, internal); `MarketingToolWriteUnit`'s `$hostFlushReporter` argument is kept and ignored (removed in 3.0) | 1.14 | None needed: the bundle never flushes your manager |
+| Fourth `MarketingConfigResolver` constructor parameter `?MarketingToolRepository $toolRepository`; `$requestStack` and `$toolSource` move up one position | 1.12 | Pass `requestStack:` / `toolSource:` by name; alias `MarketingToolSourceInterface` |
+| Extending `MarketingToolAdminController` (now `final`); `MarketingToolAdminController::SUBCLASS_DEPRECATION` | `@final` 1.7, notice 1.14 | Decorate or replace the controller service. A class of yours that still extends it is a PHP fatal error as soon as it is loaded (for example by your container's autodiscovery) |
+| `doctrine.connection` (and the `nowo_marketing_kit.doctrine.connection` parameter) | 1.6 | Remove it (it had no effect); a leftover key fails the build |
+| `web_ui.css_framework` (and the `nowo_marketing_kit.web_ui.css_framework` parameter) | 1.9 | `nowo_ui_kit.css_framework`; a leftover key fails the build |
+| `web_ui.icon_set` | 1.9 | `nowo_ui_kit.icon_set`; a leftover key fails the build |
+| The layout bridge `admin/_legacy_layout.html.twig`, `MarketingKitPages::LEGACY_LAYOUT_BRIDGE` | 1.9 | A layout that renders the UiKit canonical blocks; a 1.x layout now fails the admin page with a `LogicException` naming the fix (`MarketingKitPages::legacyLayout()` still detects one) |
+| Twig globals `nowo_marketing_kit_layout`, `nowo_marketing_kit_css_framework`; the two `Twig\MarketingKitExtension` constructor arguments that fed them are kept and ignored (removed in 3.0) | 1.9 | `nowo_ui_layout`, `nowo_ui_kit.*` |
+
+With UiKit installed, the bundle still seeds `nowo_ui_kit.css_framework: none` and `nowo_ui_kit.icon_set:
+bootstrap-icons` when you leave them unset, as 1.x did with the removed keys at their defaults: an application that
+never set either key renders as before. Set them in `nowo_ui_kit` to choose.
+
+There is no hook to replace: the removed probe and layout bridge had no extension point.
+
+### Private manager only
+
+What breaks, and how to do it in 2.0:
+
+- **Your pending changes are no longer flushed by the bundle.** A change of yours that was only stored because a
+  marketing tool write flushed your manager is no longer stored: typically in a Doctrine listener of yours that reacts
+  to `MarketingTool`, a decorator of the admin services, or code that changes an entity and then calls a MarketingKit
+  service. Flush your own manager yourself. Your pending changes are never written, cleared, detached or reverted by
+  the bundle: they stay in your manager until you flush it.
+- **The reverse, which no probe could see:** host code that loads a marketing tool through the bundle's repository
+  (`MarketingToolRepository`, or `getRepository(MarketingTool::class)` on your manager: both read through the private
+  manager), changes it and flushes its own manager saves nothing (the private manager drops the change at the next
+  boundary, with a warning). Change tools through the admin or `MarketingToolAdminService`. Do not `persist()` or
+  `flush()` marketing tools through your manager.
+- **Your entities never go through the private manager.** A Doctrine listener of yours runs for the private manager's
+  events too (the event manager is shared). If it loads or persists one of your entities through the event's manager
+  (`$args->getObjectManager()`), the marketing tool write fails with a `LogicException` before anything is written:
+  *"A App\Entity\X entity is held by NowoMarketingKitBundle's private entity manager: …"*. Use your own (injected)
+  manager there, and flush it yourself.
+- **Associations to a tool:** an entity of yours that points at a marketing tool (a many-to-one or one-to-one to
+  `MarketingTool`) must get it from your own manager with `$yourManager->getReference(MarketingTool::class, $id)`, not
+  from the bundle's repository: a tool loaded through the private manager is unknown to your manager, and your flush
+  refuses it as a new entity found through a relationship.
+- **Shared connection:** a transaction you open around a call of `MarketingToolAdminService` includes its rows (the
+  private flush then uses a savepoint), and your rollback undoes them. With DBAL 3 and `use_savepoints` off, a failed
+  private flush inside your transaction marks it rollback-only: turn savepoints on (always on in DBAL 4).
+- **Code that builds `MarketingToolWriteUnit`, `MarketingToolAdminService` or `MarketingToolAdminController` itself**
+  (not through the container) keeps the 1.13 behaviour on the manager it passes: you chose that manager, so it is
+  flushed (and refused while it holds other pending changes). The container never wires that path.
+
+### 1.x support
+
+After 2.0.0 is released, the 1.x line (1.14) receives security fixes for 6 months: Moderate and above are backported
+to 1.14 as patches; Low ones are fixed in 2.x only, with the advice to upgrade. Advisories name both lines.
 
 ## To 1.14.0
 
@@ -167,7 +310,8 @@ With `private_entity_manager: true`:
 
 ### Preparing for 2.0
 
-2.0 contains only the deprecations announced in 1.x:
+Done in 2.0 (see [To 2.0.0](#to-200), which also lists the 1.9 deprecations this list missed). 2.0 contains only the
+deprecations announced in 1.x:
 
 - The private entity manager is the only host mode: `doctrine.private_entity_manager` defaults to `true` and `false`
   is removed. `doctrine.entity_manager: <name>` stays as the DDD option.

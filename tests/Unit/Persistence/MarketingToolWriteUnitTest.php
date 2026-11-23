@@ -12,7 +12,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\SchemaTool;
 use Doctrine\ORM\UnitOfWork;
 use LogicException;
-use Nowo\MarketingKitBundle\Doctrine\MarketingKitHostFlushReporter;
+use Nowo\MarketingKitBundle\DependencyInjection\NowoMarketingKitExtension;
 use Nowo\MarketingKitBundle\Entity\MarketingTool;
 use Nowo\MarketingKitBundle\Persistence\MarketingToolWriteUnit;
 use Nowo\MarketingKitBundle\Tests\Support\CollectsDeprecations;
@@ -20,9 +20,10 @@ use Nowo\MarketingKitBundle\Tests\Support\Entity\HostChild;
 use Nowo\MarketingKitBundle\Tests\Support\Entity\HostNote;
 use Nowo\MarketingKitBundle\Tests\Support\Entity\HostParent;
 use Nowo\MarketingKitBundle\Tests\Support\Entity\HostProfile;
-use Nowo\MarketingKitBundle\Tests\Support\Entity\HostTag;
 use Nowo\MarketingKitBundle\Tests\Support\SqliteManagerRegistry;
 use Nowo\TransactionContract\TransientStorageFailure;
+use Nowo\TransactionDoctrine\PrivateManager\PrivateEntityManager;
+use Nowo\TransactionDoctrine\PrivateManager\PrivateManagerRegistry;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
@@ -30,6 +31,7 @@ use stdClass;
 use Throwable;
 
 use function dirname;
+use function sprintf;
 
 #[CoversClass(MarketingToolWriteUnit::class)]
 final class MarketingToolWriteUnitTest extends TestCase
@@ -260,43 +262,86 @@ final class MarketingToolWriteUnitTest extends TestCase
     }
 
     /**
-     * 1.14 (REQ-ARCH-001 rule 6): host work that enters the host's manager during the unit (an operation or a listener of
-     * the host) is flushed by the unit; the probe reports each foreign class once, right before that flush.
+     * 2.0: the 1.14 host-flush probe is gone. A unit built by hand on a caller's manager (`ownManager: false`, never
+     * wired by the container) still flushes what the operation persisted there (the caller chose that manager), and the
+     * deprecated `$hostFlushReporter` argument is accepted and ignored: no notice is triggered.
      */
-    public function testTheHostFlushProbeReportsEachForeignClassFlushedByTheUnit(): void
+    public function testTheDeprecatedReporterArgumentIsIgnoredAndNothingIsReported(): void
     {
         [$registry, $manager] = $this->hostManager();
-        $unit                 = new MarketingToolWriteUnit($manager, $registry, hostFlushReporter: new MarketingKitHostFlushReporter(true));
+        $unit                 = new MarketingToolWriteUnit($manager, $registry, hostFlushReporter: new stdClass());
 
         $messages = $this->deprecations(static fn () => $unit->run(static function (EntityManagerInterface $em): void {
             $em->persist((new MarketingTool())->setCode('gtm'));
             $em->persist(new HostNote());
-            $em->persist(new HostNote());
-            $tag        = new HostTag();
-            $tag->label = 'x';
-            $em->persist($tag);
         }));
 
-        self::assertSame([
-            'Your pending changes to ' . HostNote::class . ' were flushed by NowoMarketingKitBundle; 2.0 no longer does.',
-            'Your pending changes to ' . HostTag::class . ' were flushed by NowoMarketingKitBundle; 2.0 no longer does.',
-        ], $messages);
-        self::assertSame(2, (int) $manager->getConnection()->fetchOne('SELECT COUNT(*) FROM host_note'), 'the 1.x behaviour is unchanged');
+        self::assertSame([], $messages);
+        self::assertSame(1, (int) $manager->getConnection()->fetchOne('SELECT COUNT(*) FROM host_note'));
     }
 
-    public function testTheProbeIsSilentWithoutForeignWorkAndOnTheBundlesOwnManager(): void
+    /**
+     * 2.0 (wave-1 lesson W1-2): the private manager only ever writes marketing tool rows. An application entity persisted
+     * through it (for example by a prePersist listener of the application that uses the event's manager) fails the unit
+     * before anything is written; the application's manager is untouched and keeps its own pending work.
+     */
+    public function testThePrivateManagerRefusesAnApplicationEntityBeforeWriting(): void
+    {
+        [$registry, $host, $private, $privateRegistry] = $this->privateManager();
+        $pending                                       = new HostNote();
+        $host->persist($pending);
+        $unit = new MarketingToolWriteUnit($private, $privateRegistry, 'default', true);
+
+        $failure = $this->failureOf(static fn () => $unit->run(static function (EntityManagerInterface $em): void {
+            $em->persist((new MarketingTool())->setCode('gtm'));
+            $em->persist(new HostNote());
+        }));
+
+        self::assertInstanceOf(LogicException::class, $failure);
+        self::assertSame(sprintf(MarketingToolWriteUnit::FOREIGN_ENTITY_MESSAGE, HostNote::class, HostNote::class), $failure->getMessage());
+        self::assertSame(0, (int) $host->getConnection()->fetchOne('SELECT COUNT(*) FROM marketing_tool'), 'nothing written');
+        self::assertSame(0, (int) $host->getConnection()->fetchOne('SELECT COUNT(*) FROM host_note'));
+        self::assertSame($host, $registry->getManager(), 'the application\'s manager was not reset');
+        self::assertTrue($host->isOpen());
+        self::assertTrue($host->getUnitOfWork()->isScheduledForInsert($pending), 'its pending work is intact');
+
+        // An application entity merely loaded through the private manager is refused too.
+        $host->flush();
+        $unit->run(static fn (EntityManagerInterface $em) => $em->persist((new MarketingTool())->setCode('ga4')));
+        $loaded = $this->failureOf(static fn () => $unit->run(static function (EntityManagerInterface $em) use ($pending): void {
+            $em->find(HostNote::class, $pending->id);
+            $em->persist((new MarketingTool())->setCode('meta'));
+        }));
+        self::assertInstanceOf(LogicException::class, $loaded);
+        self::assertSame(['ga4'], $host->getConnection()->fetchFirstColumn('SELECT code FROM marketing_tool'));
+    }
+
+    /**
+     * The guard inspects only the private manager: a dedicated `doctrine.entity_manager` (the DDD option) is the
+     * application's own choice.
+     */
+    public function testADedicatedManagerIsNotInspected(): void
     {
         [$registry, $manager] = $this->hostManager();
-        $reporter             = new MarketingKitHostFlushReporter(true);
-        $tool                 = static fn (EntityManagerInterface $em) => $em->persist((new MarketingTool())->setCode('ga4'));
+        $unit                 = new MarketingToolWriteUnit($manager, $registry, 'default', true);
 
-        self::assertSame([], $this->deprecations(static fn () => (new MarketingToolWriteUnit($manager, $registry, hostFlushReporter: $reporter))->run($tool)));
-
-        $own = new MarketingToolWriteUnit($manager, $registry, 'default', true, hostFlushReporter: $reporter);
-        self::assertSame([], $this->deprecations(static fn () => $own->run(static function (EntityManagerInterface $em): void {
-            $em->persist((new MarketingTool())->setCode('meta'));
+        $unit->run(static function (EntityManagerInterface $em): void {
+            $em->persist((new MarketingTool())->setCode('gtm'));
             $em->persist(new HostNote());
-        })), 'the bundle\'s own manager (doctrine.entity_manager, private manager) is never probed');
+        });
+
+        self::assertSame(1, (int) $manager->getConnection()->fetchOne('SELECT COUNT(*) FROM host_note'));
+    }
+
+    /**
+     * @return array{0: SqliteManagerRegistry, 1: EntityManagerInterface, 2: PrivateEntityManager, 3: PrivateManagerRegistry}
+     */
+    private function privateManager(): array
+    {
+        [$registry, $host] = $this->hostManager();
+        $private           = new PrivateEntityManager($registry, 'default', MarketingTool::class, NowoMarketingKitExtension::BUNDLE_NAME);
+
+        return [$registry, $host, $private, new PrivateManagerRegistry($registry, $private, NowoMarketingKitExtension::OWN_NAMESPACES, 'default')];
     }
 
     /**

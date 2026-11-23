@@ -80,7 +80,6 @@ final class ConfigurationHardeningTest extends TestCase
         $container = new ContainerBuilder();
         $container->setParameter('kernel.bundles', ['SecurityBundle' => 'Symfony\\Bundle\\SecurityBundle\\SecurityBundle']);
         (new NowoMarketingKitExtension())->load([[
-            'doctrine' => ['private_entity_manager' => true],
             'profiles' => ['default' => ['tools' => [
                 'gtm' => ['type' => 'gtm', 'options' => ['container_id' => '%env(default::GTM_ID)%']],
                 'ga4' => ['type' => 'ga4', 'options' => ['measurement_id' => 'G-%env(GA4_SUFFIX)%']],

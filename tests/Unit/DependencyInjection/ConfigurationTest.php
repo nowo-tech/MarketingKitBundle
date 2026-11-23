@@ -28,29 +28,68 @@ final class ConfigurationTest extends TestCase
         self::assertSame('@NowoMarketingKitBundle/admin/index.html.twig', $config['web_ui']['templates']['index']);
         self::assertSame('@NowoMarketingKitBundle/admin/form.html.twig', $config['web_ui']['templates']['form']);
         self::assertSame(['@NowoUiKit/form/nowo_ui_layout.html.twig'], $config['web_ui']['form_themes']);
-        self::assertSame('none', $config['web_ui']['css_framework']);
-        self::assertSame('bootstrap-icons', $config['web_ui']['icon_set']);
+        self::assertArrayNotHasKey('css_framework', $config['web_ui']);
+        self::assertArrayNotHasKey('icon_set', $config['web_ui']);
+        self::assertArrayNotHasKey('connection', $config['doctrine']);
+        self::assertNull($config['doctrine']['private_entity_manager']);
         self::assertSame('default', $config['default_profile']);
         self::assertArrayHasKey('default', $config['profiles']);
     }
 
-    #[IgnoreDeprecations]
-    public function testDoctrineConnectionIsDeprecated(): void
+    /**
+     * 2.0: keys deprecated in 1.x fail the build with a message naming their replacement (never Symfony's generic
+     * "Unrecognized option").
+     *
+     * @param array<string, mixed> $config
+     */
+    #[DataProvider('removedKeys')]
+    public function testARemovedKeyFailsTheBuildNamingItsReplacement(array $config, string $message): void
     {
-        $this->expectUserDeprecationMessageMatches('/"connection" option at "nowo_marketing_kit\\.doctrine" is deprecated/');
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessage($message);
 
-        $config = (new Processor())->processConfiguration(new Configuration(), [[
-            'doctrine' => ['connection' => 'other'],
-        ]]);
-
-        self::assertSame('other', $config['doctrine']['connection']);
+        (new Processor())->processConfiguration(new Configuration(), [$config]);
     }
 
-    public function testDoctrineConnectionDefaultDoesNotTriggerDeprecation(): void
+    /**
+     * @return iterable<string, array{array<string, mixed>, string}>
+     */
+    public static function removedKeys(): iterable
     {
-        $config = (new Processor())->processConfiguration(new Configuration(), [[]]);
+        yield 'doctrine.connection (1.6)' => [['doctrine' => ['connection' => 'default']], 'The "nowo_marketing_kit.doctrine.connection" option was removed in 2.0: remove it'];
+        yield 'web_ui.css_framework (1.9)' => [['web_ui' => ['css_framework' => 'bootstrap']], 'The "nowo_marketing_kit.web_ui.css_framework" option was removed in 2.0: set "nowo_ui_kit.css_framework"'];
+        yield 'web_ui.css_framework none (1.9)' => [['web_ui' => ['css_framework' => 'none']], 'The "nowo_marketing_kit.web_ui.css_framework" option was removed in 2.0'];
+        yield 'web_ui.icon_set (1.9)' => [['web_ui' => ['icon_set' => 'fontawesome']], 'The "nowo_marketing_kit.web_ui.icon_set" option was removed in 2.0: set "nowo_ui_kit.icon_set"'];
+    }
 
-        self::assertSame('default', $config['doctrine']['connection']);
+    /**
+     * 2.0: `private_entity_manager: false` (the 1.x mode that flushed the application's manager) fails the build;
+     * `true` is a deprecated no-op (removed in 3.0).
+     */
+    public function testPrivateEntityManagerFalseFailsTheBuild(): void
+    {
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessage('nowo_marketing_kit.doctrine.private_entity_manager: false is no longer supported: 2.0 removed the mode in which marketing tool writes flush your application\'s entity manager. Remove the key. The bundle then writes through its private entity manager');
+
+        (new Processor())->processConfiguration(new Configuration(), [['doctrine' => ['private_entity_manager' => false]]]);
+    }
+
+    public function testPrivateEntityManagerFalseWithADedicatedManagerNamesIt(): void
+    {
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessage('doctrine.entity_manager "marketing" stays: a dedicated manager keeps working as in 1.x');
+
+        (new Processor())->processConfiguration(new Configuration(), [['doctrine' => ['entity_manager' => 'marketing', 'private_entity_manager' => false]]]);
+    }
+
+    #[IgnoreDeprecations]
+    public function testPrivateEntityManagerTrueIsADeprecatedNoOp(): void
+    {
+        $this->expectUserDeprecationMessageMatches('/Since nowo-tech\/marketing-kit-bundle 2\.0: The "private_entity_manager" option at "nowo_marketing_kit\.doctrine" has no effect since 2\.0 without a dedicated doctrine\.entity_manager/');
+
+        $config = (new Processor())->processConfiguration(new Configuration(), [['doctrine' => ['private_entity_manager' => true]]]);
+
+        self::assertTrue($config['doctrine']['private_entity_manager']);
     }
 
     public function testWebUiPathPrefixAndTemplates(): void
@@ -95,18 +134,6 @@ final class ConfigurationTest extends TestCase
         ]]);
     }
 
-    #[IgnoreDeprecations]
-    public function testWebUiCssFrameworkIsDeprecated(): void
-    {
-        $this->expectUserDeprecationMessageMatches('/"css_framework" option at "nowo_marketing_kit\\.web_ui" is deprecated/');
-
-        $config = (new Processor())->processConfiguration(new Configuration(), [[
-            'web_ui' => ['css_framework' => 'bootstrap'],
-        ]]);
-
-        self::assertSame('bootstrap5', $config['web_ui']['css_framework']);
-    }
-
     public function testInvalidDefaultProfileFails(): void
     {
         $this->expectException(InvalidConfigurationException::class);
@@ -137,16 +164,6 @@ final class ConfigurationTest extends TestCase
 
         self::assertSame('gtm', $config['profiles']['default']['tools']['gtm']['type']);
         self::assertSame('analytics', $config['profiles']['default']['tools']['gtm']['category']);
-    }
-
-    #[IgnoreDeprecations]
-    public function testWebUiIconSetIsConfigurable(): void
-    {
-        $config = (new Processor())->processConfiguration(new Configuration(), [[
-            'web_ui' => ['icon_set' => 'fontawesome'],
-        ]]);
-
-        self::assertSame('fontawesome', $config['web_ui']['icon_set']);
     }
 
     public function testToolWithInjectedIdIsRejected(): void
@@ -182,40 +199,5 @@ final class ConfigurationTest extends TestCase
         ]]);
 
         self::assertCount(2, $config['profiles']['default']['tools']);
-    }
-
-    #[IgnoreDeprecations]
-    public function testInvalidCssFrameworkFails(): void
-    {
-        $this->expectException(InvalidConfigurationException::class);
-
-        (new Processor())->processConfiguration(new Configuration(), [[
-            'web_ui' => [
-                'css_framework' => 'bulma',
-            ],
-        ]]);
-    }
-
-    #[IgnoreDeprecations]
-    public function testCssFrameworkAcceptsCanonicalValues(): void
-    {
-        foreach (Configuration::CSS_FRAMEWORKS as $framework) {
-            $expected = $framework === 'bootstrap' ? 'bootstrap5' : $framework;
-            $config   = (new Processor())->processConfiguration(new Configuration(), [[
-                'web_ui' => ['css_framework' => $framework],
-            ]]);
-
-            self::assertSame($expected, $config['web_ui']['css_framework']);
-        }
-    }
-
-    #[IgnoreDeprecations]
-    public function testCssFrameworkBootstrapAlias(): void
-    {
-        $config = (new Processor())->processConfiguration(new Configuration(), [[
-            'web_ui' => ['css_framework' => 'bootstrap'],
-        ]]);
-
-        self::assertSame('bootstrap5', $config['web_ui']['css_framework']);
     }
 }

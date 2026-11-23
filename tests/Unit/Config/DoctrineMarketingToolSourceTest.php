@@ -9,13 +9,14 @@ use Nowo\MarketingKitBundle\Config\MarketingConfigResolver;
 use Nowo\MarketingKitBundle\Config\MarketingToolSourceInterface;
 use Nowo\MarketingKitBundle\Config\ResolvedTool;
 use Nowo\MarketingKitBundle\Repository\MarketingToolRepository;
-use PHPUnit\Framework\Attributes\DataProvider;
-use PHPUnit\Framework\Attributes\IgnoreDeprecations;
 use PHPUnit\Framework\TestCase;
+use ReflectionMethod;
+use ReflectionParameter;
+
+use function array_map;
 
 /**
- * The 1.12.0 tool source port keeps the 1.10.x database override exactly (equivalence with the deprecated
- * `$toolRepository` path).
+ * The 1.12.0 tool source port: the bundle's database override (the 1.10.x behaviour), the only path since 2.0.
  */
 final class DoctrineMarketingToolSourceTest extends TestCase
 {
@@ -25,55 +26,23 @@ final class DoctrineMarketingToolSourceTest extends TestCase
     ];
 
     /**
-     * @return iterable<string, array{bool, list<array{code: string, type: string, enabled: bool, category: string, position: string, sortOrder: int, options: array<string, mixed>}>, string}>
+     * 2.0: the fourth constructor parameter of 1.x (`?MarketingToolRepository $toolRepository`, deprecated since 1.12) is
+     * gone; `$requestStack` and `$toolSource` moved up one position, and named arguments keep working.
      */
-    public static function cases(): iterable
+    public function testTheDeprecatedRepositoryParameterIsRemoved(): void
     {
-        $rows = [
-            ['code' => 'meta', 'type' => 'meta_pixel', 'enabled' => true, 'category' => 'marketing', 'position' => 'head', 'sortOrder' => 2, 'options' => ['pixel_id' => '123']],
-            ['code' => 'ga4', 'type' => 'ga4', 'enabled' => false, 'category' => 'analytics', 'position' => 'head', 'sortOrder' => 1, 'options' => ['measurement_id' => 'G-1']],
-        ];
+        $parameters = (new ReflectionMethod(MarketingConfigResolver::class, '__construct'))->getParameters();
 
-        yield 'db on, rows' => [true, $rows, 'default'];
-        yield 'db on, no rows' => [true, [], 'default'];
-        yield 'db off, rows' => [false, $rows, 'default'];
-        yield 'disabled profile' => [true, $rows, 'off'];
-        yield 'unknown profile' => [true, $rows, 'missing'];
-    }
+        self::assertSame(['profiles', 'defaultProfile', 'useDatabaseConfig', 'requestStack', 'toolSource'], array_map(static fn (ReflectionParameter $parameter): string => $parameter->getName(), $parameters));
 
-    /**
-     * @param list<array{code: string, type: string, enabled: bool, category: string, position: string, sortOrder: int, options: array<string, mixed>}> $rows
-     */
-    #[DataProvider('cases')]
-    #[IgnoreDeprecations]
-    public function testSourcePathEqualsTheDeprecatedRepositoryPath(bool $useDatabaseConfig, array $rows, string $profile): void
-    {
         $repo = $this->createStub(MarketingToolRepository::class);
-        $repo->method('findToolRowsByProfile')->willReturn($rows);
+        $repo->method('findToolRowsByProfile')->willReturn([
+            ['code' => 'ga4', 'type' => 'ga4', 'enabled' => true, 'category' => 'analytics', 'position' => 'head', 'sortOrder' => 0, 'options' => ['measurement_id' => 'G-1']],
+        ]);
+        $resolver = new MarketingConfigResolver(self::PROFILES, 'default', true, toolSource: new DoctrineMarketingToolSource(true, $repo));
 
-        $this->expectUserDeprecationMessageMatches('/\$toolRepository.*MarketingToolSourceInterface/');
-        $legacy = new MarketingConfigResolver(self::PROFILES, 'default', $useDatabaseConfig, $repo);
-        $ported = new MarketingConfigResolver(self::PROFILES, 'default', false, null, null, new DoctrineMarketingToolSource($useDatabaseConfig, $repo));
-
-        self::assertEquals($legacy->resolve($profile), $ported->resolve($profile));
-    }
-
-    #[IgnoreDeprecations]
-    public function testAnOverriddenToolRepositoryIsIgnoredButDeprecated(): void
-    {
-        $repo = $this->createMock(MarketingToolRepository::class);
-        $repo->expects(self::never())->method('findToolRowsByProfile');
-
-        $this->expectUserDeprecationMessageMatches('/\$toolRepository.*ignored.*MarketingToolSourceInterface/');
-        $host = new class implements MarketingToolSourceInterface {
-            public function toolsFor(string $profile): ?array
-            {
-                return null;
-            }
-        };
-        $resolver = new MarketingConfigResolver(self::PROFILES, 'default', true, $repo, null, $host);
-
-        self::assertSame('gtm', $resolver->resolve('default')->tools[0]->code);
+        self::assertSame('ga4', $resolver->resolve()->tools[0]->code);
+        self::assertSame('gtm', (new MarketingConfigResolver(self::PROFILES, 'default', true))->resolve()->tools[0]->code, 'no tool source: YAML only');
     }
 
     public function testReturnsDatabaseToolsInRepositoryOrder(): void
@@ -111,7 +80,7 @@ final class DoctrineMarketingToolSourceTest extends TestCase
             }
         };
 
-        $resolver = new MarketingConfigResolver(self::PROFILES, 'default', true, null, null, $host);
+        $resolver = new MarketingConfigResolver(self::PROFILES, 'default', true, null, $host);
         self::assertFalse($resolver->resolve()->fromDatabase);
         self::assertSame('yaml', $resolver->resolve()->tools[0]->source);
 

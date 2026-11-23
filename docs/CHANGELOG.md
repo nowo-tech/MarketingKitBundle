@@ -45,9 +45,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+2.0.0 (major, REQ-ARCH-001 rule 6): removes only what 1.x deprecated. An application that runs 1.14 without
+deprecation notices from this bundle upgrades without code changes, except for application code that relied on a
+marketing tool write flushing its own pending changes (see UPGRADING "To 2.0.0", "Before you upgrade").
+
+### Removed
+
+- **BREAKING:** the 1.x mode in which marketing tool writes flushed the application's entity manager (deprecated in
+  1.14): its two deprecation notices (`NowoMarketingKitExtension::PRIVATE_ENTITY_MANAGER_UNSET_DEPRECATION`,
+  `::PRIVATE_ENTITY_MANAGER_FALSE_DEPRECATION`, `::privateEntityManagerNotice()`), the host-flush probe
+  (`Doctrine\MarketingKitHostFlushReporter`, internal) and its call in `MarketingToolWriteUnit`.
+  `MarketingToolWriteUnit`'s last constructor argument `$hostFlushReporter` is kept, ignored (deprecated, removed in
+  3.0).
+- **BREAKING:** `doctrine.private_entity_manager: false` now fails the container build with a message that says what to
+  do (deprecated in 1.14).
+- **BREAKING:** the fourth constructor parameter of `Config\MarketingConfigResolver`
+  (`?MarketingToolRepository $toolRepository`, deprecated in 1.12): `$requestStack` and `$toolSource` move up one
+  position (pass them by name, as 1.14 advised). Without a `$toolSource` the resolver uses the YAML tools only.
+- **BREAKING:** `doctrine.connection` (deprecated in 1.6, no effect): a leftover key fails the build naming the fix; the
+  `nowo_marketing_kit.doctrine.connection` container parameter is gone with it.
+- **BREAKING:** `web_ui.css_framework` and `web_ui.icon_set` (deprecated in 1.9): a leftover key fails the build naming
+  `nowo_ui_kit.css_framework` / `nowo_ui_kit.icon_set`; the `nowo_marketing_kit.web_ui.css_framework` container
+  parameter is gone with it. Not listed in 1.14's "Preparing for 2.0"; UPGRADING "To 2.0.0" corrects that list.
+- **BREAKING:** the 1.x layout bridge `admin/_legacy_layout.html.twig` and `MarketingKitPages::LEGACY_LAYOUT_BRIDGE`
+  (deprecated in 1.9): a `web_ui.layout_template` that does not render the UiKit canonical blocks now fails the admin
+  page with a `LogicException` that says what to do, instead of being wrapped.
+- **BREAKING:** the Twig globals `nowo_marketing_kit_layout` and `nowo_marketing_kit_css_framework` (deprecated in 1.9,
+  unused by the admin pages): use UiKit's `nowo_ui_layout` / `nowo_ui_kit.*`. The two constructor arguments of
+  `Twig\MarketingKitExtension` that fed them are kept, ignored (removed in 3.0).
+- `MarketingToolAdminController::SUBCLASS_DEPRECATION` and the subclass notice (1.14).
+
 ### Changed
 
+- **BREAKING:** with no Doctrine configuration (or `doctrine.entity_manager` naming the application's default manager),
+  the bundle reads and writes `MarketingTool` through its private entity manager (transaction-doctrine's
+  `PrivateEntityManager`, same connection, mapping, listeners and table; the 1.14 opt-in): a marketing tool write
+  never flushes the application's manager, and no longer refuses to run while that manager holds pending changes.
+  The private manager is dropped at every request, Messenger message and console command boundary and at
+  `kernel.reset`. `doctrine.entity_manager: <dedicated manager>` (the DDD option) is unchanged.
+- **BREAKING:** an application entity loaded or persisted through the private manager (for example by a Doctrine
+  listener of the application that uses the event's manager) fails the marketing tool write with a `LogicException`
+  before anything is written: the private manager only writes marketing tool rows.
+- `doctrine.private_entity_manager: true` is accepted and deprecated (no effect without a dedicated
+  `doctrine.entity_manager`; removed in 3.0).
+- **BREAKING:** `MarketingToolAdminController` is `final` (`@final` since 1.7, runtime notice since 1.14): decorate or
+  replace the controller service instead of extending it.
+- With UiKit installed, the bundle still seeds `nowo_ui_kit.css_framework: none` and `nowo_ui_kit.icon_set:
+  bootstrap-icons` when the application leaves them unset (the 1.x zero-config result), so an application that never
+  set either key renders as before.
+- Demo: the configuration drops `doctrine.private_entity_manager: true` (the 2.0 default).
 - Demo: runs in UiKit's demo platform shell (`nowo-tech/ui-kit-bundle` ^2.60); the demo's own header is gone and the pages use the shell page headers and section cards. The e2e gains a `platform` project (rules + axe) that runs after the admin spec. Demo only, no bundle change.
+
+### Security
+
+- After 2.0.0 is released, the 1.x line receives security fixes for 6 months: fixes rated Moderate and above are
+  backported to the last 1.x minor (1.14); Low ones are fixed in 2.x only.
 
 ## [1.14.0] - 2026-11-20
 
