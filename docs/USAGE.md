@@ -66,20 +66,11 @@ With Doctrine schema created, open **`/admin/marketing`** (`web_ui.path_prefix`)
 
 Set `use_database_config: true` so DB rows replace YAML tools at runtime when the profile has at least one row.
 
-Since 1.14, also set `doctrine.private_entity_manager: true` (the 2.0 behaviour, zero-config: same connection and
-table; see [UPGRADING](UPGRADING.md#to-1140)), so an admin write never flushes your application's pending changes:
-
-```yaml
-nowo_marketing_kit:
-    use_database_config: true
-    doctrine:
-        private_entity_manager: true
-```
-
-Left unset, the bundle keeps the 1.x behaviour with a deprecation notice; 2.0 always uses the private manager
-(`doctrine.entity_manager: <name>` stays for a dedicated manager). With the private manager, an entity of yours that
-points at a marketing tool must take it from your own manager with `$yourManager->getReference(MarketingTool::class,
-$id)`, never from the bundle's repository (a tool loaded there belongs to the private manager).
+Since 2.0 every admin write goes through the bundle's private entity manager (zero-config: same connection and
+table), so it never flushes your application's pending changes; `doctrine.entity_manager: <name>` stays for a dedicated
+manager. An entity of yours that points at a marketing tool must take it from your own manager with
+`$yourManager->getReference(MarketingTool::class, $id)`, never from the bundle's repository (a tool loaded there belongs
+to the private manager). See [UPGRADING](UPGRADING.md#to-200).
 
 ```bash
 php bin/console doctrine:schema:update --force
@@ -145,7 +136,6 @@ it **always wins** over the bundle file (the bundle prepends that directory to i
 |-------------|-----------------|-------------------------|
 | `admin/index.html.twig` | Services list (UiKit list scaffold) | `nowo_ui_list_row`, `nowo_ui_content`; `page` (`ListPage`) + 1.x variables (see [TEMPLATES.md](TEMPLATES.md)) |
 | `admin/form.html.twig` | Create / edit form (UiKit form scaffold) | `nowo_ui_form_body`, `nowo_ui_content`; `page` (`FormPage`), `form`, `tool`, `is_new` |
-| `admin/_legacy_layout.html.twig` | Deprecated 1.x layout bridge (removed in 2.0) | `nowo_marketing_kit_layout` |
 
 `admin/base.html.twig` and `admin/layout.html.twig` were removed in 1.9: an application copy of them is no longer
 used (see [UPGRADING.md](UPGRADING.md)).

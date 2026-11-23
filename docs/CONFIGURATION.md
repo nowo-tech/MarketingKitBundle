@@ -38,8 +38,7 @@ nowo_marketing_kit:
         form_themes: ['@NowoUiKit/form/nowo_ui_layout.html.twig']
     doctrine:
         table_prefix: ''
-        entity_manager: null   # 1.10.0+: dedicated manager for MarketingTool; null = the default manager
-        private_entity_manager: true   # 1.14.0+: the bundle's private manager (the 2.0 behaviour); unset = notice
+        entity_manager: null   # 1.10.0+: dedicated manager for MarketingTool (DDD); null = the bundle's private manager on the default one
     conflict_response:         # 1.13+: lock conflicts on the admin (REQ-RUNTIME-003, docs/CONCURRENCY.md)
         status: null           # 409 (default) or 503
         retry_after: null      # seconds of a CONFLICT_001 answer (default 1)
@@ -66,12 +65,9 @@ nowo_marketing_kit:
 | `web_ui.layout_template` | string\|null | `null` | Layout the admin page scaffolds extend. `null` = UiKit `nowo_ui_kit.layouts.admin` (set it once for every Nowo bundle). A host layout must render the UiKit canonical blocks; see [Admin web UI](#admin-web-ui-req-ui-001--req-ui-003) |
 | `web_ui.templates.index` / `.form` | string | bundle templates | Per-page template override: a host template that extends the bundle page and overrides a data block |
 | `web_ui.form_themes` | list<string> | `['@NowoUiKit/form/nowo_ui_layout.html.twig']` | Form themes of the tool form (UiKit `FormPage::formThemes`). `[]` = only the host `twig.form_themes` (e.g. `bootstrap_5_layout.html.twig` on a Bootstrap host) |
-| `web_ui.css_framework` | enum | `none` | **Deprecated since 1.9**: set `nowo_ui_kit.css_framework`. Only seeds `nowo_ui_kit.css_framework` when the host leaves it unset. Values: `bootstrap` (→`bootstrap5`), `bootstrap4`, `bootstrap5`, `tabler`, `tailwind`, `foundation`, `custom`, `none` |
-| `web_ui.icon_set` | string | `bootstrap-icons` | **Deprecated since 1.9**: set `nowo_ui_kit.icon_set`. Only seeds `nowo_ui_kit.icon_set` when the host leaves it unset |
 | `doctrine.table_prefix` | string | `''` | Prefixed onto `marketing_tool` |
-| `doctrine.entity_manager` | ?string | `null` | Since 1.10.0. Dedicated entity manager for `MarketingTool`. The entity is mapped on that manager only (removed from every other one, including `auto_mapping` and a default metadata driver such as DoctrineBundle 3.4 `auto_discover_entities`; fixed in Unreleased), the admin reads and writes through it, and before an admin route the bundle resets it when a failed flush of an earlier request left it closed (FrankenPHP worker mode without kernel reset). Other managers of the host, closed or open, are never touched. The build fails when the manager does not exist. `null`: the default manager, as before. |
-| `doctrine.private_entity_manager` | ?bool | `null` | **1.14.** `true`: the bundle reads and writes `MarketingTool` through a private entity manager of its own, created on the connection, mapping and event manager of `doctrine.entity_manager` (else the default manager): same table, nothing else to configure, and an admin write never flushes your pending changes. Dropped at every request / message / command boundary, replaced when closed. `false`: the bundle writes through the manager that maps `MarketingTool` (1.x behaviour); deprecated, removed in 2.0. `null` = `false`. Without `doctrine.entity_manager`, or with it naming the default manager, `null` and `false` each trigger a deprecation notice; 2.0 always uses the private manager (`doctrine.entity_manager` stays as the DDD option). See [UPGRADING](UPGRADING.md#to-1140) |
-| `doctrine.connection` | string | `default` | **Deprecated since 1.6, no effect.** The bundle always reads and writes `MarketingTool` through the default Doctrine entity manager and its connection; the `marketing_tool` table must live there. Setting the key triggers a deprecation; remove it. |
+| `doctrine.entity_manager` | ?string | `null` | Since 1.10.0. Dedicated entity manager for `MarketingTool`. The entity is mapped on that manager only (removed from every other one, including `auto_mapping` and a default metadata driver such as DoctrineBundle 3.4 `auto_discover_entities`; fixed in Unreleased), the admin reads and writes through it, and before an admin route the bundle resets it when a failed flush of an earlier request left it closed (FrankenPHP worker mode without kernel reset). Other managers of the host, closed or open, are never touched. The build fails when the manager does not exist. `null` (default), or the name of the default manager: the bundle reads and writes through its private entity manager on the default manager (2.0, below). |
+| `doctrine.private_entity_manager` | ?bool | `null` | **Deprecated since 2.0, removed in 3.0.** Since 2.0 the bundle always reads and writes `MarketingTool` through a private entity manager of its own (unless `doctrine.entity_manager` names a dedicated manager), created on the connection, mapping and event manager of the default manager: same table, nothing to configure, and a marketing tool write never flushes your pending changes. Dropped at every request / message / command boundary and at `kernel.reset`, replaced when closed. `true`: accepted, no effect (with a dedicated `doctrine.entity_manager` it keeps the 1.14 behaviour: the private manager on that manager). `false`: build error (the 1.x mode was removed). See [UPGRADING](UPGRADING.md#to-200) |
 | `conflict_response.status` | ?int | `null` | Since 1.13. Status of a lock conflict on the admin routes: `409` (default) or `503`. `null` follows `nowo_transaction_doctrine.conflict_response`, else 409. See [CONCURRENCY](CONCURRENCY.md). |
 | `conflict_response.retry_after` | ?int | `null` | Since 1.13. `Retry-After` seconds of a `CONFLICT_001` answer. `null` follows transaction-doctrine, else 1. |
 | `conflict_response.commit_tracking` | enum | `bundle` | Since 1.13. Commits counted for `CONFLICT_002`: `bundle` (the connection of the bundle's entity manager only), `all` (every Doctrine connection) or `off`. Ignored when transaction-doctrine's `commit_detection` is on (its ledger is reused). |
@@ -265,9 +261,9 @@ A one-file bridge that maps the canonical blocks into a project layout:
 {% block javascripts %}{{ parent() }}{% block nowo_ui_scripts %}{{ include(nowo_ui_partial('scripts')) }}{% endblock %}{% endblock %}
 ```
 
-A 1.x layout set in `web_ui.layout_template` that renders only `{% block body %}` (no `nowo_ui_content`) still works
-through the deprecated bridge `@NowoMarketingKitBundle/admin/_legacy_layout.html.twig` (deprecation notice; removed
-in 2.0). The former default `@NowoMarketingKitBundle/admin/layout.html.twig` was removed; that value is treated as
+Since 2.0 a 1.x layout set in `web_ui.layout_template` that renders only `{% block body %}` (no `nowo_ui_content`)
+fails the admin page with a `LogicException` naming the fix: the bridge that wrapped it (deprecated since 1.9) was
+removed. The former default `@NowoMarketingKitBundle/admin/layout.html.twig` was removed; that value is treated as
 `null`.
 
 ## CookieConsent compatibility
