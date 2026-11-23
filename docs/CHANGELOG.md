@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[2.0.0] - 2026-11-23](#200---2026-11-23)
 - [[1.14.0] - 2026-11-20](#1140---2026-11-20)
 - [[1.13.0] - 2026-11-19](#1130---2026-11-19)
 - [[1.12.0] - 2026-11-14](#1120---2026-11-14)
@@ -44,6 +45,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [[1.0.0] - 2026-07-24](#100---2026-07-24)
 
 ## [Unreleased]
+
+## [2.0.0] - 2026-11-23
 
 2.0.0 (major, REQ-ARCH-001 rule 6): removes only what 1.x deprecated. An application that runs 1.14 without
 deprecation notices from this bundle upgrades without code changes, except for application code that relied on a
@@ -540,6 +543,7 @@ Allows nowo-tech/ui-kit-bundle 2.x (^1.4 || ^2.2) so hosts can move to UiKit 2.2
 
 - **Worker safety (Igor):** justified `// @igor-ignore` annotations and/or `ResetInterface` / request-scoped fixes so `make igor` passes on package `src/`.
 
+[2.0.0]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v2.0.0
 [1.14.0]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.14.0
 [1.13.0]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.13.0
 [1.12.0]: https://github.com/nowo-tech/MarketingKitBundle/releases/tag/v1.12.0
