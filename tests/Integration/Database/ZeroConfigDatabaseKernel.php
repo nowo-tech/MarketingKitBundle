@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nowo\MarketingKitBundle\Tests\Integration\Database;
 
+use Composer\InstalledVersions;
 use Doctrine\Bundle\DoctrineBundle\DoctrineBundle;
 use Nowo\FormKitBundle\NowoFormKitBundle;
 use Nowo\MarketingKitBundle\NowoMarketingKitBundle;
@@ -18,7 +19,10 @@ use Twig\Extra\TwigExtraBundle\TwigExtraBundle;
 
 use function dirname;
 use function md5;
+use function str_starts_with;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
+
+use const PHP_VERSION_ID;
 
 /**
  * 2.0: a Symfony application with ZERO MarketingKit Doctrine configuration (the 1.x default in which the bundle flushed
@@ -74,9 +78,15 @@ final class ZeroConfigDatabaseKernel extends Kernel
             'php_errors'            => ['log' => true],
         ]);
         $support = dirname(__DIR__, 2) . '/Support';
+        $orm     = [];
+        // DoctrineBundle 2.x on PHP 8.4+ (the CI "DBAL 3" leg) needs native lazy objects once symfony/var-exporter 8
+        // has no LazyGhost; DoctrineBundle 3 always uses them.
+        if (PHP_VERSION_ID >= 80400 && str_starts_with((string) InstalledVersions::getVersion('doctrine/doctrine-bundle'), '2.')) {
+            $orm['enable_native_lazy_objects'] = true;
+        }
         $container->extension('doctrine', [
             'dbal' => ['url' => $this->databaseUrl],
-            'orm'  => [
+            'orm'  => $orm + [
                 'mappings' => [
                     'HostSupport' => ['type' => 'attribute', 'is_bundle' => false, 'dir' => $support . '/Entity', 'prefix' => 'Nowo\\MarketingKitBundle\\Tests\\Support\\Entity'],
                     'HostLinked'  => ['type' => 'attribute', 'is_bundle' => false, 'dir' => $support . '/LinkedEntity', 'prefix' => 'Nowo\\MarketingKitBundle\\Tests\\Support\\LinkedEntity'],
