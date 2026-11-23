@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\MarketingKitBundle\Tests\Integration\DependencyInjection;
 
 use LogicException;
+use Nowo\MarketingKitBundle\DependencyInjection\Compiler\PrivateEntityManagerSourcePass;
 use Nowo\MarketingKitBundle\DependencyInjection\NowoMarketingKitExtension;
 use Nowo\MarketingKitBundle\DependencyInjection\TablePrefixListener;
 use Nowo\MarketingKitBundle\EventListener\MarketingToolConflictListener;
@@ -15,7 +16,6 @@ use Nowo\MarketingKitBundle\Service\MarketingScriptRenderer;
 use Nowo\MarketingKitBundle\Twig\MarketingKitExtension;
 use Nowo\TransactionDoctrine\Symfony\Conflict\ConflictResponsePolicy;
 use Nowo\TransactionDoctrine\WriteUnit\CommitLedger;
-use PHPUnit\Framework\Attributes\IgnoreDeprecations;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
@@ -26,10 +26,9 @@ use function array_filter;
 use function array_values;
 
 /**
- * These tests load the 1.x host-mode configuration (doctrine.private_entity_manager unset), which triggers the 1.14
- * notice asserted in {@see PrivateEntityManagerExtensionTest}.
+ * Zero configuration: 2.0 writes through the bundle's private entity manager without any notice (the wiring is
+ * asserted in {@see PrivateEntityManagerExtensionTest}).
  */
-#[IgnoreDeprecations]
 final class NowoMarketingKitExtensionTest extends TestCase
 {
     public function testLoadPublishesParametersAndServices(): void
@@ -62,7 +61,8 @@ final class NowoMarketingKitExtensionTest extends TestCase
         self::assertSame('admin/marketing', $container->getParameter('nowo_marketing_kit.web_ui.route_path'));
         self::assertSame(['index' => '@NowoMarketingKitBundle/admin/index.html.twig', 'form' => '@NowoMarketingKitBundle/admin/form.html.twig'], $container->getParameter('nowo_marketing_kit.web_ui.templates'));
         self::assertSame(['@NowoUiKit/form/nowo_ui_layout.html.twig'], $container->getParameter('nowo_marketing_kit.web_ui.form_themes'));
-        self::assertSame('none', $container->getParameter('nowo_marketing_kit.web_ui.css_framework'));
+        self::assertFalse($container->hasParameter('nowo_marketing_kit.web_ui.css_framework'), '2.0: removed with the key');
+        self::assertFalse($container->hasParameter('nowo_marketing_kit.doctrine.connection'), '2.0: removed with the key');
         self::assertTrue($container->hasDefinition(TablePrefixListener::class));
         self::assertTrue($container->hasDefinition(MarketingScriptRenderer::class));
         self::assertTrue($container->hasDefinition(MarketingKitExtension::class));
@@ -71,7 +71,7 @@ final class NowoMarketingKitExtensionTest extends TestCase
 
     /**
      * 1.13 (REQ-RUNTIME-003): zero config registers the conflict answer (transaction-doctrine's policy service when
-     * present), the bundle's commit ledger and middleware, and the write unit on the default manager.
+     * present), the bundle's commit ledger and middleware, and the write unit on the bundle's private manager (2.0).
      */
     public function testLoadRegistersTheConflictAnswerAndTheWriteUnit(): void
     {
@@ -94,7 +94,8 @@ final class NowoMarketingKitExtensionTest extends TestCase
         // not logged as a CRITICAL storage error.
         self::assertGreaterThan(0, $exception[0]['priority'] ?? 0);
         self::assertTrue($container->hasDefinition(MarketingToolWriteUnit::class));
-        self::assertFalse($container->getDefinition(MarketingToolWriteUnit::class)->getArgument('$ownManager'));
+        self::assertTrue($container->getDefinition(MarketingToolWriteUnit::class)->getArgument('$ownManager'));
+        self::assertSame(NowoMarketingKitExtension::PRIVATE_ENTITY_MANAGER_SERVICE, (string) $container->getDefinition(MarketingToolWriteUnit::class)->getArgument('$entityManager'));
     }
 
     public function testLoadHonoursTheConflictResponseOptionsAndTheBundleManager(): void
@@ -111,6 +112,8 @@ final class NowoMarketingKitExtensionTest extends TestCase
         self::assertSame([503, ConflictResponsePolicy::DEFAULT_RETRY_AFTER], $policy->getArguments());
         self::assertNull($container->getDefinition(MarketingToolConflictListener::class)->getArgument(1), 'no ledger');
         self::assertFalse($container->hasDefinition(NowoMarketingKitExtension::COMMIT_TRACKING_MIDDLEWARE));
+        // A dedicated manager (the DDD option) is put back by the source pass, which knows the default manager's name.
+        (new PrivateEntityManagerSourcePass())->process($container);
         self::assertSame('doctrine.orm.marketing_entity_manager', (string) $container->getDefinition(MarketingToolWriteUnit::class)->getArgument('$entityManager'));
     }
 
@@ -319,40 +322,19 @@ final class NowoMarketingKitExtensionTest extends TestCase
         self::assertArrayNotHasKey('profiles', $configs[0]);
     }
 
-    #[IgnoreDeprecations]
-    public function testPrependSeedsUiKitFromWebUiDefaults(): void
+    /**
+     * 2.0: the `web_ui.css_framework` / `icon_set` keys are gone; the bundle still seeds the 1.x zero-config result
+     * (none / bootstrap-icons) into the keys the host left unset, so an application that never set them renders as
+     * before.
+     */
+    public function testPrependSeedsUiKitWithTheZeroConfigDefaults(): void
     {
         $container = new ContainerBuilder();
         $this->registerNamedExtension($container, 'nowo_ui_kit');
-        $container->prependExtensionConfig('nowo_marketing_kit', [
-            'web_ui' => [
-                'css_framework' => 'bootstrap',
-            ],
-        ]);
-        $this->expectUserDeprecationMessageMatches('/"css_framework" option at "nowo_marketing_kit\\.web_ui" is deprecated/');
 
         (new NowoMarketingKitExtension())->prepend($container);
 
-        $configs = $container->getExtensionConfig('nowo_ui_kit');
-        self::assertSame([
-            'css_framework' => 'bootstrap5',
-            'icon_set'      => 'bootstrap-icons',
-        ], $configs[0]);
-    }
-
-    #[IgnoreDeprecations]
-    public function testPrependSeedsUiKitIconSetFromWebUi(): void
-    {
-        $this->expectUserDeprecationMessageMatches('/"icon_set" option at "nowo_marketing_kit\\.web_ui" is deprecated/');
-        $container = new ContainerBuilder();
-        $this->registerNamedExtension($container, 'nowo_ui_kit');
-        $container->prependExtensionConfig('nowo_marketing_kit', [
-            'web_ui' => ['icon_set' => 'fontawesome'],
-        ]);
-
-        (new NowoMarketingKitExtension())->prepend($container);
-
-        self::assertSame('fontawesome', $container->getExtensionConfig('nowo_ui_kit')[0]['icon_set']);
+        self::assertSame(['css_framework' => 'none', 'icon_set' => 'bootstrap-icons'], $container->getExtensionConfig('nowo_ui_kit')[0]);
     }
 
     public function testPrependSkipsUiKitWhenHostAlreadyConfiguredBothKeys(): void

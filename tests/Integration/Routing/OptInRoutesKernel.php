@@ -78,8 +78,6 @@ final class OptInRoutesKernel extends Kernel
         $container->extension('nowo_marketing_kit', [
             'use_database_config' => true,
             'security'            => ['allow_unauthenticated' => true],
-            // 1.14: the 2.0 default (no notice).
-            'doctrine' => ['private_entity_manager' => true],
         ]);
         $container->services()->set('logger', NullLogger::class);
     }

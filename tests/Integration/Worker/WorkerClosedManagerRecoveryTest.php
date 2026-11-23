@@ -7,8 +7,9 @@ namespace Nowo\MarketingKitBundle\Tests\Integration\Worker;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\SchemaTool;
 use Doctrine\Persistence\ManagerRegistry;
+use Nowo\MarketingKitBundle\DependencyInjection\NowoMarketingKitExtension;
 use Nowo\MarketingKitBundle\Entity\MarketingTool;
-use PHPUnit\Framework\Attributes\IgnoreDeprecations;
+use Nowo\TransactionDoctrine\PrivateManager\PrivateEntityManager;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
@@ -18,12 +19,11 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 /**
  * FrankenPHP worker mode with the kernel kept alive and never reset (FRANKENPHP_RESET_KERNEL=false, no services
  * resetter): one booted kernel serves every request through the http_kernel service, so kernel.reset never runs.
- * A closed bundle manager is reset before the next admin request, which then renders from the database; the host's
- * own closed manager ("reporting") is never touched by the bundle.
- *
- * Host mode on purpose (doctrine.private_entity_manager unset: the 1.14 notice when the container is built).
+ * Zero configuration (2.0): the bundle's manager is its private entity manager on the default connection. A closed
+ * private manager is replaced before the next admin request, which then renders from the database; the application's
+ * own managers ("default", the source of the private manager, and "reporting"), closed by the application, are never
+ * reset by the bundle.
  */
-#[IgnoreDeprecations]
 final class WorkerClosedManagerRecoveryTest extends KernelTestCase
 {
     protected static function getKernelClass(): string
@@ -37,9 +37,11 @@ final class WorkerClosedManagerRecoveryTest extends KernelTestCase
         $container = self::getContainer();
         $doctrine  = $container->get('doctrine');
         self::assertInstanceOf(ManagerRegistry::class, $doctrine);
-        $bundle = $this->manager($doctrine, 'default');
-        $host   = $this->manager($doctrine, 'reporting');
-        (new SchemaTool($bundle))->createSchema([$bundle->getClassMetadata(MarketingTool::class)]);
+        $default = $this->manager($doctrine, 'default');
+        $host    = $this->manager($doctrine, 'reporting');
+        (new SchemaTool($default))->createSchema([$default->getClassMetadata(MarketingTool::class)]);
+        $bundle = $container->get(NowoMarketingKitExtension::PRIVATE_ENTITY_MANAGER_SERVICE);
+        self::assertInstanceOf(PrivateEntityManager::class, $bundle);
         $http = $container->get('http_kernel');
         self::assertInstanceOf(HttpKernelInterface::class, $http);
         $router = $container->get('router');
@@ -47,13 +49,15 @@ final class WorkerClosedManagerRecoveryTest extends KernelTestCase
         $path = $router->generate('nowo_marketing_kit_admin_index');
 
         $host->close();
+        $default->close();
         for ($i = 0; $i < 20; ++$i) {
             // A failed admin flush of the previous request left the bundle manager closed.
             $bundle->close();
             $this->serve($http, $path);
 
-            self::assertTrue($bundle->isOpen(), 'The bundle manager is reset before the next admin request.');
+            self::assertTrue($bundle->isOpen(), 'The bundle manager is replaced before the next admin request.');
             self::assertFalse($host->isOpen(), 'The bundle must never reset the host manager.');
+            self::assertFalse($default->isOpen(), 'Nor the application\'s default manager the private one is created on.');
         }
     }
 

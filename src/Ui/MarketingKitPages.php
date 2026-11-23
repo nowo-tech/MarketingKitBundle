@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nowo\MarketingKitBundle\Ui;
 
+use LogicException;
 use Nowo\MarketingKitBundle\Entity\MarketingTool;
 use Nowo\MarketingKitBundle\Service\MarketingToolCatalog;
 use Nowo\UiKitBundle\View\Action;
@@ -24,13 +25,14 @@ use function in_array;
 use function is_scalar;
 use function mb_strlen;
 use function mb_substr;
+use function sprintf;
 use function str_contains;
-use function trigger_deprecation;
 
 /**
  * Page plumbing of the UiKit page contract (REQ-UI-003) for the marketing admin: resolves the layout the scaffolds
- * extend (`web_ui.layout_template`, null = `nowo_ui_kit.layouts.admin`; a 1.x layout without the UiKit canonical
- * blocks is wrapped by {@see self::LEGACY_LAYOUT_BRIDGE}), the per-page templates (`web_ui.templates.<page>`) and the
+ * extend (`web_ui.layout_template`, null = `nowo_ui_kit.layouts.admin`; since 2.0 a 1.x layout without the UiKit
+ * canonical blocks fails with a LogicException, the 1.x bridge was removed), the per-page templates
+ * (`web_ui.templates.<page>`) and the
  * form themes, and builds the view models of the list and form pages. Configuration only: no request state, safe in
  * worker mode.
  */
@@ -41,9 +43,6 @@ final readonly class MarketingKitPages
 
     /** Translation domain of the labels. */
     public const DOMAIN = 'NowoMarketingKitBundle';
-
-    /** BC bridge around a 1.x layout that renders `{% block body %}` (deprecated since 1.9, removed in 2.0). */
-    public const LEGACY_LAYOUT_BRIDGE = '@NowoMarketingKitBundle/admin/_legacy_layout.html.twig';
 
     /** Former default of `web_ui.layout_template` (removed in 1.9): treated as null. */
     public const FORMER_DEFAULT_LAYOUT = '@NowoMarketingKitBundle/admin/layout.html.twig';
@@ -110,17 +109,25 @@ final readonly class MarketingKitPages
     }
 
     /**
-     * Layout the scaffolds extend (`page.layout`): `web_ui.layout_template` when it renders the UiKit canonical
-     * blocks, the legacy bridge for a 1.x layout, else null (UiKit `nowo_ui_layout.admin`).
+     * Layout the scaffolds extend (`page.layout`): `web_ui.layout_template`, else null (UiKit `nowo_ui_layout.admin`).
+     *
+     * @throws LogicException when the configured layout does not render the UiKit canonical blocks (a 1.x layout; the
+     *                        bridge that wrapped it, deprecated since 1.9, was removed in 2.0)
      */
     public function layout(): ?string
     {
-        return $this->legacyLayout() !== null ? self::LEGACY_LAYOUT_BRIDGE : $this->configuredLayout();
+        $legacy = $this->legacyLayout();
+        if ($legacy !== null) {
+            throw new LogicException(sprintf('The layout "%s" (nowo_marketing_kit.web_ui.layout_template) does not render the UiKit canonical blocks (nowo_ui_content, ...). The 1.x layout bridge (deprecated since 1.9) was removed in 2.0: render the canonical blocks (or extend @NowoUiKit/layout/admin.html.twig), or set web_ui.layout_template to null to use nowo_ui_kit.layouts.admin. See TEMPLATES.md and UPGRADING.md "To 2.0.0".', $legacy));
+        }
+
+        return $this->configuredLayout();
     }
 
     /**
-     * The 1.x layout configured in `web_ui.layout_template` (one that renders `{% block body %}` and not the UiKit
-     * `nowo_ui_content` block), wrapped by {@see self::LEGACY_LAYOUT_BRIDGE}; null when there is none.
+     * The configured 1.x layout (`web_ui.layout_template` that renders `{% block body %}` and neither the UiKit
+     * `nowo_ui_content` block nor a `@NowoUiKit` layout); null when there is none. Since 2.0 {@see self::layout()} refuses
+     * it.
      */
     public function legacyLayout(): ?string
     {
@@ -138,8 +145,6 @@ final readonly class MarketingKitPages
         if (str_contains($source, 'nowo_ui_content') || str_contains($source, '@NowoUiKit')) {
             return null;
         }
-
-        trigger_deprecation('nowo-tech/marketing-kit-bundle', '1.9', 'The layout "%s" does not render the UiKit canonical blocks (nowo_ui_content); it is wrapped in "%s". Render the canonical blocks in your layout (or point nowo_marketing_kit.web_ui.layout_template to a one-file bridge); see docs/UPGRADING.md.', $layout, self::LEGACY_LAYOUT_BRIDGE);
 
         return $layout;
     }

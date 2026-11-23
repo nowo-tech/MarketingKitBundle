@@ -4,14 +4,12 @@ declare(strict_types=1);
 
 namespace Nowo\MarketingKitBundle\Config;
 
-use Nowo\MarketingKitBundle\Repository\MarketingToolRepository;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Contracts\Service\ResetInterface;
 use WeakMap;
 
 use function is_array;
-use function trigger_deprecation;
 
 /**
  * Resolves the active marketing profile from YAML and the optional tool source (database by default).
@@ -34,24 +32,21 @@ final class MarketingConfigResolver implements MarketingConfigResolverInterface,
     private readonly MarketingToolSourceInterface $toolSource;
 
     /**
+     * 2.0: the fourth parameter of 1.x (`?MarketingToolRepository $toolRepository`, deprecated since 1.12) was removed;
+     * `$requestStack` and `$toolSource` moved up one position. Pass them by name.
+     *
      * @param array<string, array{enabled?: bool, tools?: array<string, array<string, mixed>>}> $profiles
-     * @param MarketingToolRepository|null $toolRepository Deprecated since 1.12.0 (removed in 2.0): pass $toolSource; used only when $toolSource is null
-     * @param MarketingToolSourceInterface|null $toolSource Since 1.12.0; null keeps the 1.x database override ({@see DoctrineMarketingToolSource} over $toolRepository)
+     * @param MarketingToolSourceInterface|null $toolSource Since 1.12.0; null = YAML tools only (no tool source)
      */
     public function __construct(
         private array $profiles,
         private readonly string $defaultProfile,
         bool $useDatabaseConfig,
-        ?MarketingToolRepository $toolRepository = null,
         private readonly ?RequestStack $requestStack = null,
         ?MarketingToolSourceInterface $toolSource = null,
     ) {
-        if ($toolRepository instanceof MarketingToolRepository) {
-            trigger_deprecation('nowo-tech/marketing-kit-bundle', '1.12', 'Passing $toolRepository to "%s" is deprecated and removed in 2.0; when $toolSource is also set (the bundle always sets it) $toolRepository is ignored. Alias "%s" to your own service instead.', self::class, MarketingToolSourceInterface::class);
-        }
-
         $this->resolvedByRequest = new WeakMap();
-        $this->toolSource        = $toolSource ?? new DoctrineMarketingToolSource($useDatabaseConfig, $toolRepository);
+        $this->toolSource        = $toolSource ?? new DoctrineMarketingToolSource($useDatabaseConfig);
     }
 
     public function reset(): void

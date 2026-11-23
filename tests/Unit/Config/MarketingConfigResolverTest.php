@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Nowo\MarketingKitBundle\Tests\Unit\Config;
 
+use Nowo\MarketingKitBundle\Config\DoctrineMarketingToolSource;
 use Nowo\MarketingKitBundle\Config\MarketingConfigResolver;
 use Nowo\MarketingKitBundle\Repository\MarketingToolRepository;
-use PHPUnit\Framework\Attributes\IgnoreDeprecations;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -40,7 +40,6 @@ final class MarketingConfigResolverTest extends TestCase
         self::assertSame('yaml', $resolved->tools[0]->source);
     }
 
-    #[IgnoreDeprecations]
     public function testDatabaseReplaceWhenRowsExist(): void
     {
         $repo = $this->createMock(MarketingToolRepository::class);
@@ -55,7 +54,7 @@ final class MarketingConfigResolverTest extends TestCase
                     'gtm' => ['type' => 'gtm', 'options' => ['container_id' => 'GTM-1']],
                 ],
             ],
-        ], 'default', true, $repo);
+        ], 'default', true, toolSource: new DoctrineMarketingToolSource(true, $repo));
 
         $resolved = $resolver->resolve();
 
@@ -65,7 +64,6 @@ final class MarketingConfigResolverTest extends TestCase
         self::assertSame('database', $resolved->tools[0]->source);
     }
 
-    #[IgnoreDeprecations]
     public function testFallsBackToYamlWhenDbEmpty(): void
     {
         $repo = $this->createMock(MarketingToolRepository::class);
@@ -78,7 +76,7 @@ final class MarketingConfigResolverTest extends TestCase
                     'gtm' => ['type' => 'gtm', 'options' => ['container_id' => 'GTM-1']],
                 ],
             ],
-        ], 'default', true, $repo);
+        ], 'default', true, toolSource: new DoctrineMarketingToolSource(true, $repo));
 
         $resolved = $resolver->resolve();
 
@@ -110,7 +108,7 @@ final class MarketingConfigResolverTest extends TestCase
                     'gtm' => ['type' => 'gtm', 'options' => ['container_id' => 'GTM-1']],
                 ],
             ],
-        ], 'default', false, null, $stack);
+        ], 'default', false, $stack);
 
         $first  = $resolver->resolve();
         $second = $resolver->resolve();
@@ -129,7 +127,6 @@ final class MarketingConfigResolverTest extends TestCase
         self::assertSame('gtm', $third->tools[0]->code);
     }
 
-    #[IgnoreDeprecations]
     public function testConsecutiveRequestsWithoutResetSeeDatabaseChanges(): void
     {
         $repo = $this->createMock(MarketingToolRepository::class);
@@ -142,7 +139,7 @@ final class MarketingConfigResolverTest extends TestCase
         $stack    = new RequestStack();
         $resolver = new MarketingConfigResolver([
             'default' => ['enabled' => true, 'tools' => ['ga4' => ['type' => 'ga4']]],
-        ], 'default', true, $repo, $stack);
+        ], 'default', true, $stack, new DoctrineMarketingToolSource(true, $repo));
 
         // Request 1 (worker A), resolved twice: one query.
         $stack->push(new Request());

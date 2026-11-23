@@ -9,29 +9,34 @@ use Nowo\TransactionDoctrine\PrivateManager\DependencyInjection\PrivateEntityMan
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 
-use function is_bool;
 use function is_string;
-use function trigger_deprecation;
 
 /**
- * 1.14 (REQ-ARCH-001 rule 6, `doctrine.private_entity_manager`).
+ * REQ-ARCH-001 rule 6 (2.0), once the application's Doctrine managers are known. The bundle never flushes the
+ * application's manager:
  *
- * - Private mode (`true`): resolves the application's manager the private one is created on — `doctrine.entity_manager`,
- *   else the application's default entity manager (`doctrine.default_entity_manager`, so a default manager not named
- *   "default" works without configuration) — then runs transaction-doctrine's {@see PrivateEntityManagerPass}, which
- *   checks that manager exists and tags the bundle's PrivateEntityManagerMiddleware `doctrine.middleware` for its
- *   connection only.
- * - Unset (`null`) or `false` with `doctrine.entity_manager` naming the application's default manager (audit XD-4): the
- *   bundle flushes that manager, as with `entity_manager` unset, so the same deprecation notice is triggered (the
- *   extension triggers it for an unset `entity_manager`; it cannot know the default manager's name). The host-flush
- *   probe runs in that configuration too (the write unit takes the application's-manager path).
+ * - `doctrine.entity_manager` unset, or naming the application's default entity manager
+ *   (`doctrine.default_entity_manager`, so a default manager not named "default" works without configuration): the
+ *   private entity manager is created on that manager, and transaction-doctrine's {@see PrivateEntityManagerPass}
+ *   checks the manager exists and tags the bundle's PrivateEntityManagerMiddleware `doctrine.middleware` for its
+ *   connection only;
+ * - `doctrine.entity_manager` naming a dedicated manager (the DDD option, unchanged): the bundle uses that manager
+ *   directly ({@see NowoMarketingKitExtension::useDedicatedEntityManager()}) — unless the deprecated
+ *   `private_entity_manager: true` is set, which keeps the 1.14 behaviour (the private manager on the dedicated one).
  *
- * Runs before DoctrineBundle's MiddlewaresPass (priority 0).
+ * The 1.x mode (the bundle flushing the application's manager), its deprecation notices and its host-flush probe are
+ * gone; the configuration refuses `private_entity_manager: false`.
+ *
+ * Runs before DoctrineBundle's MiddlewaresPass (priority 0) and before {@see EntityManagerOptionPass}.
  */
 final class PrivateEntityManagerSourcePass implements CompilerPassInterface
 {
     public function process(ContainerBuilder $container): void
     {
+        if (!$container->hasDefinition(NowoMarketingKitExtension::PRIVATE_MIDDLEWARE_SERVICE)) {
+            return;
+        }
+
         $default = $container->hasParameter('doctrine.default_entity_manager') ? $container->getParameter('doctrine.default_entity_manager') : null;
         $default = is_string($default) && $default !== '' ? $default : 'default';
         $named   = $container->hasParameter(NowoMarketingKitExtension::PRIVATE_SOURCE_MANAGER_PARAMETER)
@@ -39,15 +44,11 @@ final class PrivateEntityManagerSourcePass implements CompilerPassInterface
             : null;
         $named   = is_string($named) && $named !== '' ? $named : null;
         $setting = $container->hasParameter(NowoMarketingKitExtension::PRIVATE_ENTITY_MANAGER_SETTING_PARAMETER)
-            ? $container->getParameter(NowoMarketingKitExtension::PRIVATE_ENTITY_MANAGER_SETTING_PARAMETER)
-            : true;
-        $notice = NowoMarketingKitExtension::privateEntityManagerNotice(is_bool($setting) ? $setting : null);
+            && $container->getParameter(NowoMarketingKitExtension::PRIVATE_ENTITY_MANAGER_SETTING_PARAMETER) === true;
 
-        if ($notice !== null && $named === $default) {
-            trigger_deprecation('nowo-tech/marketing-kit-bundle', '1.14', $notice);
-        }
+        if ($named !== null && $named !== $default && !$setting) {
+            NowoMarketingKitExtension::useDedicatedEntityManager($container, $named);
 
-        if (!$container->hasDefinition(NowoMarketingKitExtension::PRIVATE_MIDDLEWARE_SERVICE)) {
             return;
         }
 

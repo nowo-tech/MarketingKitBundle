@@ -15,11 +15,13 @@ use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\ORMSetup;
 use Doctrine\ORM\Tools\SchemaTool;
 use Doctrine\Persistence\ManagerRegistry;
-use Nowo\MarketingKitBundle\Doctrine\MarketingKitHostFlushReporter;
+use Nowo\MarketingKitBundle\DependencyInjection\NowoMarketingKitExtension;
 use Nowo\MarketingKitBundle\Entity\MarketingTool;
 use Nowo\MarketingKitBundle\EventListener\MarketingToolConflictListener;
 use Nowo\MarketingKitBundle\Persistence\MarketingToolWriteUnit;
 use Nowo\MarketingKitBundle\Repository\MarketingToolRepository;
+use Nowo\MarketingKitBundle\Service\MarketingToolAdminService;
+use Nowo\MarketingKitBundle\Service\MarketingToolCatalog;
 use Nowo\MarketingKitBundle\Tests\Support\CollectsDeprecations;
 use Nowo\MarketingKitBundle\Tests\Support\Entity\HostChild;
 use Nowo\MarketingKitBundle\Tests\Support\Entity\HostNote;
@@ -31,19 +33,24 @@ use Nowo\TransactionDoctrine\ConflictCode;
 use Nowo\TransactionDoctrine\PrivateManager\PrivateEntityManager;
 use Nowo\TransactionDoctrine\PrivateManager\PrivateEntityManagerMiddleware;
 use Nowo\TransactionDoctrine\PrivateManager\PrivateManagerRegistry;
+use Nowo\TransactionDoctrine\WriteUnit\CommitLedger;
+use Nowo\TransactionDoctrine\WriteUnit\Dbal\CommitTrackingMiddleware;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
+use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
 use Throwable;
 
+use function count;
 use function dirname;
 use function getenv;
 use function is_file;
 use function is_string;
+use function sprintf;
 use function sys_get_temp_dir;
 use function uniqid;
 use function unlink;
@@ -51,8 +58,8 @@ use function unlink;
 use const PHP_VERSION_ID;
 
 /**
- * 1.14 (REQ-ARCH-001 rule 6): the private entity manager of `doctrine.private_entity_manager: true` and the host-flush
- * probe of the host mode, on SQLite and on real MySQL 8.4, MariaDB 11.4 and PostgreSQL 16 servers.
+ * REQ-ARCH-001 rule 6 (2.0): the bundle's private entity manager, the only way it writes through the application's
+ * default manager's connection, on SQLite and on real MySQL 8.4, MariaDB 11.4 and PostgreSQL 16 servers.
  *
  * Each "stack" is one application manager on its own connection, with the bundle's PrivateEntityManager created on it
  * (transaction-doctrine's DBAL middleware wired), as the bundle wires them. Set MK_MYSQL_URL, MK_MARIADB_URL and
@@ -105,7 +112,7 @@ final class PrivateEntityManagerDatabaseTest extends TestCase
     }
 
     /**
-     * Private mode: the application's pending insert stays pending (never flushed, never cleared); the tool is
+     * The application's pending insert stays pending (never flushed, never cleared); the tool is
      * committed; the application then flushes its own work.
      */
     #[DataProvider('databases')]
@@ -128,40 +135,54 @@ final class PrivateEntityManagerDatabaseTest extends TestCase
     }
 
     /**
-     * Host mode (1.x, unchanged): host work that enters the application's manager during the unit is flushed with the
-     * tool, and the probe reports each foreign class once, before that flush.
+     * 2.0 (the 1.14 host-flush probe case): work the application puts in ITS manager during a bundle write (an operation
+     * or a listener of the application that uses its own manager) is no longer flushed by the bundle. It is not lost
+     * either: it stays pending in the application's manager, unchanged, until the application flushes it. Work put in
+     * the PRIVATE manager instead fails the write before anything is written (wave-1 lesson W1-2).
      */
     #[DataProvider('databases')]
-    public function testHostModeFlushesTheApplicationsWorkAndTheProbeReportsIt(?string $url): void
+    public function testTheApplicationsWorkDuringABundleWriteStaysPendingInItsManager(?string $url): void
     {
-        $stack    = $this->fresh($url);
-        $messages = $this->deprecations(static fn () => $stack->hostUnit()->run(static function (EntityManagerInterface $em): void {
+        $stack = $this->fresh($url);
+        $host  = $stack->host;
+        $note  = new HostNote();
+        $tag   = new HostTag();
+
+        $messages = $this->deprecations(static fn () => $stack->privateUnit()->run(static function (EntityManagerInterface $em) use ($host, $note, $tag): void {
             $em->persist((new MarketingTool())->setCode('gtm'));
-            $em->persist(new HostNote());
-            $tag        = new HostTag();
+            $host->persist($note);
             $tag->label = 'audit';
-            $em->persist($tag);
+            $host->persist($tag);
         }));
 
-        self::assertSame([
-            'Your pending changes to ' . HostNote::class . ' were flushed by NowoMarketingKitBundle; 2.0 no longer does.',
-            'Your pending changes to ' . HostTag::class . ' were flushed by NowoMarketingKitBundle; 2.0 no longer does.',
-        ], $messages);
+        self::assertSame([], $messages, 'no probe since 2.0');
         self::assertSame(['gtm'], $this->codes($stack));
+        self::assertSame(0, $this->rowCount($stack, 'host_note'), 'the bundle did not flush the application\'s work');
+        self::assertSame(0, $this->rowCount($stack, 'host_tag'));
+        self::assertTrue($host->getUnitOfWork()->isScheduledForInsert($note), 'still pending, not lost');
+        self::assertTrue($host->getUnitOfWork()->isScheduledForInsert($tag));
+        self::assertSame('audit', $tag->label);
+
+        $host->flush();
         self::assertSame(1, $this->rowCount($stack, 'host_note'));
         self::assertSame(1, $this->rowCount($stack, 'host_tag'));
 
-        // The same flush in private mode reports nothing: the private manager holds no application work.
-        self::assertSame([], $this->deprecations(static fn () => $stack->privateUnit()->run(static fn (EntityManagerInterface $em) => $em->persist((new MarketingTool())->setCode('ga4')))));
+        $refused = $this->failureOf(static fn () => $stack->privateUnit()->run(static function (EntityManagerInterface $em): void {
+            $em->persist((new MarketingTool())->setCode('ga4'));
+            $em->persist(new HostNote());
+        }));
+        self::assertSame(sprintf(MarketingToolWriteUnit::FOREIGN_ENTITY_MESSAGE, HostNote::class, HostNote::class), $refused->getMessage());
+        self::assertSame(['gtm'], $this->codes($stack), 'nothing of the refused write was written');
+        self::assertSame(1, $this->rowCount($stack, 'host_note'));
     }
 
     /**
-     * Audit XD-5, host mode: the application's orphan removals (an inverse collection cleared, an inverse one-to-one set
-     * to null) are refused like any other pending change, so the unit's flush never deletes those rows; the
-     * application's manager stays open and its orphan removals stay pending, then its own flush deletes them.
+     * Audit XD-5 in 2.0: the application's orphan removals (an inverse collection cleared, an inverse one-to-one set to
+     * null) are neither refused nor carried by a bundle write: the rows stay, the removals stay pending in the
+     * application's manager, and its own flush deletes them.
      */
     #[DataProvider('databases')]
-    public function testHostModeRefusesTheApplicationsOrphanRemovals(?string $url): void
+    public function testTheApplicationsOrphanRemovalsAreNeitherRefusedNorCarried(?string $url): void
     {
         $stack  = $this->fresh($url);
         $parent = new HostParent();
@@ -170,38 +191,20 @@ final class PrivateEntityManagerDatabaseTest extends TestCase
         $parent->setProfile(new HostProfile());
         $stack->host->persist($parent);
         $stack->host->flush();
-        $write = static fn (EntityManagerInterface $em) => $em->persist((new MarketingTool())->setCode('gtm'));
 
         $parent->children->clear();
-        $refused = $this->failureOf(static fn () => $stack->hostUnit()->run($write));
-        self::assertSame(MarketingToolWriteUnit::HOST_PENDING_MESSAGE, $refused->getMessage());
-        self::assertSame(2, $this->rowCount($stack, 'host_child'));
-        self::assertSame([], $this->codes($stack));
-
-        $stack->host->flush(); // the application's own flush
-        self::assertSame(0, $this->rowCount($stack, 'host_child'));
-
         $parent->profile = null;
-        $refused         = $this->failureOf(static fn () => $stack->hostUnit()->run($write));
-        self::assertSame(MarketingToolWriteUnit::HOST_PENDING_MESSAGE, $refused->getMessage());
+        $stack->privateUnit()->run(static fn (EntityManagerInterface $em) => $em->persist((new MarketingTool())->setCode('gtm')));
+
+        self::assertSame(['gtm'], $this->codes($stack));
+        self::assertSame(2, $this->rowCount($stack, 'host_child'), 'the bundle never deletes the application\'s orphans');
         self::assertSame(1, $this->rowCount($stack, 'host_profile'));
         self::assertTrue($stack->host->isOpen());
 
-        $stack->host->flush();
+        $stack->host->flush(); // the application's own flush
+        self::assertSame(0, $this->rowCount($stack, 'host_child'));
         self::assertSame(0, $this->rowCount($stack, 'host_profile'));
-        // ORM keeps the loaded (deleted) profile as the parent's original inverse value, so the deleted orphan is
-        // scheduled again at every change-set computation and never deleted again: not pending work, the unit runs.
-        // transaction-doctrine's probe may list the parent and the profile for that stale value (a report only:
-        // nothing is written for them).
-        $messages = $this->deprecations(static fn () => $stack->hostUnit()->run($write));
-        self::assertSame(['gtm'], $this->codes($stack));
         self::assertSame(1, $this->rowCount($stack, 'host_parent'));
-        foreach ($messages as $message) {
-            self::assertContains($message, [
-                'Your pending changes to ' . HostParent::class . ' were flushed by NowoMarketingKitBundle; 2.0 no longer does.',
-                'Your pending changes to ' . HostProfile::class . ' were flushed by NowoMarketingKitBundle; 2.0 no longer does.',
-            ]);
-        }
     }
 
     /**
@@ -285,6 +288,91 @@ final class PrivateEntityManagerDatabaseTest extends TestCase
         self::assertSame(99, (int) $a->host->getConnection()->fetchOne('SELECT sortOrder FROM marketing_tool'));
     }
 
+    /**
+     * REQ-RUNTIME-003 on the 2.0 default path: two catalog seeds of one profile at once, each through its own private
+     * manager. B waits on A's uncommitted unique key: 409 + CONFLICT_001, none of B's rows. After A committed, B's
+     * retry finds every code and writes nothing twice.
+     */
+    #[DataProvider('servers')]
+    public function testTwoCatalogSeedsInPrivateModeNeverDuplicateACode(?string $url): void
+    {
+        $a       = $this->fresh($url);
+        $b       = $this->stack();
+        $catalog = count((new MarketingToolCatalog())->all());
+
+        $a->host->getConnection()->beginTransaction();
+        self::assertSame($catalog, $a->admin()->seedCatalog('default'));
+
+        $failure = $this->failureOf(static fn (): int => $b->admin()->seedCatalog('default'));
+        self::assertSame(['X-Conflict-Code' => ConflictCode::RETRY_SAFE, 'Retry-After' => '1'], $this->answer($failure)->getHeaders());
+        self::assertTrue($b->host->isOpen(), 'B\'s application manager untouched');
+
+        $a->host->getConnection()->commit();
+        self::assertSame(0, $b->admin()->seedCatalog('default'), 'the retry finds every code');
+        self::assertSame($catalog, $this->rowCount($a, 'marketing_tool'), 'one row per code');
+    }
+
+    /**
+     * REQ-RUNTIME-003 on the 2.0 default path: the YAML import is all or nothing. A row locked by another connection
+     * answers 409 + CONFLICT_001 and creates none of the other tools; the retry upserts all of them once.
+     */
+    #[DataProvider('servers')]
+    public function testAYamlImportInPrivateModeThatMeetsALockedRowWritesNothingAndTheRetryWritesAll(?string $url): void
+    {
+        $a  = $this->fresh($url);
+        $b  = $this->stack();
+        $id = $this->seed($a, 'gtm');
+
+        $a->host->getConnection()->beginTransaction();
+        $a->host->getConnection()->fetchOne('SELECT id FROM marketing_tool WHERE id = ? FOR UPDATE', [$id]);
+        $failure = $this->failureOf(static fn (): int => $b->admin()->importFromYaml('default'));
+        self::assertSame(['X-Conflict-Code' => ConflictCode::RETRY_SAFE, 'Retry-After' => '1'], $this->answer($failure)->getHeaders());
+        $a->host->getConnection()->rollBack();
+        self::assertSame(['gtm'], $this->codes($a), '"ga4" was not created');
+
+        self::assertSame(2, $b->admin()->importFromYaml('default'));
+        self::assertSame(['ga4', 'gtm'], $this->codes($a));
+        self::assertSame(2, $b->admin()->importFromYaml('default'), 'run again: upserted, not duplicated');
+        self::assertSame(2, $this->rowCount($a, 'marketing_tool'));
+    }
+
+    /**
+     * REQ-RUNTIME-003 rule 6 on the 2.0 default path: a lock conflict after a commit earlier in the same request answers
+     * CONFLICT_002 without Retry-After (the commit counted by the real commit-tracking middleware).
+     */
+    #[DataProvider('servers')]
+    public function testALockConflictInPrivateModeAfterACommitAnswersConflict002(?string $url): void
+    {
+        $a        = $this->fresh($url);
+        $id       = $this->seed($a, 'gtm');
+        $ledger   = new CommitLedger();
+        $b        = $this->stack($ledger);
+        $listener = new MarketingToolConflictListener(null, $ledger);
+        $request  = Request::create('/admin/marketing/import-yaml', 'POST');
+        $request->attributes->set('_controller', self::ADMIN_CONTROLLER);
+        $listener->onRequest(new RequestEvent($this->createStub(HttpKernelInterface::class), $request, HttpKernelInterface::MAIN_REQUEST));
+
+        $b->privateUnit()->run(static fn (EntityManagerInterface $em) => $em->persist((new MarketingTool())->setCode('ga4')));
+
+        $a->host->getConnection()->beginTransaction();
+        $a->host->getConnection()->fetchOne('SELECT id FROM marketing_tool WHERE id = ? FOR UPDATE', [$id]);
+        $failure = $this->failureOf(static fn () => $b->privateUnit()->run(static function (EntityManagerInterface $em) use ($id): void {
+            $tool = $em->find(MarketingTool::class, $id);
+            self::assertInstanceOf(MarketingTool::class, $tool);
+            $tool->setSortOrder(99);
+        }));
+        $a->host->getConnection()->rollBack();
+
+        $event = new ExceptionEvent($this->createStub(HttpKernelInterface::class), $request, HttpKernelInterface::MAIN_REQUEST, $failure);
+        $listener->onException($event);
+        $answer = $event->getThrowable();
+        self::assertInstanceOf(HttpException::class, $answer);
+        self::assertSame(409, $answer->getStatusCode());
+        self::assertSame(['X-Conflict-Code' => ConflictCode::COMMITTED], $answer->getHeaders());
+        self::assertSame(['ga4', 'gtm'], $this->codes($a), 'the first write is committed');
+        self::assertSame(0, (int) $a->host->getConnection()->fetchOne('SELECT sortOrder FROM marketing_tool WHERE id = ?', [$id]), 'the second is not');
+    }
+
     private function fresh(?string $url): PrivateStack
     {
         if ($url === null) {
@@ -307,7 +395,7 @@ final class PrivateEntityManagerDatabaseTest extends TestCase
         return $stack;
     }
 
-    private function stack(): PrivateStack
+    private function stack(?CommitLedger $ledger = null): PrivateStack
     {
         $config = ORMSetup::createAttributeMetadataConfig([dirname(__DIR__, 3) . '/src/Entity', dirname(__DIR__, 2) . '/Support/Entity'], true);
         if (PHP_VERSION_ID >= 80400) {
@@ -323,11 +411,13 @@ final class PrivateEntityManagerDatabaseTest extends TestCase
         $registry->method('getManagerForClass')->willReturnCallback(static fn (): EntityManagerInterface => $stack->host);
         $registry->method('getDefaultManagerName')->willReturn('default');
         $stack->registry        = $registry;
-        $stack->private         = new PrivateEntityManager($registry, 'default', MarketingTool::class, MarketingKitHostFlushReporter::BUNDLE_NAME);
-        $stack->privateRegistry = new PrivateManagerRegistry($registry, $stack->private, MarketingKitHostFlushReporter::OWN_NAMESPACES, 'default');
+        $stack->private         = new PrivateEntityManager($registry, 'default', MarketingTool::class, NowoMarketingKitExtension::BUNDLE_NAME);
+        $stack->privateRegistry = new PrivateManagerRegistry($registry, $stack->private, NowoMarketingKitExtension::OWN_NAMESPACES, 'default');
 
         $dbal = new DbalConfiguration();
-        $dbal->setMiddlewares([new PrivateEntityManagerMiddleware($stack->private, 'nowo_marketing_kit_')]);
+        $dbal->setMiddlewares($ledger instanceof CommitLedger
+            ? [new PrivateEntityManagerMiddleware($stack->private, 'nowo_marketing_kit_'), new CommitTrackingMiddleware($ledger)]
+            : [new PrivateEntityManagerMiddleware($stack->private, 'nowo_marketing_kit_')]);
         $connection = DriverManager::getConnection($this->params, $dbal);
         $platform   = $connection->getDatabasePlatform();
         if (!$platform instanceof SQLitePlatform) {
@@ -403,20 +493,25 @@ final class PrivateStack
 
     public PrivateManagerRegistry $privateRegistry;
 
-    /** `doctrine.private_entity_manager: true`: the bundle's own manager path. */
+    /** The bundle's own manager path (2.0: the only one the container wires). */
     public function privateUnit(): MarketingToolWriteUnit
     {
         return new MarketingToolWriteUnit($this->private, $this->privateRegistry, 'default', true);
     }
 
-    /** Host mode (unset or false): the application's manager, with the host-flush probe. */
-    public function hostUnit(): MarketingToolWriteUnit
-    {
-        return new MarketingToolWriteUnit($this->host, $this->registry, hostFlushReporter: new MarketingKitHostFlushReporter(true));
-    }
-
     public function repository(): MarketingToolRepository
     {
         return new MarketingToolRepository($this->privateRegistry);
+    }
+
+    /** The admin service as the container wires it (2.0): the private manager and its write unit. */
+    public function admin(): MarketingToolAdminService
+    {
+        return new MarketingToolAdminService($this->repository(), new MarketingToolCatalog(), $this->private, [
+            'default' => ['enabled' => true, 'tools' => [
+                'gtm' => ['type' => 'gtm', 'enabled' => true, 'category' => 'analytics', 'position' => 'head', 'sort_order' => 10, 'options' => ['container_id' => 'GTM-AAAA']],
+                'ga4' => ['type' => 'ga4', 'enabled' => true, 'category' => 'analytics', 'position' => 'head', 'sort_order' => 20, 'options' => ['measurement_id' => 'G-AAAA']],
+            ]],
+        ], 'default', $this->privateUnit());
     }
 }

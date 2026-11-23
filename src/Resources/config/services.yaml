@@ -34,14 +34,14 @@ services:
             $profiles: '%nowo_marketing_kit.profiles%'
             $defaultProfile: '%nowo_marketing_kit.default_profile%'
             $useDatabaseConfig: '%nowo_marketing_kit.use_database_config%'
-            $toolRepository: null
             $toolSource: '@Nowo\MarketingKitBundle\Config\MarketingToolSourceInterface'
 
     # 1.12.0 (REQ-ARCH-001 rule 1): hosts may alias these ports to their own services.
     Nowo\MarketingKitBundle\Config\MarketingConfigResolverInterface: '@Nowo\MarketingKitBundle\Config\MarketingConfigResolver'
 
-    # 1.13 (REQ-RUNTIME-003 rule 1): one transaction per admin write. $ownManager is set by EntityManagerOptionPass when
-    # doctrine.entity_manager names a manager other than the host's default; the extension points $entityManager at it.
+    # 1.13 (REQ-RUNTIME-003 rule 1): one transaction per admin write. 2.0: the extension points $entityManager at the
+    # bundle's private manager ($ownManager true); PrivateEntityManagerSourcePass and EntityManagerOptionPass point it at
+    # a dedicated doctrine.entity_manager instead (the DDD option).
     Nowo\MarketingKitBundle\Persistence\MarketingToolWriteUnit:
         arguments:
             $registry: '@doctrine'
@@ -114,9 +114,6 @@ services:
     Nowo\MarketingKitBundle\Service\MarketingScriptRendererInterface: '@Nowo\MarketingKitBundle\Service\MarketingScriptRenderer'
 
     Nowo\MarketingKitBundle\Twig\MarketingKitExtension:
-        arguments:
-            $layoutTemplate: '%nowo_marketing_kit.web_ui.layout_template%'
-            $cssFramework: '%nowo_marketing_kit.web_ui.css_framework%'
         tags: ['twig.extension']
 
     # Form Kit injects FormOptionsMerger into tagged form types (FormOptionsMergerInjectorCompilerPass).

@@ -30,10 +30,6 @@ final class MarketingKitExtensionTest extends TestCase
         $names = array_map(static fn (TwigFunction $f): string => $f->getName(), $extension->getFunctions());
 
         self::assertSame(['nowo_marketing_head', 'nowo_marketing_body_start', 'nowo_marketing_body_end'], $names);
-        self::assertSame([
-            'nowo_marketing_kit_layout'        => 'base.html.twig',
-            'nowo_marketing_kit_css_framework' => 'bootstrap5',
-        ], $extension->getGlobals());
         self::assertSame('', $extension->head());
         self::assertSame('', $extension->bodyStart());
         self::assertSame('', $extension->bodyEnd());
@@ -54,7 +50,11 @@ final class MarketingKitExtensionTest extends TestCase
         self::assertSame('', $extension->bodyEnd(null, 'n0nce'));
     }
 
-    public function testGlobalsAreExposedToTwigEnvironment(): void
+    /**
+     * 2.0: the globals `nowo_marketing_kit_layout` / `nowo_marketing_kit_css_framework` (deprecated since 1.9) are gone;
+     * the constructor still accepts their two values (ignored, removed in 3.0).
+     */
+    public function testTheDeprecatedGlobalsAreRemoved(): void
     {
         $extension = new MarketingKitExtension(new MarketingScriptRenderer(
             new MarketingConfigResolver(['default' => ['enabled' => true, 'tools' => []]], 'default', false),
@@ -62,13 +62,13 @@ final class MarketingKitExtensionTest extends TestCase
             new CookieConsentGate(new RequestStack(), false),
         ), 'host/layout.html.twig', 'tailwind');
 
-        self::assertContains(GlobalsInterface::class, class_implements($extension));
+        self::assertNotContains(GlobalsInterface::class, class_implements($extension));
 
         $twig = new Environment(new ArrayLoader([
             'probe' => '{{ nowo_marketing_kit_layout|default("unset") }}|{{ nowo_marketing_kit_css_framework|default("unset") }}',
         ]));
         $twig->addExtension($extension);
 
-        self::assertSame('host/layout.html.twig|tailwind', $twig->render('probe'));
+        self::assertSame('unset|unset', $twig->render('probe'));
     }
 }

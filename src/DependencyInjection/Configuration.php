@@ -15,6 +15,7 @@ use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\ConfigurationInterface;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 
+use function array_key_exists;
 use function implode;
 use function in_array;
 use function is_string;
@@ -32,7 +33,10 @@ final class Configuration implements ConfigurationInterface
     /** Default of web_ui.path_prefix. */
     public const DEFAULT_PATH_PREFIX = '/admin/marketing';
 
-    /** @var list<string> Host CSS stacks accepted by web_ui.css_framework (REQ-UI-001). */
+    /**
+     * @var list<string> Host CSS stacks the removed `web_ui.css_framework` accepted (1.x). Kept as a public constant;
+     *                   nothing reads it since 2.0.
+     */
     public const CSS_FRAMEWORKS = [
         'bootstrap',
         'bootstrap4',
@@ -43,6 +47,23 @@ final class Configuration implements ConfigurationInterface
         'custom',
         'none',
     ];
+
+    /**
+     * `web_ui` keys removed in 2.0 (deprecated since 1.9) => what replaces them. A leftover key fails the build with this
+     * text instead of Symfony's generic "Unrecognized option".
+     */
+    public const REMOVED_WEB_UI_KEYS = [
+        'css_framework' => 'set "nowo_ui_kit.css_framework" once for every bundle instead',
+        'icon_set'      => 'set "nowo_ui_kit.icon_set" once for every bundle instead',
+    ];
+
+    /** `doctrine` keys removed in 2.0 => what replaces them. */
+    public const REMOVED_DOCTRINE_KEYS = [
+        'connection' => 'remove it (deprecated since 1.6, it had no effect: the bundle uses the connection of its entity manager)',
+    ];
+
+    /** Deprecation of `doctrine.private_entity_manager` (any value) since 2.0; the key is removed in 3.0. */
+    public const PRIVATE_ENTITY_MANAGER_DEPRECATION = 'The "%node%" option at "%path%" has no effect since 2.0 without a dedicated doctrine.entity_manager (the private entity manager is then the only mode): remove it. With a dedicated doctrine.entity_manager, true still selects the private manager on that manager, and removing the key makes the bundle write through the dedicated manager directly, so keep it until 3.0 unless you want that. The key is removed in 3.0.';
 
     public function getConfigTreeBuilder(): TreeBuilder
     {
@@ -89,13 +110,7 @@ final class Configuration implements ConfigurationInterface
                     ->addDefaultsIfNotSet()
                     ->beforeNormalization()
                         ->ifArray()
-                        ->then(static function (array $v): array {
-                            if (isset($v['css_framework']) && $v['css_framework'] === 'bootstrap') {
-                                $v['css_framework'] = 'bootstrap5';
-                            }
-
-                            return $v;
-                        })
+                        ->then(static fn (array $v): array => self::refuseRemovedKeys($v, self::REMOVED_WEB_UI_KEYS, 'web_ui'))
                     ->end()
                     ->children()
                         ->booleanNode('enabled')
@@ -112,7 +127,7 @@ final class Configuration implements ConfigurationInterface
                         ->end()
                         ->scalarNode('layout_template')
                             ->defaultNull()
-                            ->info('Layout the admin page scaffolds extend (REQ-UI-001/003). Null (default) = nowo_ui_kit.layouts.admin. A host layout must render the UiKit canonical blocks; a 1.x layout that renders {% block body %} is wrapped in a deprecated bridge.')
+                            ->info('Layout the admin page scaffolds extend (REQ-UI-001/003). Null (default) = nowo_ui_kit.layouts.admin. A host layout must render the UiKit canonical blocks: since 2.0 a 1.x layout that renders only {% block body %} fails at render (the 1.x bridge was removed).')
                         ->end()
                         ->arrayNode('templates')
                             ->addDefaultsIfNotSet()
@@ -127,27 +142,25 @@ final class Configuration implements ConfigurationInterface
                             ->scalarPrototype()->cannotBeEmpty()->end()
                             ->defaultValue([MarketingKitPages::DEFAULT_FORM_THEME])
                         ->end()
-                        ->enumNode('css_framework')
-                            ->values(self::CSS_FRAMEWORKS)
-                            ->defaultValue('none')
-                            ->setDeprecated('nowo-tech/marketing-kit-bundle', '1.9', 'The "%node%" option at "%path%" is deprecated: set nowo_ui_kit.css_framework once for every bundle. It only seeds nowo_ui_kit.css_framework when the host leaves it unset.')
-                            ->info('Deprecated since 1.9: set nowo_ui_kit.css_framework. Seeds nowo_ui_kit.css_framework when the host has not set it (default none). Values: bootstrap (alias of bootstrap5), bootstrap4, bootstrap5, tabler, tailwind, foundation, custom, none.')
-                        ->end()
-                        ->scalarNode('icon_set')
-                            ->defaultValue('bootstrap-icons')
-                            ->cannotBeEmpty()
-                            ->setDeprecated('nowo-tech/marketing-kit-bundle', '1.9', 'The "%node%" option at "%path%" is deprecated: set nowo_ui_kit.icon_set once for every bundle. It only seeds nowo_ui_kit.icon_set when the host leaves it unset.')
-                            ->info('Deprecated since 1.9: set nowo_ui_kit.icon_set. Seeds nowo_ui_kit.icon_set when the host has not set it.')
-                        ->end()
                     ->end()
                 ->end()
                 ->arrayNode('doctrine')
                     ->addDefaultsIfNotSet()
+                    ->beforeNormalization()
+                        ->ifArray()
+                        ->then(static fn (array $v): array => self::refuseRemovedKeys($v, self::REMOVED_DOCTRINE_KEYS, 'doctrine'))
+                    ->end()
+                    ->validate()
+                        ->ifTrue(static fn (array $v): bool => ($v['private_entity_manager'] ?? null) === false)
+                        ->then(static function (array $v): never {
+                            throw new InvalidConfigurationException(self::privateEntityManagerFalseMessage(is_string($v['entity_manager'] ?? null) ? $v['entity_manager'] : null));
+                        })
+                    ->end()
                     ->children()
                         ->scalarNode('table_prefix')->defaultValue('')->end()
                         ->scalarNode('entity_manager')
                             ->defaultNull()
-                            ->info('Since 1.10.0: entity manager that maps MarketingTool (e.g. a dedicated manager in a DDD host). The entity is mapped on it only, the admin reads and writes through it, and the bundle resets only this manager when a failed flush left it closed (never a host manager). The build fails when it does not exist. null: the default manager, as before.')
+                            ->info('Since 1.10.0: entity manager that maps MarketingTool (e.g. a dedicated manager in a DDD host, the DDD option). The entity is mapped on it only, the admin reads and writes through it, and the bundle resets only this manager when a failed flush left it closed (never a host manager). The build fails when it does not exist. null (default): the default manager, through the bundle\'s private entity manager (2.0: the bundle never flushes your manager). Naming the default manager is the same as null.')
                             ->validate()
                                 ->ifTrue(static fn (mixed $v): bool => $v !== null && (!is_string($v) || $v === ''))
                                 ->thenInvalid('nowo_marketing_kit.doctrine.entity_manager must be an entity manager name or null; got %s.')
@@ -155,12 +168,8 @@ final class Configuration implements ConfigurationInterface
                         ->end()
                         ->booleanNode('private_entity_manager')
                             ->defaultNull()
-                            ->info('Since 1.14.0 (REQ-ARCH-001 rule 6): true = the bundle reads and writes MarketingTool through a private entity manager of its own, created on the connection, mapping and event manager of doctrine.entity_manager (else the default entity manager): same table, nothing else to configure, and a marketing tool write never flushes the application\'s manager. false = the 1.x behaviour (the bundle writes through the manager that maps MarketingTool), deprecated and removed in 2.0. Null (default) = false. Without doctrine.entity_manager, null and false trigger a deprecation notice: 2.0 always uses the private manager (doctrine.entity_manager stays as the DDD option).')
-                        ->end()
-                        ->scalarNode('connection')
-                            ->defaultValue('default')
-                            ->setDeprecated('nowo-tech/marketing-kit-bundle', '1.6', 'The "%node%" option at "%path%" is deprecated and has no effect: the bundle always uses the default Doctrine entity manager and its connection. Remove it from your configuration.')
-                            ->info('Deprecated since 1.6, no effect: the default Doctrine entity manager (and its connection) is always used.')
+                            ->setDeprecated('nowo-tech/marketing-kit-bundle', '2.0', self::PRIVATE_ENTITY_MANAGER_DEPRECATION)
+                            ->info('Deprecated since 2.0, removed in 3.0 (REQ-ARCH-001 rule 6). The bundle always reads and writes MarketingTool through a private entity manager of its own, created on the connection, mapping and event manager of the default entity manager (or of doctrine.entity_manager when it names the default one): same table, nothing to configure, and a marketing tool write never flushes the application\'s manager. true: accepted, no effect (with a dedicated doctrine.entity_manager it keeps the 1.14 behaviour: the private manager on that manager). false: refused (the 1.x mode that flushed the application\'s manager was removed in 2.0).')
                         ->end()
                     ->end()
                 ->end()
@@ -259,6 +268,40 @@ final class Configuration implements ConfigurationInterface
         ;
 
         return $treeBuilder;
+    }
+
+    /**
+     * Build error of `doctrine.private_entity_manager: false` (2.0 removed the 1.x mode it kept).
+     */
+    public static function privateEntityManagerFalseMessage(?string $entityManager): string
+    {
+        $message = 'nowo_marketing_kit.doctrine.private_entity_manager: false is no longer supported: 2.0 removed the mode in which marketing tool writes flush your application\'s entity manager. Remove the key.';
+        if ($entityManager !== null && $entityManager !== '') {
+            $message .= sprintf(' doctrine.entity_manager "%s" stays: a dedicated manager keeps working as in 1.x; if it names your default entity manager, 2.0 uses the private entity manager on it.', $entityManager);
+        } else {
+            $message .= ' The bundle then writes through its private entity manager (same connection and table), which never flushes your pending changes; or set doctrine.entity_manager to a dedicated manager.';
+        }
+
+        return $message . ' See UPGRADING.md "To 2.0.0".';
+    }
+
+    /**
+     * Fails on a key removed in 2.0, naming what replaces it.
+     *
+     * @param array<mixed> $values
+     * @param array<string, string> $removed key => what replaces it
+     *
+     * @return array<mixed>
+     */
+    private static function refuseRemovedKeys(array $values, array $removed, string $path): array
+    {
+        foreach ($removed as $key => $replacement) {
+            if (array_key_exists($key, $values)) {
+                throw new InvalidConfigurationException(sprintf('The "%s.%s.%s" option was removed in 2.0: %s. See UPGRADING.md "To 2.0.0".', self::ALIAS, $path, $key, $replacement));
+            }
+        }
+
+        return $values;
     }
 
     /**

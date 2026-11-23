@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nowo\MarketingKitBundle\Tests\Unit\Ui;
 
+use LogicException;
 use Nowo\MarketingKitBundle\Tests\Support\AdminPageFixtures;
 use Nowo\MarketingKitBundle\Ui\MarketingKitPages;
 use Nowo\UiKitBundle\View\Action;
@@ -11,8 +12,8 @@ use Nowo\UiKitBundle\View\Column;
 use Nowo\UiKitBundle\View\FormPage;
 use Nowo\UiKitBundle\View\Label;
 use Nowo\UiKitBundle\View\ListPage;
-use PHPUnit\Framework\Attributes\IgnoreDeprecations;
 use PHPUnit\Framework\TestCase;
+use ReflectionClass;
 use Twig\Environment;
 use Twig\Loader\ArrayLoader;
 
@@ -61,13 +62,21 @@ final class MarketingKitPagesTest extends TestCase
         self::assertSame('missing.html.twig', (new MarketingKitPages(true, 'missing.html.twig', [], [], $this->twig()))->layout());
     }
 
-    #[IgnoreDeprecations]
-    public function testOneDotXLayoutIsWrappedInTheLegacyBridge(): void
+    /**
+     * 2.0: the 1.x layout bridge (deprecated since 1.9) is gone; a layout without the UiKit canonical blocks fails
+     * loudly, naming what to do, instead of being wrapped.
+     */
+    public function testOneDotXLayoutFailsLoudly(): void
     {
         $pages = new MarketingKitPages(true, 'base.html.twig', [], [], $this->twig());
 
-        $this->expectUserDeprecationMessageMatches('/The layout "base\.html\.twig" does not render the UiKit canonical blocks/');
-        self::assertSame(MarketingKitPages::LEGACY_LAYOUT_BRIDGE, $pages->layout());
+        self::assertSame('base.html.twig', $pages->legacyLayout());
+        self::assertFalse((new ReflectionClass(MarketingKitPages::class))->hasConstant('LEGACY_LAYOUT_BRIDGE'));
+
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('The layout "base.html.twig" (nowo_marketing_kit.web_ui.layout_template) does not render the UiKit canonical blocks (nowo_ui_content, ...). The 1.x layout bridge (deprecated since 1.9) was removed in 2.0');
+
+        $pages->layout();
     }
 
     public function testListPage(): void
