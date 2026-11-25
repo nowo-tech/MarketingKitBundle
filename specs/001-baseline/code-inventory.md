@@ -2,19 +2,19 @@
 
 **Baseline spec**: [`spec.md`](spec.md)  
 **Package**: `nowo-tech/marketing-kit-bundle`  
-**Last audited**: 2026-11-22
+**Last audited**: 2026-11-25 (2.0.0)
 
 Every production file tracked under `src/` is listed once below with the spec section and requirement IDs it implements. Tests (`tests/`) and the demo (`demo/`) are out of scope.
 
-Audit command (production count): `git ls-files src | wc -l` → **66** (2026-11-22).
+Audit command (production count): `git ls-files src | wc -l` → **64** (2026-11-25, 2.0.0).
 
 ## Bundle & DI (`src/`, `src/DependencyInjection/`)
 
 | Source file | Spec section | Requirement IDs |
 | --- | --- | --- |
 | `src/NowoMarketingKitBundle.php` | Bundle entry, Twig namespace registration | FR-MK-001, FR-MK-008 |
-| `src/DependencyInjection/Configuration.php` | Config tree (`default_profile`, `profiles`, security, web UI) | FR-MK-001, FR-MK-009 |
-| `src/DependencyInjection/NowoMarketingKitExtension.php` | DI extension, parameters, access checker wiring | FR-MK-001, FR-MK-009 |
+| `src/DependencyInjection/Configuration.php` | Config tree (`default_profile`, `profiles`, security, web UI); 2.0 rejects removed keys (`doctrine.connection`, `web_ui.css_framework`, `web_ui.icon_set`, `private_entity_manager: false`) with a message naming the fix | FR-MK-001, FR-MK-009, FR-MK-017 |
+| `src/DependencyInjection/NowoMarketingKitExtension.php` | DI extension, parameters, access checker wiring; 2.0 private-manager default, no deprecation notices, seeds UiKit `css_framework: none` / `icon_set` when unset | FR-MK-001, FR-MK-009, FR-MK-016, FR-MK-017 |
 | `src/DependencyInjection/TablePrefixListener.php` | Configurable table prefix on MarketingKit entity metadata | FR-MK-004 |
 | `src/DependencyInjection/Compiler/TwigPathsPass.php` | `@NowoMarketingKitBundle` namespace with app override precedence | FR-MK-008 |
 | `src/DependencyInjection/Compiler/CsrfProtectionPass.php` | Compile error when the admin runs without form CSRF protection | FR-MK-009 |
@@ -25,7 +25,7 @@ Audit command (production count): `git ls-files src | wc -l` → **66** (2026-11
 
 | Source file | Spec section | Requirement IDs |
 | --- | --- | --- |
-| `src/Config/MarketingConfigResolver.php` | Profile resolution, YAML vs database replace, per-request memo | FR-MK-001, FR-MK-004, FR-MK-010 |
+| `src/Config/MarketingConfigResolver.php` | Profile resolution, YAML vs database replace, per-request memo; 2.0 drops the `$toolRepository` constructor parameter (tool source only) | FR-MK-001, FR-MK-004, FR-MK-010, FR-MK-017 |
 | `src/Config/ResolvedMarketingConfig.php` | Immutable resolved profile | FR-MK-001 |
 | `src/Config/ResolvedTool.php` | Immutable resolved tool ready for rendering | FR-MK-001 |
 | `src/Config/MarketingConfigResolverInterface.php` | Port: resolve the tools of a profile (REQ-ARCH-001 rule 1) | FR-MK-001, FR-MK-013 |
@@ -58,9 +58,8 @@ Audit command (production count): `git ls-files src | wc -l` → **66** (2026-11
 | `src/EventSubscriber/ConsentVaryCookieSubscriber.php` | `Vary: Cookie` on responses whose tags were gated by consent cookies | FR-MK-005 |
 | `src/Doctrine/ExcludedEntityNamespaceDriver.php` | Maps nothing for the bundle namespace on every other entity manager | FR-MK-012 |
 | `src/EventSubscriber/MarketingKitEntityManagerClearSubscriber.php` | Clears the bundle's own entity manager at the outermost unit-of-work boundary | FR-MK-010, FR-MK-012 |
-| `src/DependencyInjection/Compiler/PrivateEntityManagerSourcePass.php` | 1.14: with `doctrine.private_entity_manager: true` resolves the application's manager the private one is created on and runs transaction-doctrine's `PrivateEntityManagerPass`; deprecation path for an unset option | FR-MK-016 |
-| `src/Doctrine/MarketingKitHostFlushReporter.php` | 1.14: reports (deprecation, read-only, guarded) the application's pending changes a tool write flushes on the application's manager | FR-MK-016 |
-| `src/Persistence/MarketingToolWriteUnit.php` | One transaction per admin write (REQ-RUNTIME-003, 1.13) | FR-MK-014 |
+| `src/DependencyInjection/Compiler/PrivateEntityManagerSourcePass.php` | 2.0: resolves the application's manager the private one is created on and runs transaction-doctrine's `PrivateEntityManagerPass` (the only mode without a dedicated manager) | FR-MK-016 |
+| `src/Persistence/MarketingToolWriteUnit.php` | One transaction per admin write (REQ-RUNTIME-003, 1.13); 2.0: refuses (`LogicException`) a write that loaded an application entity on the private manager; no host-flush probe | FR-MK-014, FR-MK-016 |
 | `src/EventListener/MarketingToolConflictListener.php` | 409 + CONFLICT_001 / CONFLICT_002, domain 409 codes (REQ-RUNTIME-003, 1.13) | FR-MK-015 |
 
 ## Providers (`src/Provider/`)
@@ -86,18 +85,18 @@ Audit command (production count): `git ls-files src | wc -l` → **66** (2026-11
 | `src/Service/MarketingScriptRenderer.php` | Renders enabled, consented tools per position | FR-MK-003, FR-MK-005 |
 | `src/Service/MarketingToolCatalog.php` | Built-in catalog exposed in the admin CRUD | FR-MK-006 |
 | `src/Service/MarketingToolAdminService.php` | Seed catalog and import YAML into the database | FR-MK-006 |
-| `src/Twig/MarketingKitExtension.php` | `nowo_marketing_head` / `_body_start` / `_body_end` functions | FR-MK-003 |
+| `src/Twig/MarketingKitExtension.php` | `nowo_marketing_head` / `_body_start` / `_body_end` functions; 2.0 drops the `nowo_marketing_kit_layout` / `_css_framework` globals | FR-MK-003, FR-MK-017 |
 | `src/Service/MarketingScriptRendererInterface.php` | Port: render the consent-gated tags of a document position | FR-MK-003, FR-MK-013 |
 
 ## Admin UI (`src/Controller/`, `src/Form/`, `src/Ui/`)
 
 | Source file | Spec section | Requirement IDs |
 | --- | --- | --- |
-| `src/Controller/MarketingToolAdminController.php` | `web_ui.path_prefix` (`/admin/marketing`) CRUD (seed, import, toggle, edit, delete) | FR-MK-006, FR-MK-009 |
+| `src/Controller/MarketingToolAdminController.php` | `web_ui.path_prefix` (`/admin/marketing`) CRUD (seed, import, toggle, edit, delete); `final` since 2.0 | FR-MK-006, FR-MK-009, FR-MK-017 |
 | `src/Form/MarketingToolType.php` | Tool form with typed option fields | FR-MK-006, FR-MK-011 |
 | `src/Form/ProfileFilterType.php` | GET profile switcher of the list (filters region) | FR-MK-006 |
 | `src/Form/CsrfActionType.php` | CSRF-only forms of the seed / import / toggle / delete actions | FR-MK-006, FR-MK-009 |
-| `src/Ui/MarketingKitPages.php` | UiKit page contract: layout / templates / form themes, `ListPage` / `FormPage` view models | FR-MK-006, FR-MK-008 |
+| `src/Ui/MarketingKitPages.php` | UiKit page contract: layout / templates / form themes, `ListPage` / `FormPage` view models; 2.0 no layout bridge (a non-UiKit `layout_template` throws) | FR-MK-006, FR-MK-008, FR-MK-017 |
 
 ## Security (`src/Security/`)
 
@@ -120,7 +119,6 @@ Audit command (production count): `git ls-files src | wc -l` → **66** (2026-11
 | --- | --- | --- |
 | `src/Resources/views/admin/index.html.twig` | Tool list on the UiKit list scaffold (seed, import, toggle, delete) | FR-MK-006, FR-MK-008 |
 | `src/Resources/views/admin/form.html.twig` | Tool create/edit form on the UiKit form scaffold | FR-MK-006, FR-MK-008 |
-| `src/Resources/views/admin/_legacy_layout.html.twig` | Deprecated bridge around a 1.x host layout (removed in 2.0) | FR-MK-008 |
 
 ## Translations (`src/Resources/translations/`)
 
@@ -144,12 +142,12 @@ Domain **`NowoMarketingKitBundle`** (REQ-I18N-003).
 | Config resolution | 6 | 6 |
 | Consent | 2 | 2 |
 | Enums | 4 | 4 |
-| Persistence | 10 | 10 |
+| Persistence | 9 | 9 |
 | Providers | 11 | 11 |
 | Services & Twig | 5 | 5 |
 | Admin UI | 5 | 5 |
 | Security | 3 | 3 |
 | Config YAML | 2 | 2 |
-| Twig views | 3 | 3 |
+| Twig views | 2 | 2 |
 | Translations | 7 | 7 |
-| **Total production sources** | **66** | **66** |
+| **Total production sources** | **64** | **64** |
